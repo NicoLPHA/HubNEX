@@ -1,0 +1,12 @@
+{
+  "domain": "hubnex",
+  "name": "HubNEX",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["conversation"],
+  "documentation": "https://github.com/P1pp89/HubNEX",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "requirements": [],
+  "version": "1.0.0"
+}

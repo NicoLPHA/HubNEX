@@ -1,0 +1,73 @@
+configuration:
+  anthropic_api_key:
+    name: Chiave API Anthropic
+    description: La chiave per usare Claude (console.anthropic.com).
+  model_jarvis:
+    name: Modello di Jarvis
+    description: Usato da Jarvis e dagli agenti che non ne indicano uno in agents.yaml.
+  model_mail:
+    name: Modello di Jarvis Mail
+    description: Usato dall'agente email e per classificare la posta.
+  anthropic_credit_usd:
+    name: Credito Anthropic ($)
+    description: Il saldo che vedi su console.anthropic.com (es. 4.90). La dashboard scala da qui il costo stimato di ogni richiesta. Quando ricarichi, scrivi il nuovo saldo e il conteggio riparte. 0 = mostra solo la spesa.
+  telegram_token_jarvis:
+    name: Token bot Jarvis
+    description: Da @BotFather. Deve essere un bot che nessun altro programma sta ascoltando.
+  telegram_token_mail:
+    name: Token bot Jarvis Mail
+    description: Il secondo bot del gruppo, quello che parla per la posta.
+  allowed_chat_id:
+    name: ID del gruppo
+    description: Numero negativo, con il segno meno. Scrivi /id nel gruppo per vederlo.
+  allowed_user_id:
+    name: Il tuo user ID Telegram
+    description: I bot obbediscono solo a te.
+  telegram_voice_replies:
+    name: Risposte vocali su Telegram
+    description: Se mandi un vocale a Jarvis, risponde anche a voce (serve ElevenLabs).
+  imap_host:
+    name: Server IMAP
+  imap_port:
+    name: Porta IMAP
+  smtp_host:
+    name: Server SMTP
+  smtp_port:
+    name: Porta SMTP
+  mail_user:
+    name: Casella email
+  mail_password:
+    name: Password email
+  mail_from_name:
+    name: Nome mittente
+    description: Es. "Ing. Mario Rossi - Azienda srl".
+  mail_signature:
+    name: Firma
+    description: Testo semplice (usa \n per andare a capo) oppure HTML incollato dal tuo programma di posta.
+  check_interval_minutes:
+    name: Controllo posta (minuti)
+  notify_min_priority:
+    name: Avvisami da priorità
+    description: bassa, media (consigliato) o alta.
+  hq_token:
+    name: Token HQ
+    description: Password per aprire la dashboard fuori da HA e per l'API (rest_command). Dalla barra laterale non serve.
+  elevenlabs_api_key:
+    name: Chiave API ElevenLabs
+    description: Per la voce di Jarvis e per trascrivere i tuoi vocali.
+  elevenlabs_voice_id:
+    name: Voce ElevenLabs
+  elevenlabs_model:
+    name: Modello ElevenLabs
+    description: eleven_flash_v2_5 è il più economico e parla italiano.
+  voice_tts_entity:
+    name: Voce da Home Assistant
+    description: In alternativa a ElevenLabs, un motore di sintesi vocale di Home Assistant (es. tts.piper, gratuito e locale, o tts.home_assistant_cloud). Se impostato, ha la precedenza.
+  ha_blocked_services:
+    name: Servizi HA bloccati
+    description: Servizi che Jarvis non può mai chiamare da solo, separati da virgola.
+  install_assist_integration:
+    name: Integrazione Assist
+    description: Installa e aggiorna l'integrazione che rende Jarvis l'agente di conversazione di Assist (voce da app di HA e speaker).
+network:
+  8765/tcp: Dashboard e API (facoltativa, richiede il token HQ)

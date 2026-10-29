@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HubNEX",
+        "description": "Address of the HubNEX add-on and its HQ token.",
+        "data": { "url": "URL", "token": "Token" }
+      },
+      "hassio_confirm": {
+        "title": "HubNEX",
+        "description": "Use the HubNEX assistant as an Assist conversation agent?"
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot reach HubNEX.",
+      "invalid_auth": "Wrong token."
+    },
+    "abort": {
+      "already_configured": "HubNEX is already configured.",
+      "cannot_connect": "Cannot reach HubNEX.",
+      "invalid_auth": "Wrong token."
+    }
+  }
+}

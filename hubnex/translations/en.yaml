@@ -1,0 +1,61 @@
+configuration:
+  anthropic_api_key:
+    name: Anthropic API key
+  model_jarvis:
+    name: Jarvis model
+    description: Used by Jarvis and by agents that don't set their own in agents.yaml.
+  model_mail:
+    name: Jarvis Mail model
+  anthropic_credit_usd:
+    name: Anthropic credit ($)
+    description: Your balance on console.anthropic.com. The dashboard counts down the estimated cost of each request. Enter the new balance after a top-up. 0 = show spend only.
+  telegram_token_jarvis:
+    name: Jarvis bot token
+  telegram_token_mail:
+    name: Jarvis Mail bot token
+  allowed_chat_id:
+    name: Group ID
+    description: Negative number. Send /id in the group to see it.
+  allowed_user_id:
+    name: Your Telegram user ID
+  telegram_voice_replies:
+    name: Voice replies on Telegram
+  imap_host:
+    name: IMAP server
+  imap_port:
+    name: IMAP port
+  smtp_host:
+    name: SMTP server
+  smtp_port:
+    name: SMTP port
+  mail_user:
+    name: Mailbox
+  mail_password:
+    name: Mail password
+  mail_from_name:
+    name: Sender name
+  mail_signature:
+    name: Signature
+  check_interval_minutes:
+    name: Mail check (minutes)
+  notify_min_priority:
+    name: Notify from priority
+  hq_token:
+    name: HQ token
+    description: Password for the dashboard outside HA and for the API. Not needed from the sidebar.
+  elevenlabs_api_key:
+    name: ElevenLabs API key
+  elevenlabs_voice_id:
+    name: ElevenLabs voice ID
+  elevenlabs_model:
+    name: ElevenLabs model
+  voice_tts_entity:
+    name: Voice from Home Assistant
+    description: Instead of ElevenLabs, one of Home Assistant's TTS engines (e.g. tts.piper, free and local). Takes precedence when set.
+  ha_blocked_services:
+    name: Blocked HA services
+  install_assist_integration:
+    name: Assist integration
+    description: Install and update the integration that makes Jarvis an Assist conversation agent.
+network:
+  8765/tcp: Dashboard and API (optional, requires the HQ token)

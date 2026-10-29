@@ -1,0 +1,86 @@
+name: HubNEX
+version: "1.0.0"
+slug: hubnex
+description: Il quartier generale AI per casa e lavoro - un team di agenti Claude, plancia 3D di Home Assistant, Telegram, voce e connettori MCP.
+url: https://github.com/P1pp89/HubNEX
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+# Accesso all'API di Home Assistant tramite il Supervisor (niente token da creare)
+homeassistant_api: true
+# Dashboard nella barra laterale di HA
+ingress: true
+ingress_port: 8765
+panel_icon: mdi:robot-happy-outline
+panel_title: HubNEX
+# Porta esterna facoltativa (disattivata di default): serve solo per aprire la dashboard
+# fuori da HA o per chiamare l'API da altri dispositivi, sempre con hq_token.
+ports:
+  8765/tcp: null
+ports_description:
+  8765/tcp: Dashboard e API (facoltativa, richiede hq_token)
+# /config dentro l'add-on = cartella addon_configs/<id>_hubnex (contiene agents.yaml)
+map:
+  - addon_config:rw
+  # Solo per installare/aggiornare l'integrazione Assist in custom_components/hubnex
+  - homeassistant_config:rw
+# Annuncia l'add-on a Home Assistant: l'integrazione Assist si configura con un clic
+discovery:
+  - hubnex
+options:
+  anthropic_api_key: ""
+  model_jarvis: claude-sonnet-5-5
+  model_mail: claude-haiku-5-5
+  anthropic_credit_usd: 0
+  telegram_token_jarvis: ""
+  telegram_token_mail: ""
+  allowed_chat_id: ""
+  allowed_user_id: ""
+  telegram_voice_replies: true
+  imap_host: ""
+  imap_port: 993
+  smtp_host: ""
+  smtp_port: 465
+  mail_user: ""
+  mail_password: ""
+  mail_from_name: ""
+  mail_signature: ""
+  check_interval_minutes: 5
+  notify_min_priority: media
+  hq_token: ""
+  elevenlabs_api_key: ""
+  elevenlabs_voice_id: ""
+  elevenlabs_model: eleven_flash_v2_5
+  voice_tts_entity: ""
+  ha_blocked_services: lock.unlock,lock.open,alarm_control_panel.alarm_disarm
+  install_assist_integration: true
+schema:
+  anthropic_api_key: password
+  model_jarvis: str
+  model_mail: str
+  anthropic_credit_usd: float(0,)
+  telegram_token_jarvis: password?
+  telegram_token_mail: password?
+  allowed_chat_id: str?
+  allowed_user_id: str?
+  telegram_voice_replies: bool
+  imap_host: str?
+  imap_port: port
+  smtp_host: str?
+  smtp_port: port
+  mail_user: str?
+  mail_password: password?
+  mail_from_name: str?
+  mail_signature: str?
+  check_interval_minutes: int(1,120)
+  notify_min_priority: list(bassa|media|alta)
+  hq_token: password?
+  elevenlabs_api_key: password?
+  elevenlabs_voice_id: str?
+  elevenlabs_model: str?
+  voice_tts_entity: str?
+  ha_blocked_services: str?
+  install_assist_integration: bool

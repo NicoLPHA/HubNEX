@@ -1,0 +1,190 @@
+"""Live view of Home Assistant over its WebSocket API: areas, devices, entities and states.
+
+The REST API has no registries (which area an entity belongs to) and no push, so the house
+view keeps one WebSocket open: it loads the registries and all states, then follows
+`state_changed` and the registry-updated events. It also moves an entity to another area.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import itertools
+import json
+import logging
+from typing import Any, Awaitable, Callable
+
+import websockets
+
+log = logging.getLogger(__name__)
+
+REGISTRY_EVENTS = ("area_registry_updated", "entity_registry_updated", "device_registry_updated", "floor_registry_updated")
+# Called with ("state", entity_id, new_state_or_None) or ("registry", None, None).
+OnEvent = Callable[[str, str | None, dict | None], Awaitable[None]]
+
+
+class HAWatcherError(Exception):
+    pass
+
+
+def websocket_url(ha_url: str) -> str:
+    """http://supervisor/core -> ws://supervisor/core/websocket (add-on proxy);
+    http://host:8123 -> ws://host:8123/api/websocket (Home Assistant directly)."""
+    base = ha_url.rstrip("/")
+    ws = "wss" + base[5:] if base.startswith("https") else "ws" + base[4:]
+    return f"{ws}/websocket" if base.endswith("/core") else f"{ws}/api/websocket"
+
+
+class HAWatcher:
+    def __init__(self, ha_url: str, token: str, on_event: OnEvent | None = None, connect=None):
+        self.url = websocket_url(ha_url) if ha_url else ""
+        self.token = token
+        self.on_event = on_event
+        self._connect = connect or (lambda url: websockets.connect(url, max_size=None, ping_interval=30))
+        self.areas: dict[str, dict] = {}
+        self.floors: dict[str, dict] = {}
+        self.devices: dict[str, dict] = {}
+        self.entities: dict[str, dict] = {}  # entity registry, by entity_id
+        self.states: dict[str, dict] = {}
+        self.ready = asyncio.Event()
+        self._ws = None
+        self._ids = itertools.count(1)
+        self._pending: dict[int, asyncio.Future] = {}
+        self._reload_task: asyncio.Task | None = None
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.url)
+
+    # ------------------------------------------------------------------ connection
+    async def run(self) -> None:
+        delay = 2
+        while True:
+            try:
+                await self._session()
+                delay = 2
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # network, auth, HA restarting...
+                log.warning("Home Assistant WebSocket: %s (riprovo tra %ss)", exc, delay)
+            self.ready.clear()
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, 60)
+
+    async def _session(self) -> None:
+        async with self._connect(self.url) as ws:
+            msg = json.loads(await ws.recv())
+            if msg.get("type") != "auth_required":
+                raise HAWatcherError(f"risposta inattesa: {msg}")
+            await ws.send(json.dumps({"type": "auth", "access_token": self.token}))
+            msg = json.loads(await ws.recv())
+            if msg.get("type") != "auth_ok":
+                raise HAWatcherError("autenticazione rifiutata")
+            self._ws = ws
+            reader = asyncio.create_task(self._read(ws))
+            try:
+                await self._command({"type": "subscribe_events", "event_type": "state_changed"})
+                for ev in REGISTRY_EVENTS:
+                    await self._command({"type": "subscribe_events", "event_type": ev})
+                await self._load()
+                self.ready.set()
+                await self._notify("registry", None, None)
+                await reader
+            finally:
+                reader.cancel()
+                self._ws = None
+                for fut in self._pending.values():
+                    if not fut.done():
+                        fut.set_exception(HAWatcherError("connessione chiusa"))
+                self._pending.clear()
+
+    async def _read(self, ws) -> None:
+        async for raw in ws:
+            msg = json.loads(raw)
+            if msg.get("type") == "result":
+                fut = self._pending.pop(msg.get("id"), None)
+                if fut and not fut.done():
+                    if msg.get("success"):
+                        fut.set_result(msg.get("result"))
+                    else:
+                        fut.set_exception(HAWatcherError((msg.get("error") or {}).get("message", "errore")))
+            elif msg.get("type") == "event":
+                await self._event(msg.get("event") or {})
+
+    async def _command(self, payload: dict, timeout: float = 30) -> Any:
+        if self._ws is None:
+            raise HAWatcherError("Home Assistant non collegato")
+        mid = next(self._ids)
+        fut = asyncio.get_running_loop().create_future()
+        self._pending[mid] = fut
+        await self._ws.send(json.dumps({"id": mid, **payload}))
+        return await asyncio.wait_for(fut, timeout)
+
+    # ------------------------------------------------------------------ data
+    async def _load(self) -> None:
+        areas = await self._command({"type": "config/area_registry/list"})
+        try:
+            floors = await self._command({"type": "config/floor_registry/list"})
+        except HAWatcherError:  # older Home Assistant: no floors
+            floors = []
+        devices = await self._command({"type": "config/device_registry/list"})
+        entities = await self._command({"type": "config/entity_registry/list"})
+        states = await self._command({"type": "get_states"})
+        self.areas = {a["area_id"]: a for a in areas}
+        self.floors = {f["floor_id"]: f for f in floors}
+        self.devices = {d["id"]: d for d in devices}
+        self.entities = {e["entity_id"]: e for e in entities}
+        self.states = {s["entity_id"]: s for s in states}
+
+    async def _event(self, event: dict) -> None:
+        etype = event.get("event_type")
+        if etype == "state_changed":
+            data = event.get("data") or {}
+            eid, new = data.get("entity_id"), data.get("new_state")
+            if not eid:
+                return
+            if new is None:
+                self.states.pop(eid, None)
+            else:
+                self.states[eid] = new
+            await self._notify("state", eid, new)
+        elif etype in REGISTRY_EVENTS:
+            # Edits often come in bursts (renaming a device touches all its entities).
+            if self._reload_task is None or self._reload_task.done():
+                self._reload_task = asyncio.create_task(self._reload_soon())
+
+    async def _reload_soon(self) -> None:
+        await asyncio.sleep(1)
+        try:
+            await self._load()
+        except Exception as exc:
+            log.warning("ricarico dei registri fallito: %s", exc)
+            return
+        await self._notify("registry", None, None)
+
+    async def _notify(self, kind: str, eid: str | None, state: dict | None) -> None:
+        if self.on_event:
+            try:
+                await self.on_event(kind, eid, state)
+            except Exception:
+                log.exception("HA event handler failed")
+
+    # ------------------------------------------------------------------ queries and changes
+    def area_of(self, entity_id: str) -> str | None:
+        """The entity's own area, or else its device's (that is what Home Assistant shows)."""
+        reg = self.entities.get(entity_id)
+        if not reg:
+            return None
+        if reg.get("area_id"):
+            return reg["area_id"]
+        dev = self.devices.get(reg.get("device_id") or "")
+        return dev.get("area_id") if dev else None
+
+    async def set_area(self, entity_id: str, area_id: str | None) -> None:
+        if entity_id not in self.entities:
+            raise HAWatcherError(
+                f"{entity_id} non ha un ID univoco in Home Assistant: l'area non si può assegnare, "
+                "aggiungila solo alla plancia"
+            )
+        result = await self._command({"type": "config/entity_registry/update", "entity_id": entity_id, "area_id": area_id})
+        entry = (result or {}).get("entity_entry") if isinstance(result, dict) else None
+        self.entities[entity_id] = entry or {**self.entities[entity_id], "area_id": area_id}

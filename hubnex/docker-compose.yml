@@ -1,0 +1,11 @@
+services:
+  hubnex:
+    build: .
+    container_name: hubnex
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config   # modifichi agents.yaml senza ricostruire l'immagine

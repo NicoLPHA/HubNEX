@@ -1,0 +1,6 @@
+HubNEX includes third-party software:
+
+- three.js (hubnex/web/vendor/three) — MIT License, Copyright © 2010-2024 three.js authors.
+  See hubnex/web/vendor/three/LICENSE.
+- hls.js 1.5.20 (hubnex/web/vendor/hls) — Apache License 2.0, Copyright (c) 2017 Dailymotion.
+  See hubnex/web/vendor/hls/LICENSE.

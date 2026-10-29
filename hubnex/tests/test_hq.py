@@ -1,0 +1,289 @@
+import asyncio
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
+import pytest
+from fastapi.testclient import TestClient
+
+from hubnex.config import Routine
+from hubnex.main import create_app
+from hubnex.scheduler import Scheduler, is_due_at, parse_due, parse_interval
+from tests.conftest import response, text_block, tool_block
+
+
+def test_org_chart_loads():
+    from hubnex.config import load_org
+
+    org = load_org("config/agents.yaml")
+    assert {c.id for c in org.companies} == {"casa", "lavoro"}
+    assert org.agent("contabile").department == "amministrazione"
+
+
+def test_intervals_and_daily_routines():
+    assert parse_interval("30m") == 1800
+    assert parse_interval("6h") == 21600
+    with pytest.raises(ValueError):
+        parse_interval("ogni tanto")
+    r = Routine(task="x", at="08:30", days=["mon", "tue", "wed", "thu", "fri"])
+    monday_9 = datetime(2026, 10, 26, 9, 0)
+    assert is_due_at(r, monday_9, None)
+    assert not is_due_at(r, monday_9, date(2026, 10, 26))  # already ran today
+    assert not is_due_at(r, datetime(2026, 10, 26, 8, 0), None)  # too early
+    assert not is_due_at(r, datetime(2026, 10, 25, 9, 0), None)  # sunday
+
+
+def test_parse_due_date_only_means_nine_am():
+    tz = ZoneInfo("Europe/Rome")
+    assert parse_due("2026-11-30", tz).hour == 9
+
+
+async def test_agent_runs_tools_and_reports(make_hq):
+    hq = make_hq(
+        [
+            response([tool_block("memory_save", {"topic": "IVA", "content": "trimestrale"})], "tool_use"),
+            response([text_block("Fatto: ho salvato la periodicità IVA.")], "end_turn"),
+        ]
+    )
+    events = hq.subscribe()
+    result = await hq.run_agent("contabile", "Ricorda che l'IVA è trimestrale")
+
+    assert result == "Fatto: ho salvato la periodicità IVA."
+    assert hq.agents["contabile"].status == "sleeping"
+    assert hq.agents["contabile"].done == 1
+    assert (await hq.store.recall("IVA", "lavoro"))[0]["content"] == "trimestrale"
+
+    # The tool result went back to Claude in a single user message after the assistant turn.
+    second = hq.client.requests[1]["messages"]
+    assert second[-1]["content"][0]["type"] == "tool_result"
+    assert "is_error" not in second[-1]["content"][0]
+
+    statuses = []
+    while not events.empty():
+        ev = events.get_nowait()
+        if ev["type"] == "agent":
+            statuses.append(ev["agent"]["status"])
+    assert "working" in statuses and statuses[-1] == "sleeping"
+
+
+async def test_tools_outside_agent_allowlist_are_refused(make_hq):
+    # The Sentinella can only observe: ha_call_service is not in its tools.
+    hq = make_hq(
+        [
+            response([tool_block("ha_call_service", {"domain": "lock", "service": "unlock"})], "tool_use"),
+            response([text_block("Non posso.")], "end_turn"),
+        ]
+    )
+    await hq.run_agent("sentinella", "Apri la porta")
+    result = hq.client.requests[1]["messages"][-1]["content"][0]
+    assert result["is_error"] is True
+    assert "non disponibile" in result["content"]
+
+
+async def test_blocked_ha_services_never_reach_home_assistant():
+    from hubnex.integrations.homeassistant import HomeAssistant, HomeAssistantError
+
+    ha = HomeAssistant("http://ha.invalid", "t", {"lock.unlock"})
+    with pytest.raises(HomeAssistantError, match="bloccato"):
+        await ha.call_service("lock", "unlock", {"entity_id": "lock.porta"})
+    await ha.close()
+
+
+async def test_jarvis_delegates_and_keeps_chat_history(make_hq):
+    hq = make_hq(
+        [
+            response([tool_block("delegate", {"agent_id": "commerciale", "task": "Prepara un preventivo", "wait": True})], "tool_use"),
+            response([text_block("Ecco il preventivo!")], "end_turn"),  # commerciale
+            response([text_block("Il preventivo è pronto, signore.")], "end_turn"),  # jarvis
+            response([text_block("Prego.")], "end_turn"),
+        ]
+    )
+    reply = await hq.chat("test", "Fammi un preventivo")
+    assert reply == "Il preventivo è pronto, signore."
+    assert hq.agents["commerciale"].last_result == "Ecco il preventivo!"
+
+    await hq.chat("test", "Grazie")
+    msgs = hq.client.requests[-1]["messages"]
+    assert [m["role"] for m in msgs] == ["user", "assistant", "user"]
+    assert msgs[1]["content"] == "Il preventivo è pronto, signore."
+
+
+async def test_deadline_warning_sent_once(make_hq):
+    hq = make_hq([])
+    await hq.store.deadline_add("F24", "2026-10-27")
+    sent = []
+
+    async def fake_notify(text):
+        sent.append(text)
+
+    hq.notify = fake_notify
+    sched = Scheduler(hq)
+    now = datetime(2026, 10, 26, 18, 0, tzinfo=hq.tz)
+    await sched.check_deadlines(now)
+    await sched.check_deadlines(now)
+    assert len(sent) == 1 and "F24" in sent[0]
+
+
+def test_api_requires_token(settings, make_hq):
+    settings.hq_token = "segreto"
+    app = create_app(settings, hq=make_hq([]), start_workers=False)
+    with TestClient(app) as client:
+        assert client.get("/api/state").status_code == 401
+        r = client.get("/api/state", headers={"Authorization": "Bearer segreto"})
+        assert r.status_code == 200
+        assert len(r.json()["agents"]) == 7  # 6 agents + Jarvis
+        assert client.get("/").status_code == 200
+        with client.websocket_connect("/ws?token=segreto") as ws:
+            assert ws.receive_json()["type"] == "snapshot"
+
+
+def test_api_post_endpoints_read_json_bodies(settings, make_hq):
+    hq = make_hq([response([text_block("Scadenza registrata.")], "end_turn")])
+    app = create_app(settings, hq=hq, start_workers=False)
+    with TestClient(app) as client:
+        r = client.post("/api/deadlines", json={"title": "F24", "due": "2026-11-16"})
+        assert r.status_code == 200
+        assert client.post("/api/deadlines", json={"title": "x", "due": "domani"}).status_code == 422
+        r = client.post("/api/agents/contabile/task", json={"task": "Controlla le scadenze", "wait": True})
+        assert r.json() == {"result": "Scadenza registrata."}
+        assert client.post("/api/agents/nessuno/task", json={"task": "x"}).status_code == 404
+        assert client.get("/api/state").json()["deadlines"][0]["title"] == "F24"
+
+
+def test_addon_loader(tmp_path, monkeypatch):
+    import json
+    import os
+
+    from hubnex.config import _load_addon_options
+
+    for var in ["ANTHROPIC_API_KEY", "TELEGRAM_ALLOWED_CHATS", "HA_URL", "HA_TOKEN", "HUBNEX_DB",
+                "HUBNEX_AGENTS_FILE", "TELEGRAM_VOICE_REPLIES"]:
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "sup-token")
+    opts = tmp_path / "options.json"
+    opts.write_text(json.dumps({"anthropic_api_key": "sk-test", "telegram_allowed_chats": "111,222",
+                                "telegram_voice_replies": False, "hq_token": ""}))
+    cfg_dir = tmp_path / "config"
+    cfg_dir.mkdir()
+
+    assert _load_addon_options(str(opts), str(cfg_dir)) is True
+    assert os.environ["ANTHROPIC_API_KEY"] == "sk-test"
+    assert os.environ["TELEGRAM_VOICE_REPLIES"] == "false"
+    assert os.environ["HA_URL"] == "http://supervisor/core"
+    assert os.environ["HA_TOKEN"] == "sup-token"
+    assert (cfg_dir / "agents.yaml").exists()  # default org chart copied for editing
+    assert os.environ["HUBNEX_AGENTS_FILE"] == str(cfg_dir / "agents.yaml")
+    assert _load_addon_options(str(tmp_path / "missing.json"), str(cfg_dir)) is False
+
+
+def test_addon_without_token_only_allows_ingress(settings, make_hq):
+    settings.trusted_proxy = "testclient"  # TestClient's client host plays the ingress proxy
+    app = create_app(settings, hq=make_hq([]), start_workers=False)
+    with TestClient(app) as client:
+        assert client.get("/api/state").status_code == 200
+    settings.trusted_proxy = "172.30.32.2"
+    app = create_app(settings, hq=make_hq([]), start_workers=False)
+    with TestClient(app) as client:
+        assert client.get("/api/state").status_code == 401
+
+
+def test_older_activity_is_paged(settings, make_hq):
+    import asyncio
+
+    hq = make_hq([])
+
+    async def seed():
+        for i in range(30):
+            await hq.store.log("system", f"evento {i}")
+
+    asyncio.run(seed())
+    app = create_app(settings, hq=hq, start_workers=False)
+    with TestClient(app) as client:
+        newest = client.get("/api/logs?limit=10").json()
+        assert [e["text"] for e in newest][-1] != "evento 0" and len(newest) == 10
+        older = client.get(f"/api/logs?before={newest[0]['id']}&limit=10").json()
+        assert len(older) == 10 and older[-1]["id"] == newest[0]["id"] - 1
+
+
+async def test_routines_are_off_unless_switched_on(make_hq):
+    from hubnex.config import load_org
+
+    org = load_org("config/agents.yaml")
+    assert all(not r.enabled for a in org.agents for r in a.routines)  # shipped switched off
+    hq = make_hq([])
+    hq.org.agent("maggiordomo").routines = [Routine(task="spento", at="00:00"), Routine(task="acceso", at="00:00", enabled=True)]
+    fired = []
+    sched = Scheduler(hq)
+    sched._last_at.clear()  # pretend the slot hasn't passed yet today
+    sched._fire = lambda agent_id, r: fired.append(r.task)
+    await sched.tick()
+    assert fired == ["acceso"]
+
+
+async def test_routines_and_events_cannot_act_on_the_house(make_hq, settings):
+    calls = []
+
+    class FakeHA:
+        enabled = True
+
+        async def call_service(self, domain, service, data):
+            calls.append((domain, service))
+            return []
+
+    hq = make_hq(
+        [
+            response([tool_block("ha_call_service", {"domain": "light", "service": "turn_off"})], "tool_use"),
+            response([text_block("La luce è accesa, la spengo?")], "end_turn"),
+            response([tool_block("ha_call_service", {"domain": "light", "service": "turn_off"})], "tool_use"),
+            response([text_block("Fatto.")], "end_turn"),
+        ]
+    )
+    hq.ha = FakeHA()
+    hq.run_agent_background("maggiordomo", "Controllo serale", source="routine", report=False)
+    await asyncio.gather(*hq._background)
+    result = hq.client.requests[1]["messages"][-1]["content"][0]
+    assert result["is_error"] and "non l'ha chiesto" in result["content"]
+    assert calls == []
+    # The same agent, asked by the owner, can do it.
+    await hq.run_agent("maggiordomo", "Spegni la luce del salotto")
+    assert calls == [("light", "turn_off")]
+
+
+async def test_owner_rules_bind_the_whole_team(make_hq):
+    hq = make_hq(
+        [
+            response([tool_block("owner_rules", {"action": "add", "rule": "Nessuna iniziativa senza un mio ordine esplicito."})], "tool_use"),
+            response([text_block("Registrato, Signore.")], "end_turn"),
+            response([text_block("ok")], "end_turn"),
+        ]
+    )
+    await hq.chat("dashboard", "D'ora in poi niente iniziative senza un mio ordine")
+    assert hq.rules == ["Nessuna iniziativa senza un mio ordine esplicito."]
+    await hq.run_agent("maggiordomo", "Che luci sono accese?")
+    assert "1. Nessuna iniziativa senza un mio ordine esplicito." in hq.client.requests[2]["system"]
+    await hq.load()  # survives a restart
+    assert hq.rules == ["Nessuna iniziativa senza un mio ordine esplicito."]
+
+
+def test_automation_events_can_only_report(settings, make_hq):
+    calls = []
+
+    class FakeHA:
+        enabled = True
+
+        async def call_service(self, domain, service, data):
+            calls.append(domain)
+            return []
+
+        async def close(self):
+            pass
+
+    hq = make_hq(
+        [
+            response([tool_block("ha_call_service", {"domain": "light", "service": "turn_off"})], "tool_use"),
+            response([text_block("Porta aperta da 10 minuti.")], "end_turn"),
+        ]
+    )
+    hq.ha = FakeHA()
+    with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
+        r = client.post("/api/ha/event", json={"message": "porta aperta", "notify": False})
+    assert r.json()["reply"] == "Porta aperta da 10 minuti." and calls == []
