@@ -473,3 +473,36 @@ button.plan-room.outline { cursor: pointer; }
 .casa-alarm-modal .casa-alarm-btns .casa-mini { min-height: 48px; flex: 1; font-size: 15px; }
 .casa-chip-btn.good { color: var(--ok) !important; }
 .casa-chip-btn.bad { color: #ff9aae !important; border-color: rgba(255, 92, 122, 0.6) !important; }
+
+/* floor plan: the real drawing under the hologram, and the editor */
+.plan.has-image::before { content: ""; position: absolute; inset: 0; background: var(--plan-img) center / 100% 100% no-repeat; filter: invert(1) hue-rotate(180deg) brightness(1.3); opacity: 0.32; pointer-events: none; mix-blend-mode: screen; }
+.ped .ped-panel { width: min(1400px, 100%) !important; max-height: 94vh; display: flex; flex-direction: column; }
+.ped-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ped-bar button, .ped-btn { min-height: 40px; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; cursor: pointer; border: 1px solid var(--panel-border); background: rgba(79, 209, 255, 0.06); color: var(--text); font: 600 14px var(--font); }
+.ped-bar button[disabled] { opacity: 0.45; cursor: default; }
+.ped-tabs { flex-wrap: wrap; margin-right: auto; }
+.ped-save { flex: none; }
+.ped-msg { min-height: 20px; margin: 8px 0; color: #bfefff; font-size: 14px; }
+.ped-msg.bad { color: #ff9aae; }
+.ped-body { display: flex; flex-wrap: wrap; gap: 14px; min-height: 0; overflow: auto; scrollbar-width: none; }
+.ped-stage-wrap { flex: 999 1 520px; min-width: 0; display: flex; justify-content: center; }
+.ped-stage { position: relative; width: min(100%, calc((94vh - 190px) * 2)); max-height: calc(94vh - 190px); background: #0b1828; border: 1px solid var(--panel-border); border-radius: 6px; touch-action: none; user-select: none; overflow: hidden; cursor: crosshair; }
+.ped-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; filter: invert(1) hue-rotate(180deg); opacity: 0.55; pointer-events: none; }
+.ped-room { position: absolute; box-sizing: border-box; border: 2px solid rgba(79, 209, 255, 0.85); background: rgba(79, 209, 255, 0.14); cursor: move; display: flex; align-items: flex-start; padding: 4px 6px; }
+.ped-room span { font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 0 4px #000; pointer-events: none; line-height: 1.1; }
+.ped-room.unlinked { border-color: #ffb547; background: rgba(255, 181, 71, 0.12); border-style: dashed; }
+/* A contour (balcony around the house) must not cover the drawing: only its edge and name take taps. */
+.ped-room.outline { background: transparent; border-style: dotted; pointer-events: none; z-index: 0; }
+.ped-room.outline span, .ped-room.outline .ped-handle { pointer-events: auto; cursor: pointer; }
+.ped-room:not(.outline) { z-index: 1; }
+.ped-room.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--accent), 0 0 20px rgba(79, 209, 255, 0.5); z-index: 2; }
+.ped-handle { position: absolute; right: -8px; bottom: -8px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 2px solid #03060d; cursor: nwse-resize; display: none; }
+.ped-room.sel .ped-handle { display: block; }
+.ped-side { flex: 1 1 280px; max-width: 360px; display: flex; flex-direction: column; gap: 8px; }
+.ped-side h4 { margin: 10px 0 2px; font-size: 12px; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; }
+.ped-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.ped-field input, .ped-field select { min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--panel-border); background: rgba(3, 6, 13, 0.7); color: var(--text); font: 500 15px var(--font); }
+.ped-check { display: flex; align-items: center; gap: 8px; min-height: 34px; font-size: 14px; }
+.ped-outside { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
+.ped-danger { border-color: rgba(255, 92, 122, 0.6) !important; color: #ffc2cd !important; }
+@media (max-width: 1100px) { .ped-side { max-width: none; } .ped-stage { width: 100%; max-height: none; } }

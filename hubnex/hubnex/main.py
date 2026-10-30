@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import base64
 import hmac
 import mimetypes
 import logging
@@ -17,7 +19,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from hubnex.addon import setup_assist
-from hubnex.casa import LayoutError
+from hubnex.casa import SUGGEST_SCHEMA, LayoutError, clean_suggestion, suggest_prompt
+from hubnex.llm import complete
 from hubnex.integrations.ha_ws import HAWatcherError
 from hubnex.integrations.homeassistant import HomeAssistantError
 from hubnex.config import Settings, load_org
@@ -87,6 +90,32 @@ class KindIn(BaseModel):
 
 class LayoutIn(BaseModel):
     text: str = Field(max_length=200_000)
+
+
+class PlanRoomIn(BaseModel):
+    area: str = Field(min_length=1, max_length=80)
+    x: float
+    y: float
+    w: float
+    h: float
+    outline: bool = False
+
+
+class PlanFloorIn(BaseModel):
+    name: str = Field(default="Piano", max_length=60)
+    aspect: float = 1.4
+    image: str | None = None
+    rooms: list[PlanRoomIn] = Field(default_factory=list, max_length=80)
+
+
+class PlanIn(BaseModel):
+    floors: list[PlanFloorIn] = Field(max_length=10)
+    outside: list[str] = Field(default_factory=list)
+    energy: dict[str, str] = Field(default_factory=dict)
+
+
+class SuggestIn(BaseModel):
+    image: str
 
 
 def create_app(settings: Settings | None = None, hq: HQ | None = None, start_workers: bool = True) -> FastAPI:
@@ -377,6 +406,68 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         await hq.log("system", f"Piantina della casa salvata: {rooms} stanze in {hq.casa.host_path()}")
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
+
+    @app.get("/api/casa/plan", dependencies=[Depends(auth)])
+    async def casa_plan(hq: HQ = Depends(get_hq)):
+        """The floor plan as data, for the visual editor."""
+        hq.casa.layout_text()
+        return {**hq.casa.layout, "error": hq.casa.layout_error,
+                "areas": sorted(a.get("name") or k for k, a in hq.watcher.areas.items())}
+
+    @app.post("/api/casa/plan", dependencies=[Depends(auth)])
+    async def casa_plan_save(body: PlanIn, hq: HQ = Depends(get_hq)):
+        try:
+            hq.casa.save_layout_data(body.model_dump())
+        except LayoutError as exc:
+            raise HTTPException(422, str(exc))
+        rooms = sum(len(f.rooms) for f in body.floors)
+        await hq.log("system", f"Piantina della casa salvata dall'editor: {rooms} stanze")
+        hq.emit({"type": "casa_changed"})
+        return {"ok": True}
+
+    @app.post("/api/casa/plan-image", dependencies=[Depends(auth)])
+    async def casa_plan_image_upload(request: Request, floor: int = 1, hq: HQ = Depends(get_hq)):
+        """A photo, image or PDF of the plan (raw body)."""
+        data = await request.body()
+        try:
+            name, aspect = await asyncio.to_thread(hq.casa.save_plan_image, max(1, min(floor, 10)), data)
+        except LayoutError as exc:
+            raise HTTPException(422, str(exc))
+        return {"image": name, "aspect": aspect}
+
+    @app.get("/api/casa/plan-image/{name}", dependencies=[Depends(auth)])
+    async def casa_plan_image(name: str, hq: HQ = Depends(get_hq)):
+        path = hq.casa.plan_image_path(name)
+        if not path:
+            raise HTTPException(404, "immagine non trovata")
+        return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
+
+    @app.post("/api/casa/plan-suggest", dependencies=[Depends(auth)])
+    async def casa_plan_suggest(body: SuggestIn, hq: HQ = Depends(get_hq)):
+        """Claude looks at the plan and proposes the rooms (to check in the editor)."""
+        path = hq.casa.plan_image_path(body.image)
+        if not path:
+            raise HTTPException(404, "carica prima la planimetria")
+        areas = sorted(a.get("name") or k for k, a in hq.watcher.areas.items())
+        image = base64.b64encode(path.read_bytes()).decode()
+        try:
+            raw = await complete(
+                hq.client,
+                model=hq.settings.model,
+                system="Leggi planimetrie di abitazioni e ne ricavi le stanze come rettangoli.",
+                prompt=[
+                    {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": image}},
+                    {"type": "text", "text": suggest_prompt(areas)},
+                ],
+                effort="medium",
+                schema=SUGGEST_SCHEMA,
+                on_usage=hq.on_usage,
+            )
+            rooms = clean_suggestion(json.loads(raw), areas)
+        except Exception as exc:
+            raise HTTPException(502, f"proposta non riuscita: {exc}")
+        await hq.log("system", f"Proposta della piantina: {len(rooms)} stanze riconosciute")
+        return {"rooms": rooms}
 
     @app.websocket("/ws")
     async def ws(websocket: WebSocket):

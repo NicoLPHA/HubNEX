@@ -32,7 +32,7 @@ async def complete(
     *,
     model: str,
     system: str,
-    prompt: str,
+    prompt: str | list,  # text, or content blocks (e.g. an image and a question)
     effort: str = "low",
     schema: dict | None = None,
     max_tokens: int = 8000,

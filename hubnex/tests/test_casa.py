@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from hubnex.casa import LayoutError, parse_layout
 from hubnex.integrations.ha_ws import HAWatcher, websocket_url
 from hubnex.main import create_app
+from tests.conftest import response, text_block
 
 AREAS = [{"area_id": "sala", "name": "Sala da Pranzo"}, {"area_id": "soggiorno", "name": "Soggiorno"},
          {"area_id": "giardino", "name": "Giardino"}, {"area_id": "garage", "name": "Parcheggio"}]
@@ -307,4 +308,57 @@ def test_camera_frames_come_through_the_addon(settings, make_hq):
         assert client.get("/api/casa/camera/light.lampadario").status_code == 404
         r = client.get("/api/casa/camera/camera.ingresso/stream")
         assert r.headers["content-type"].startswith("multipart/x-mixed-replace") and r.content == b"--f\r\nframe"
+        client.portal.call(lambda: task.cancel())
+
+
+def _plan_png(fmt="PNG"):
+    import io
+
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (1000, 800), "white")  # a drawing in the middle of a white sheet
+    ImageDraw.Draw(img).rectangle((300, 200, 700, 600), outline="black", width=6)
+    out = io.BytesIO()
+    img.save(out, fmt)
+    return out.getvalue()
+
+
+def test_plan_images_are_trimmed_and_pdfs_rendered():
+    from hubnex.casa import plan_image
+
+    jpg, aspect = plan_image(_plan_png())
+    assert jpg[:2] == b"\xff\xd8" and 0.9 < aspect < 1.1  # only the square drawing is left
+    jpg, aspect = plan_image(_plan_png("PDF"))
+    assert jpg[:2] == b"\xff\xd8" and 0.9 < aspect < 1.1
+    with pytest.raises(LayoutError, match="formato"):
+        plan_image(b"not an image")
+
+
+def test_editor_saves_the_plan_and_ai_proposes_rooms(settings, make_hq):
+    import json as _json
+
+    hq = make_hq([response([text_block(_json.dumps({"rooms": [
+        {"label": "Sala", "area": "sala da pranzo", "x": 10, "y": 10, "w": 40, "h": 30, "outline": False},
+        {"label": "Ripostiglio", "area": "", "x": 95, "y": 90, "w": 20, "h": 30, "outline": False},
+    ]}))], "end_turn")])
+    with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
+        w, ws, task = client.portal.call(connected)
+        hq.casa.ha = hq.watcher = w
+        up = client.post("/api/casa/plan-image?floor=1", content=_plan_png()).json()
+        assert up["image"] == "pianta-1.jpg" and client.get("/api/casa/plan-image/pianta-1.jpg").content[:2] == b"\xff\xd8"
+        assert client.get("/api/casa/plan-image/..%2Fcasa.yaml").status_code == 404
+
+        rooms = client.post("/api/casa/plan-suggest", json={"image": "pianta-1.jpg"}).json()["rooms"]
+        assert rooms[0] == {"area": "Sala da Pranzo", "linked": True, "x": 10.0, "y": 10.0, "w": 40.0, "h": 30.0, "outline": False}
+        assert rooms[1]["area"] == "Ripostiglio" and not rooms[1]["linked"] and rooms[1]["w"] == 5.0  # kept inside
+        req = hq.client.requests[0]
+        assert req["messages"][0]["content"][0]["type"] == "image" and "Sala da Pranzo" in req["messages"][0]["content"][1]["text"]
+
+        plan = {"floors": [{"name": "Terra", "aspect": up["aspect"], "image": up["image"],
+                            "rooms": [{"area": r["area"], "x": r["x"], "y": r["y"], "w": r["w"], "h": r["h"]} for r in rooms]}],
+                "outside": ["Giardino"]}
+        assert client.post("/api/casa/plan", json=plan).json() == {"ok": True}
+        view = client.get("/api/casa").json()
+        assert view["floors"][0]["image"] == "pianta-1.jpg" and view["floors"][0]["rooms"][0]["area_id"] == "sala"
+        assert "Sala da Pranzo" in client.get("/api/casa/layout").json()["text"]  # still a readable YAML
         client.portal.call(lambda: task.cancel())

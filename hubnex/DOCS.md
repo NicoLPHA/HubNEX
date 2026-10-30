@@ -140,12 +140,21 @@ Imposta IMAP/SMTP del tuo provider (server, porte SSL 993/465, utente, password)
 Il pulsante **⌂ Casa** apre la plancia di Home Assistant. Le **stanze sono le aree di Home
 Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nella stanza.
 
-- **Piantina**: **⚙ Piantina** e incolla la disposizione delle stanze (YAML). Ogni stanza ha
-  `area` (il nome dell'area in Home Assistant, elencati sopra il riquadro) e la posizione
-  `x, y, w, h` in percentuale del disegno; con `outline: true` è solo un contorno (es. un
-  balcone). Le aree in `outside` vanno nel gruppo "Fuori casa", quelle non disegnate in "Altre
-  aree". Facoltativo: `energy: { power: sensor.…, today: sensor.… }`. Il file è
-  `casa.yaml` nella cartella dell'add-on; senza piantina le aree compaiono come riquadri.
+- **Piantina**: **⚙ Piantina** apre l'editor.
+  1. **Carica planimetria**: una foto o un PDF della pianta (i margini bianchi vengono
+     tolti da soli). Resta solo nella cartella dell'add-on.
+  2. **Proponi le stanze**: Claude guarda la pianta e propone le stanze, già collegate alle
+     aree di Home Assistant quando il nome corrisponde (una richiesta, pochi centesimi).
+  3. Sistema a mano: trascina una stanza per spostarla, l'angolo in basso a destra per
+     ridimensionarla, trascina sul vuoto (o **+ Stanza**) per disegnarne una nuova. Nel
+     pannello scegli l'area, oppure "solo disegno" per un ambiente senza entità; **contorno**
+     per balconi e terrazzi. Spunta le aree **Fuori casa** (giardino, parcheggio…).
+  4. **Salva piantina**. Con **+ Piano** aggiungi altri piani.
+
+  Chi preferisce può usare **Testo** e scrivere la disposizione in YAML (posizioni `x, y, w, h`
+  in percentuale del disegno); facoltativo `energy: { power: sensor.…, today: sensor.… }`.
+  Tutto finisce in `casa.yaml` nella cartella dell'add-on; senza piantina le aree compaiono
+  come riquadri.
   ```yaml
   floors:
     - name: Piano terra

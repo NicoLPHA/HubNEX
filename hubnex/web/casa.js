@@ -1,3 +1,5 @@
+import { PlanEditor } from "./plan-editor.js";
+
 // The house view: Home Assistant areas on the owner's floor plan, live.
 // Tap a room for its quick card, "Apri stanza" for all its entities; buttons call Home
 // Assistant directly (no AI, no credit). Rooms are HA areas: entities can be moved between
@@ -51,6 +53,12 @@ export class CasaView {
     this.token = token || (() => "");
     this.camTick = Date.now();
     this.camSrc = {}; // last frame loaded, per camera
+    this.editor = new PlanEditor({
+      api, token: this.token,
+      onSaved: () => { this.toast("Piantina salvata"); this.reload(true); },
+      onText: () => this.openLayout(),
+      toast: (t) => this.toast(t),
+    });
     this.live = null; // the camera (or camera grid) open over the view
     setInterval(() => this.refreshCameras(), 1000);
     addEventListener("keydown", (e) => { if (e.key === "Escape") this.closeCamera(); });
@@ -550,7 +558,7 @@ export class CasaView {
         }
         return;
       }
-      case "layout": await this.openLayout(); return;
+      case "layout": this.editor.open().catch((err) => this.toast(`⚠ ${err.message}`)); return;
       case "layout-close": this.layout = null; document.activeElement?.blur(); break;
       case "layout-save": await this.saveLayout(); return;
       default: return;
@@ -728,7 +736,10 @@ export class CasaView {
           <b>${esc(a.name)}</b><span class="plan-meta"><span class="mono">${t != null && !small ? num(t) + "°" : ""}</span><span class="plan-tag">${small ? "" : tag}</span></span></button>`;
       }).join("");
       const tabs = floors.length > 1 ? `<div class="casa-floors">${floors.map((x, i) => `<button class="${i === this.floor ? "on" : ""}" data-act="floor" data-i="${i}">${esc(x.name)}</button>`).join("")}</div>` : `<div class="casa-floor-name">${esc(f.name)} · tocca una stanza</div>`;
-      plan = `${tabs}<div class="plan-wrap"><div class="plan" style="aspect-ratio:${f.aspect}">${rooms}</div></div>`;
+      // The real drawing, faint under the hologram (light lines on the dark background).
+      const t = this.token();
+      const img = f.image ? ` has-image" style="aspect-ratio:${f.aspect};--plan-img:url('api/casa/plan-image/${f.image}${t ? "?token=" + encodeURIComponent(t) : ""}')` : `" style="aspect-ratio:${f.aspect}`;
+      plan = `${tabs}<div class="plan-wrap"><div class="plan${img}">${rooms}</div></div>`;
     } else if (!d.layout_error) {
       plan = `<div class="casa-hint panel">Nessuna piantina ancora (<span class="mono">${esc(d.layout_file)}</span>): le stanze sono le aree di Home Assistant. <button data-act="layout">⚙ Disegna la piantina</button></div>`;
     }

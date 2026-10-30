@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+- Editor della piantina: carica una foto o un PDF della planimetria, sposta, ridimensiona e
+  disegna le stanze con il dito o il mouse, collega ognuna a un'area di Home Assistant.
+- "Proponi le stanze": Claude legge la planimetria e propone la disposizione da rifinire.
+- La planimetria compare in trasparenza sotto la piantina olografica.
+- Il YAML resta disponibile dal pulsante "Testo".
+
 ## 1.0.0
 Prima versione pubblica.
 - Assistente con team di agenti Claude configurabile in `agents.yaml` (aziende, reparti,

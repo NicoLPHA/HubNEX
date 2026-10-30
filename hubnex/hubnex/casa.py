@@ -7,6 +7,7 @@ plus the owner's adjustments made in the dashboard ("show this one here too", "h
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -54,6 +55,97 @@ class LayoutError(ValueError):
     pass
 
 
+PLAN_IMAGE = re.compile(r"pianta-[0-9]{1,2}\.jpg")
+MAX_UPLOAD = 25 * 1024 * 1024
+
+
+def plan_image(data: bytes) -> tuple[bytes, float]:
+    """A floor plan (photo, image or PDF) as a JPEG trimmed of empty margins, and its aspect.
+
+    Plans usually sit in the middle of a big white sheet: trimming lets the drawing fill the
+    house view."""
+    import io
+
+    from PIL import Image, ImageOps
+
+    if data[:5] == b"%PDF-":
+        import pypdfium2 as pdfium
+
+        page = pdfium.PdfDocument(data)[0]
+        w, h = page.get_size()
+        img = page.render(scale=min(2400 / max(w, h), 4)).to_pil()
+    else:
+        try:
+            img = Image.open(io.BytesIO(data))
+            img = ImageOps.exif_transpose(img)
+        except Exception as exc:
+            raise LayoutError("formato non riconosciuto: usa una foto, un'immagine o un PDF") from exc
+    img = img.convert("RGB")
+    ink = ImageOps.invert(img.convert("L")).point(lambda v: 255 if v > 40 else 0)
+    box = ink.getbbox()
+    if box:
+        pad = int(max(img.size) * 0.02)
+        box = (max(box[0] - pad, 0), max(box[1] - pad, 0), min(box[2] + pad, img.width), min(box[3] + pad, img.height))
+        img = img.crop(box)
+    img.thumbnail((2400, 2400))
+    out = io.BytesIO()
+    img.save(out, "JPEG", quality=85)
+    return out.getvalue(), round(img.width / img.height, 3)
+
+
+SUGGEST_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "rooms": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "label": {"type": "string"},
+                    "area": {"type": "string"},
+                    "x": {"type": "number"},
+                    "y": {"type": "number"},
+                    "w": {"type": "number"},
+                    "h": {"type": "number"},
+                    "outline": {"type": "boolean"},
+                },
+                "required": ["label", "area", "x", "y", "w", "h", "outline"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["rooms"],
+    "additionalProperties": False,
+}
+
+
+def suggest_prompt(areas: list[str]) -> str:
+    names = "\n".join(f"- {a}" for a in areas) or "- (nessuna area)"
+    return (
+        "Questa è la planimetria di un piano di un'abitazione. Individua ogni stanza e restituisci "
+        "un rettangolo che ne copra l'interno: x e y dell'angolo in alto a sinistra, w e h, tutti in "
+        "percentuale (0-100) della larghezza e dell'altezza dell'IMMAGINE INTERA. Le stanze a L "
+        "approssimale con il rettangolo più grande. Includi corridoi, bagni, ripostigli, lavanderie. "
+        "Balconi, terrazzi, verande e giardini che circondano la casa mettili con outline=true.\n"
+        "label: il nome scritto sul disegno (o una descrizione breve se manca). Ignora quote e misure.\n"
+        "area: scegli l'area di Home Assistant corrispondente da questo elenco, scritta esattamente "
+        "così, oppure stringa vuota se nessuna corrisponde:\n" + names
+    )
+
+
+def clean_suggestion(raw: dict, areas: list[str]) -> list[dict]:
+    """Rooms from the model, kept inside the drawing, with only real area names."""
+    known = {a.lower(): a for a in areas}
+    rooms = []
+    for r in raw.get("rooms", [])[:60]:
+        x, y = max(0.0, min(float(r["x"]), 99.0)), max(0.0, min(float(r["y"]), 99.0))
+        w, h = max(1.0, min(float(r["w"]), 100 - x)), max(1.0, min(float(r["h"]), 100 - y))
+        area = known.get(str(r.get("area", "")).strip().lower(), "")
+        rooms.append({"area": area or str(r.get("label", "")).strip()[:60] or "Stanza", "linked": bool(area),
+                      "x": round(x, 1), "y": round(y, 1), "w": round(w, 1), "h": round(h, 1), "outline": bool(r.get("outline"))})
+    return rooms
+
+
 # Italian spellings are accepted too.
 ALIASES = {"piani": "floors", "stanze": "rooms", "fuori": "outside", "energia": "energy", "nome": "name",
            "proporzione": "aspect", "contorno": "outline", "potenza": "power", "oggi": "today"}
@@ -97,7 +189,11 @@ def parse_layout(text: str) -> dict:
                 raise LayoutError(f"piano {i}, stanza {r.get('area')}: fuori dal disegno (0-100)")
             rooms.append({"area": str(r.get("area") or r.get("label")), **box, "outline": bool(r.get("outline"))})
         aspect = float(f.get("aspect") or 1.4)
-        floors.append({"name": str(f.get("name") or f"Piano {i}"), "aspect": max(0.3, min(aspect, 4.0)), "rooms": rooms})
+        image = str(f.get("image") or "")
+        if image and not PLAN_IMAGE.fullmatch(image):
+            raise LayoutError(f"piano {i}: nome dell'immagine non valido")
+        floors.append({"name": str(f.get("name") or f"Piano {i}"), "aspect": max(0.3, min(aspect, 4.0)),
+                       "rooms": rooms, **({"image": image} if image else {})})
         if not rooms:
             raise LayoutError(f"piano {i}: nessuna stanza (manca rooms:)")
     energy = _keys(raw.get("energy") or {}) if isinstance(raw.get("energy"), dict) else {}
@@ -137,6 +233,41 @@ class Casa:
         except LayoutError as exc:
             self.layout_error = str(exc)
         return text
+
+    # ------------------------------------------------------------------ floor plan images and editor
+    def save_plan_image(self, floor: int, data: bytes) -> tuple[str, float]:
+        if len(data) > MAX_UPLOAD:
+            raise LayoutError("file troppo grande (massimo 25 MB)")
+        image, aspect = plan_image(data)
+        name = f"pianta-{floor}.jpg"
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        (self.path.parent / name).write_bytes(image)
+        return name, aspect
+
+    def plan_image_path(self, name: str) -> Path | None:
+        if not PLAN_IMAGE.fullmatch(name):
+            return None
+        p = self.path.parent / name
+        return p if p.exists() else None
+
+    def save_layout_data(self, data: dict) -> None:
+        """The editor's plan as casa.yaml (still readable and editable by hand)."""
+        floors = []
+        for f in data.get("floors", []):
+            floor = {"name": f.get("name") or "Piano", "aspect": round(float(f.get("aspect") or 1.4), 3)}
+            if f.get("image"):
+                floor["image"] = f["image"]
+            floor["rooms"] = [
+                {"area": r["area"], **{k: round(float(r[k]), 1) for k in ("x", "y", "w", "h")}, **({"outline": True} if r.get("outline") else {})}
+                for r in f.get("rooms", [])
+            ]
+            floors.append(floor)
+        doc = {"floors": floors, "outside": list(data.get("outside") or [])}
+        if data.get("energy"):
+            doc["energy"] = data["energy"]
+        text = "# Piantina della vista Casa (scritta dall'editor: puoi modificarla anche a mano)\n"
+        text += yaml.safe_dump(doc, allow_unicode=True, sort_keys=False, width=200)
+        self.save_layout(text)
 
     def host_path(self) -> str:
         """Where the owner finds casa.yaml: /config in the add-on is /addon_configs/<slug>."""
