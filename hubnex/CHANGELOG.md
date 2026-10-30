@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0
+- Modifica stanza: si può aggiungere qualsiasi entità di Home Assistant, anche quelle nascoste
+  (es. lettori di Music Assistant) o di diagnostica; le solite prima, con l'entity_id accanto.
+- Persone: nella Casa compare chi è a casa, chi è fuori e in quale zona.
+- Media: riproduci/pausa e volume, con titolo e artista.
+
 ## 1.3.1
 - Nomi delle entità: se in Home Assistant hai dato degli alias a un'entità, la vista Casa
   mostra il primo; la ricerca per aggiungere entità trova anche gli alias.

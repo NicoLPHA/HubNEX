@@ -23,12 +23,13 @@ KINDS = {
     "alarm_control_panel": "alarm", "scene": "scene", "script": "script", "button": "button",
     "input_button": "button", "sensor": "sensor", "binary_sensor": "binary", "camera": "camera",
     "vacuum": "switch", "water_heater": "climate", "humidifier": "switch", "valve": "cover", "siren": "siren",
+    "person": "person", "device_tracker": "person", "remote": "switch",
 }
 ATTRS = (
     "friendly_name", "brightness", "rgb_color", "color_mode", "current_temperature", "temperature",
     "target_temp_step", "min_temp", "max_temp", "hvac_modes", "hvac_action", "current_position",
     "unit_of_measurement", "device_class", "media_title", "source", "supported_color_modes",
-    "supported_features", "code_format", "code_arm_required",
+    "supported_features", "code_format", "code_arm_required", "media_artist", "volume_level",
 )
 # What the owner can say an entity really is, whatever its Home Assistant domain
 # (a relay "switch" that drives a light, a gate opened by an impulse…).
@@ -418,8 +419,10 @@ class Casa:
         # The alarm is for the whole house: always reachable, with or without an area.
         alarms = sorted(e for e in self.ha.states if e.startswith("alarm_control_panel.") and self.visible(e))
         weather = next((e for e in sorted(self.ha.states) if e.startswith("weather.")), None)
+        # Who is at home: Home Assistant's people (home, away or the zone they are in).
+        people = sorted(e for e in self.ha.states if e.startswith("person.") and not (self.ha.entities.get(e) or {}).get("disabled_by"))
         energy = {k: v for k, v in self.layout["energy"].items() if v in self.ha.states}
-        shown = {e for a in areas for e in a["entities"]} | set(scenes) | set(alarms) | set(energy.values())
+        shown = {e for a in areas for e in a["entities"]} | set(scenes) | set(alarms) | set(energy.values()) | set(people)
         if weather:
             shown.add(weather)
         self.shown = shown
@@ -430,6 +433,7 @@ class Casa:
             "areas": areas,
             "scenes": scenes,
             "alarms": alarms,
+            "people": people,
             "weather": weather,
             "energy": energy,
             "states": {e: s for e, s in states.items() if s},
@@ -437,13 +441,15 @@ class Casa:
             "layout_file": self.host_path(),
         }
 
-    def candidates(self, query: str = "", area_id: str | None = None, limit: int = 40) -> list[dict[str, Any]]:
-        """Entities that could be added to a room, for the dashboard's search."""
+    def candidates(self, query: str = "", area_id: str | None = None, limit: int = 60) -> list[dict[str, Any]]:
+        """Entities that could be added to a room, for the dashboard's search: everything Home
+        Assistant has, also what it hides (e.g. players hidden by Music Assistant) or files as
+        diagnostic; the usual devices first."""
         q = query.strip().lower()
         here = set(self.area_entities().get(area_id or "", []))
         out = []
-        for eid in sorted(self.ha.states):
-            if eid in here or not self.visible(eid):
+        for eid in sorted(self.ha.states, key=lambda e: (not self.visible(e), e)):
+            if eid in here or (self.ha.entities.get(eid) or {}).get("disabled_by"):
                 continue
             c = self.compact(eid)
             # Also by the other names: Home Assistant's own and every alias.
@@ -458,6 +464,7 @@ class Casa:
                 "name": c["n"],
                 "area": (self.ha.areas.get(area) or {}).get("name") if area else None,
                 "registered": eid in self.ha.entities,
+                "hidden": not self.visible(eid),
             })
             if len(out) >= limit:
                 break

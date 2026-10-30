@@ -16,7 +16,7 @@ const SHOW_AS = [["", "Come in Home Assistant"], ["light", "Luce"], ["switch", "
 const HVAC = { heat: "Caldo", cool: "Freddo", auto: "Auto", heat_cool: "Auto", off: "Spento", dry: "Deum.", fan_only: "Ventola" };
 const SECTIONS = [
   ["light", "Luci"], ["gate", "Cancelli e porte"], ["climate", "Clima"], ["cover", "Tapparelle e tende"], ["media", "Media"],
-  ["switch", "Prese e interruttori"], ["security", "Sicurezza"], ["camera", "Telecamere"], ["sensor", "Sensori"], ["action", "Azioni"], ["other", "Altro"],
+  ["switch", "Prese e interruttori"], ["people", "Persone"], ["security", "Sicurezza"], ["camera", "Telecamere"], ["sensor", "Sensori"], ["action", "Azioni"], ["other", "Altro"],
 ];
 
 // Home Assistant's own frontend, when Jarvis is open inside it (same origin): its connection
@@ -184,6 +184,7 @@ export class CasaView {
       if (dc === "smoke" || dc === "gas" || dc === "carbon_monoxide") return s.s === "on" ? "ALLARME!" : "OK";
       return s.s === "on" ? "ON" : "OFF";
     }
+    if (s.k === "person") return s.s === "home" ? "A CASA" : s.s === "not_home" ? "FUORI CASA" : s.s.toUpperCase(); // or the zone's name
     if (s.k === "lock") return { locked: "BLOCCATA", unlocked: "SBLOCCATA", locking: "BLOCCO…", unlocking: "SBLOCCO…", jammed: "INCEPPATA", open: "APERTA" }[s.s] || s.s.toUpperCase();
     if (s.k === "alarm") return { disarmed: "DISINSERITO", armed_home: "IN CASA", armed_away: "INSERITO", armed_night: "NOTTE", triggered: "SCATTATO!", pending: "IN ATTESA", arming: "INSERIMENTO" }[s.s] || s.s;
     if (s.k === "sensor") {
@@ -198,6 +199,7 @@ export class CasaView {
     if (!s) return "";
     if (s.k === "binary" && ALERT.has(s.a.device_class)) return s.s === "on" ? "bad" : "good";
     if (s.k === "lock") return s.s === "locked" ? "good" : "warn";
+    if (s.k === "person") return s.s === "home" ? "good" : "";
     if (s.k === "alarm") return s.s === "triggered" ? "bad" : s.s === "disarmed" ? "" : "good";
     return "";
   }
@@ -206,6 +208,7 @@ export class CasaView {
     const s = this.st(eid);
     if (!s) return "other";
     if (["light", "gate", "climate", "cover", "media", "switch"].includes(s.k)) return s.k;
+    if (s.k === "person") return "people";
     if (s.k === "lock" || s.k === "alarm" || s.k === "siren") return "security";
     if (s.k === "binary") return SECURITY_CLASSES.has(s.a.device_class) ? "security" : "sensor";
     if (s.k === "sensor") return "sensor";
@@ -540,6 +543,7 @@ export class CasaView {
       case "kind": return;
       case "hvac": this.st(eid).s = el.dataset.m; this.call("climate", "set_hvac_mode", { entity_id: eid, hvac_mode: el.dataset.m }); break;
       case "cover": this.call(domain, el.dataset.s, { entity_id: eid }); return;
+      case "media": this.call("media_player", el.dataset.s, { entity_id: eid }, eid); return;
       case "lock": {
         const unlock = this.st(eid)?.s === "locked";
         if (unlock && !confirm(`Sbloccare ${this.st(eid)?.n}?`)) return;
@@ -570,6 +574,8 @@ export class CasaView {
     const el = e.target;
     if (el.dataset.act === "bright") {
       this.call("light", "turn_on", { entity_id: el.dataset.e, brightness_pct: Number(el.value) });
+    } else if (el.dataset.act === "volume") {
+      this.call("media_player", "volume_set", { entity_id: el.dataset.e, volume_level: Number(el.value) / 100 });
     } else if (el.name === "casa-mode") {
       this.mode = el.value;
     } else if (el.dataset.act === "kind") {
@@ -671,6 +677,7 @@ export class CasaView {
       `<span class="chip">${lightsOn.length} ${lightsOn.length === 1 ? "luce accesa" : "luci accese"}</span>`,
       power ? `<span class="chip">${esc(power)}</span>` : "",
       d.areas.some((a) => a.entities.some((e) => this.st(e)?.k === "camera")) ? `<button class="chip casa-chip-btn" data-act="cams">${CAM_ICON}Telecamere</button>` : "",
+      ...(d.people || []).filter((e) => this.st(e)).map((e) => `<span class="chip casa-person ${this.valueClass(e)}" title="${esc(this.st(e).n)}: ${esc(this.value(e).toLowerCase())}">${esc(this.st(e).n)} · ${esc(this.value(e) === "A CASA" ? "a casa" : this.value(e) === "FUORI CASA" ? "fuori" : this.st(e).s)}</span>`),
     ].join("");
     const scenes = d.scenes.map((e) => `<button class="casa-scene" data-act="scene" data-e="${e}">${esc(this.st(e)?.n || e)}</button>`).join("");
     return `
@@ -893,8 +900,16 @@ export class CasaView {
     } else if (kind === "media" || kind === "switch") {
       body = eids.map((e) => {
         const s = this.st(e);
-        const note = kind === "media" ? (s.a.media_title || ({ playing: "in riproduzione", paused: "in pausa", idle: "inattivo", off: "spento", on: "acceso" }[s.s] || s.s)) : "";
-        return `<div class="casa-row"><span>${esc(s.n)}${note ? ` <small>${esc(note)}</small>` : ""}</span>${this.switchHTML(e)}</div>`;
+        const title = [s.a.media_title, s.a.media_artist].filter(Boolean).join(" · ");
+        const note = kind === "media" ? (title || ({ playing: "in riproduzione", paused: "in pausa", idle: "inattivo", off: "spento", on: "acceso", standby: "in standby" }[s.s] || s.s)) : "";
+        // Players that are on get play/pause and volume; the switch turns them on and off.
+        const play = kind === "media" && ["playing", "paused", "idle", "on"].includes(s.s)
+          ? `<button class="casa-mini" data-act="media" data-s="media_play_pause" data-e="${e}" aria-label="${s.s === "playing" ? "Pausa" : "Riproduci"}">${s.s === "playing" ? "❚❚" : "▶"}</button>`
+          : "";
+        const vol = kind === "media" && s.a.volume_level != null && s.s !== "off"
+          ? `<input type="range" min="0" max="100" value="${Math.round(s.a.volume_level * 100)}" data-act="volume" data-e="${e}" aria-label="Volume ${esc(s.n)}">`
+          : "";
+        return `<div class="casa-media"><div class="casa-row"><span>${esc(s.n)}${note ? ` <small>${esc(note)}</small>` : ""}</span>${play}${this.switchHTML(e)}</div>${vol}</div>`;
       }).join("");
     } else if (kind === "camera") {
       body = `<div class="casa-cams">${eids.map((e) => this.camHTML(e)).join("")}</div>`;
@@ -938,7 +953,7 @@ export class CasaView {
   candsHTML() {
     const area = this.page;
     return (this.cands || []).map((c) => `
-      <div class="casa-row"><span>${esc(c.name)}<small class="${c.area ? "warm" : ""}">${c.area ? "ora in: " + esc(c.area) : "senza area"}</small></span>
+      <div class="casa-row"><span>${esc(c.name)}<small class="${c.area ? "warm" : ""}">${c.area ? "ora in: " + esc(c.area) : "senza area"}${c.hidden ? " · nascosta in HA" : ""}</small><small class="mono">${esc(c.entity_id)}</small></span>
       <button class="casa-mini add" data-act="add" data-area="${area}" data-e="${c.entity_id}">+ Aggiungi</button></div>`).join("") || `<p class="casa-muted">Nessuna entità trovata.</p>`;
   }
 

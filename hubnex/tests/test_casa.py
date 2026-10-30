@@ -430,3 +430,25 @@ async def test_aliases_set_in_home_assistant_name_the_entities(make_hq):
     found = [c["entity_id"] for c in hq.casa.candidates("abat-jour", "soggiorno")]
     assert found == ["light.angolo"]
     task.cancel()
+
+
+async def test_anything_in_home_assistant_can_be_added_and_people_are_shown(make_hq):
+    hq = make_hq([])
+    w, ws, task = await connected()
+    hq.casa.ha = hq.watcher = w
+    w.states["media_player.salotto"] = st("media_player.salotto", "playing", friendly_name="Salotto", media_title="Radio", volume_level=0.3)
+    w.entities["media_player.salotto"] = {"entity_id": "media_player.salotto", "area_id": None, "hidden_by": "integration"}
+    w.states["person.anna"] = st("person.anna", "home", friendly_name="Anna")
+    w.states["number.timer_irrigazione"] = st("number.timer_irrigazione", "10", friendly_name="Timer irrigazione")
+    w.states["switch.vecchia"] = st("switch.vecchia", "off")  # disabled in Home Assistant: never offered
+    found = [c["entity_id"] for c in hq.casa.candidates("", "soggiorno", limit=100)]
+    assert {"media_player.salotto", "person.anna", "number.timer_irrigazione"} <= set(found)
+    assert "switch.vecchia" not in found
+    assert found.index("light.angolo") < found.index("media_player.salotto")  # the usual devices first
+    salotto = next(c for c in hq.casa.candidates("salotto", "soggiorno"))
+    assert salotto["hidden"] is True
+
+    view = hq.casa.build()
+    assert view["people"] == ["person.anna"] and view["states"]["person.anna"]["k"] == "person"
+    assert hq.casa.compact("media_player.salotto")["a"]["volume_level"] == 0.3
+    task.cancel()

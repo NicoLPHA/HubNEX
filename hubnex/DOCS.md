@@ -180,13 +180,18 @@ Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nel
 - **Nomi**: se a un'entità hai dato degli **alias** in Home Assistant (impostazioni
   dell'entità → Alias), HubNEX mostra il primo; altrimenti il nome di Home Assistant. Nella
   ricerca per aggiungere entità valgono tutti i nomi.
+- **Persone**: le persone di Home Assistant (Impostazioni → Persone, con l'app sul telefono o un
+  dispositivo di tracciamento) compaiono in alto nella Casa: *a casa*, *fuori* o il nome della
+  zona in cui si trovano.
 - **Stanza**: toccala per la scheda rapida, **Apri stanza** per tutte le entità divise per
   tipo. Con più sensori di temperatura scegli quale usare ("temperatura da").
-- **Modifica stanza**: aggiungi entità spostando l'area anche in Home Assistant (consigliato)
-  o solo nella plancia; **Togli** la nasconde solo dalla plancia; **Mostra come** cambia il
+- **Modifica stanza**: aggiungi **qualsiasi entità** di Home Assistant (anche quelle che Home
+  Assistant nasconde, come i lettori nascosti da Music Assistant), spostando l'area anche in Home
+  Assistant (consigliato) o solo nella plancia; **Togli** la nasconde solo dalla plancia; **Mostra come** cambia il
   tipo (Luce, Presa / interruttore, Cancello / porta a impulso, Sirena, Solo stato). Per un relè
   che accende una luce è ancora meglio "Mostra come → Luce" nelle impostazioni dell'entità in
   Home Assistant: così anche Assist e l'assistente la trattano da luce.
+- **Media**: accendi e spegni, ▶ / ❚❚ e volume.
 - **Telecamere**: miniature nelle stanze e il pulsante **Telecamere** in alto; toccandone una
   si apre il video dal vivo (lo stesso flusso che usa Home Assistant).
 - **Allarme**: pulsante in alto con lo stato; In casa / Fuori / Notte e Disinserisci con
