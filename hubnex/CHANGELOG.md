@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+- Preferenze per utente: si possono spegnere le schede HQ e Mappa (HubNEX si apre sulla Casa)
+  e l'assistente AI (niente chat, voce e approvazioni). Dentro Home Assistant valgono per
+  l'account e lo seguono su tutti i dispositivi.
+
 ## 1.1.0
 - Editor della piantina: carica una foto o un PDF della planimetria, sposta, ridimensiona e
   disegna le stanze con il dito o il mouse, collega ognuna a un'area di Home Assistant.

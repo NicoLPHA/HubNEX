@@ -77,6 +77,15 @@
   <section id="prefs" class="panel hidden" aria-label="Preferenze">
     <h3>Preferenze <button class="mini" id="prefs-close" aria-label="Chiudi">×</button></h3>
     <label class="pref-row">
+      <span>Schede HQ e Mappa<small>Spente: HubNEX mostra solo la Casa</small></span>
+      <button type="button" id="pref-hq" class="casa-switch on" role="switch" aria-checked="true" aria-label="Schede HQ e Mappa"></button>
+    </label>
+    <label class="pref-row">
+      <span>Assistente AI<small>Chat e voce; spento non usa credito Claude</small></span>
+      <button type="button" id="pref-ai" class="casa-switch on" role="switch" aria-checked="true" aria-label="Assistente AI"></button>
+    </label>
+    <p class="pref-note" id="pref-ui-note"></p>
+    <label class="pref-row" id="pref-start-row">
       <span>Apri HubNEX all'avvio di Home Assistant<small id="pref-start-who"></small></span>
       <button type="button" id="pref-start" class="casa-switch" role="switch" aria-checked="false" aria-label="Apri HubNEX all'avvio di Home Assistant"></button>
     </label>

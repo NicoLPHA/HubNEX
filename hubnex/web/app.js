@@ -393,8 +393,13 @@ function haFrontend() {
 async function loadStartPref() {
   const ha = haFrontend();
   const sw = $("pref-start");
-  if (!ha) return;
-  $("ha-prefs").classList.remove("hidden");
+  if (!ha) {
+    $("pref-start-row").classList.add("hidden");
+    $("pref-start-note").classList.add("hidden");
+    return;
+  }
+  const mine = (await ha.hass.connection.sendMessagePromise({ type: "frontend/get_user_data", key: "hubnex" })).value;
+  if (mine) setUI(mine);
   $("pref-start-who").textContent = ha.hass.user?.name ? `per ${ha.hass.user.name}` : "";
   if (!ha.panel) {
     sw.disabled = true;
@@ -405,10 +410,11 @@ async function loadStartPref() {
   setStartSwitch(data.default_panel === ha.panel);
 }
 
-function setStartSwitch(on) {
-  $("pref-start").classList.toggle("on", on);
-  $("pref-start").setAttribute("aria-checked", String(on));
+function setSwitch(id, on) {
+  $(id).classList.toggle("on", on);
+  $(id).setAttribute("aria-checked", String(on));
 }
+const setStartSwitch = (on) => setSwitch("pref-start", on);
 
 $("pref-start").addEventListener("click", async () => {
   const ha = haFrontend();
@@ -435,7 +441,6 @@ $("ha-prefs").addEventListener("click", () => {
   if (open) loadStartPref().catch((err) => { $("pref-start-note").textContent = `⚠ ${err.message || err}`; });
 });
 $("prefs-close").addEventListener("click", () => { $("prefs").classList.add("hidden"); $("ha-prefs").setAttribute("aria-expanded", "false"); });
-if (inHA) loadStartPref().catch(() => {});
 
 // ===================================================================== neural map
 const brain = new Brain(renderer, container);
@@ -482,6 +487,49 @@ function setView(view) {
 $("view-hq").addEventListener("click", () => setView("hq"));
 $("view-map").addEventListener("click", () => setView("map"));
 $("view-casa").addEventListener("click", () => setView("casa"));
+
+// ===================================================================== what each person sees
+// HQ/Mappa and the assistant can be switched off per person (e.g. who only turns the lights
+// on). Inside Home Assistant the choice is saved with the account, so it follows them on every
+// device; elsewhere it stays in this browser. The local copy applies it before HA answers.
+const UI = { hq: true, ai: true };
+try { setUI(JSON.parse(safeGet("hq_ui") || "{}")); } catch { /* ignore */ }
+
+function setUI(value) {
+  for (const k of ["hq", "ai"]) if (typeof value?.[k] === "boolean") UI[k] = value[k];
+  safeSet("hq_ui", JSON.stringify(UI));
+  applyUI();
+}
+
+function applyUI() {
+  const hasCasa = !S.data || S.data.integrations.home_assistant; // without HA nothing can replace HQ
+  const onlyCasa = !UI.hq && hasCasa;
+  document.body.classList.toggle("no-hq", onlyCasa);
+  document.body.classList.toggle("no-ai", !UI.ai);
+  setSwitch("pref-hq", UI.hq);
+  setSwitch("pref-ai", UI.ai);
+  $("pref-ui-note").textContent = !UI.hq && !hasCasa ? "Senza Home Assistant collegato la Casa non c'è: HQ resta visibile." : "";
+  if (!onlyCasa && S.view !== "casa") document.body.classList.remove("casa");
+  if (!onlyCasa || S.view === "casa") return;
+  if (S.data) setView("casa");
+  else document.body.classList.add("casa"); // until the snapshot opens the house: no HQ flash
+}
+
+for (const k of ["hq", "ai"]) {
+  $(`pref-${k}`).addEventListener("click", async () => {
+    setUI({ [k]: !UI[k] });
+    if (k === "ai" && !UI.ai) closeChat();
+    const ha = haFrontend();
+    if (!ha) return;
+    try {
+      await ha.hass.connection.sendMessagePromise({ type: "frontend/set_user_data", key: "hubnex", value: { ...UI } });
+    } catch (err) {
+      $("pref-ui-note").textContent = `⚠ Salvata solo su questo dispositivo: ${err.message || err.code || err}`;
+    }
+  });
+}
+$("ha-prefs").classList.remove("hidden");
+if (inHA) loadStartPref().catch(() => {});
 
 function renderMapPanel() {
   const g = S.graph;
@@ -1065,8 +1113,10 @@ function handle(ev) {
       $("chat-input").placeholder = `Parla con ${S.data.boss.name}…`;
       buildArena(); renderStats(); renderDeadlines(); renderFeed(); renderDrafts();
       $("view-casa").classList.toggle("hidden", !S.data.integrations.home_assistant);
-      if (safeGet("hq_view") === "map" && S.view !== "map") setView("map");
-      if (safeGet("hq_view") === "casa" && S.view !== "casa" && S.data.integrations.home_assistant) setView("casa");
+      if (!UI.hq && S.data.integrations.home_assistant) { if (S.view !== "casa") setView("casa"); }
+      else if (safeGet("hq_view") === "map" && S.view !== "map") setView("map");
+      else if (safeGet("hq_view") === "casa" && S.view !== "casa" && S.data.integrations.home_assistant) setView("casa");
+      applyUI();
       break;
     case "agent": {
       if (!S.data) return;

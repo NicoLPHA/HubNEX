@@ -265,6 +265,11 @@ body.orb-on .labels { opacity: 0.12; }
 
 /* ---------------------------------------------------------------- house view (Casa) */
 body.casa #scene, body.casa #left, body.casa #right, body.casa #companies, body.casa #agent-card { display: none !important; }
+/* Per-user choice (Preferenze): only the house, and/or no assistant. */
+body.no-hq .view-switch, body.no-hq #left, body.no-hq #right, body.no-hq #companies, body.no-hq #integrations,
+body.no-ai #chat, body.no-ai #orb, body.no-ai #drafts-badge, body.no-ai #drafts-sheet { display: none !important; }
+#prefs .pref-row + .pref-note:empty { display: none; }
+#pref-start-row { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(79, 209, 255, 0.15); }
 body.casa { background: radial-gradient(ellipse at 50% 40%, #0a1a2e 0%, var(--bg) 62%); }
 #casa { position: fixed; top: 64px; left: 0; right: 0; bottom: 0; z-index: 3; overflow-y: auto; padding: 4px 20px 130px; box-sizing: border-box; scrollbar-width: none; }
 #casa::-webkit-scrollbar { display: none; }

@@ -207,6 +207,12 @@ browser.
 **Aprire HubNEX all'avvio di Home Assistant**: dentro Home Assistant, in alto **⚙** →
 interruttore. Vale solo per il tuo account; gli altri utenti restano sulla loro plancia.
 
+**Solo la Casa, per chi vuole solo accendere una luce**: in alto **⚙** → spegni **Schede HQ e
+Mappa** (HubNEX apre direttamente la Casa) e/o **Assistente AI** (spariscono chat, voce e
+approvazioni: nessun credito Claude). Dentro Home Assistant la scelta è salvata con l'account
+di chi è collegato e vale su tutti i suoi dispositivi; fuori resta nel browser. È una comodità,
+non un blocco: chiunque può riaccenderle dallo stesso menu.
+
 ## Eventi dalle automazioni
 
 Le automazioni possono passare un evento all'assistente, che ti scrive cosa propone. Con un
