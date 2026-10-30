@@ -7,14 +7,26 @@ della casa, il gruppo Telegram, la voce e i connettori per i programmi del tuo l
 ## Primo avvio
 
 1. Nella scheda **Configurazione** inserisci almeno la **chiave API Anthropic**
-   (console.anthropic.com → API Keys) e avvia l'add-on.
+   (console.anthropic.com → API Keys), avvia l'add-on e attiva **Mostra nella barra laterale**.
 2. Apri **HubNEX** dalla barra laterale: vedi il quartier generale con l'assistente e gli agenti.
 3. Scrivigli nella chat in basso. Per la casa usa già Home Assistant: non serve creare token,
    l'add-on accede tramite il Supervisor.
 4. Racconta chi sei e come lavori in `agents.yaml` (sotto): più sa, più è utile.
 
-Tutto il resto (Telegram, posta, voce, connettori, piantina) è facoltativo e si aggiunge quando
-vuoi.
+Tutto il resto è facoltativo e si aggiunge quando vuoi, in quest'ordine consigliato:
+
+| Cosa | Dove | Sezione |
+| --- | --- | --- |
+| Il tuo team, la tua azienda | `agents.yaml` | Il team |
+| Piantina della casa | Casa → ⚙ Piantina | Vista Casa |
+| Parlare con Assist (app, speaker) | integrazione HubNEX + Assistenti vocali | Voce |
+| Voce nella dashboard | opzione *Voce da Home Assistant* o ElevenLabs | Voce |
+| Gruppo Telegram | opzioni dei bot | Il gruppo Telegram |
+| Posta di lavoro | opzioni IMAP/SMTP | Posta di lavoro |
+| I programmi del lavoro | `connectors` in `agents.yaml` | Connettori |
+| Tablet o telefono fuori da HA | Token HQ e porta | Usarla fuori da Home Assistant |
+
+Ogni opzione della scheda **Configurazione** ha la sua spiegazione accanto al campo.
 
 ## Il team: `agents.yaml`
 
@@ -165,6 +177,9 @@ Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nel
         - { area: Camera da letto, x: 0, y: 60, w: 100, h: 40 }
   outside: [Giardino]
   ```
+- **Nomi**: se a un'entità hai dato degli **alias** in Home Assistant (impostazioni
+  dell'entità → Alias), HubNEX mostra il primo; altrimenti il nome di Home Assistant. Nella
+  ricerca per aggiungere entità valgono tutti i nomi.
 - **Stanza**: toccala per la scheda rapida, **Apri stanza** per tutte le entità divise per
   tipo. Con più sensori di temperatura scegli quale usare ("temperatura da").
 - **Modifica stanza**: aggiungi entità spostando l'area anche in Home Assistant (consigliato)

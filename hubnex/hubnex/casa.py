@@ -347,7 +347,8 @@ class Casa:
             return None
         attrs = s.get("attributes") or {}
         reg = self.ha.entities.get(entity_id) or {}
-        name = reg.get("name") or attrs.get("friendly_name") or reg.get("original_name") or entity_id
+        # The first alias set in Home Assistant wins: it is the name the owner chose for the house.
+        name = (reg.get("aliases") or [None])[0] or reg.get("name") or attrs.get("friendly_name") or reg.get("original_name") or entity_id
         native = KINDS.get(entity_id.split(".", 1)[0], "other")
         shown = self.adjust.get("kind", {}).get(entity_id)
         out = {
@@ -445,7 +446,11 @@ class Casa:
             if eid in here or not self.visible(eid):
                 continue
             c = self.compact(eid)
-            if q and q not in f"{eid} {c['n']}".lower():
+            # Also by the other names: Home Assistant's own and every alias.
+            reg = self.ha.entities.get(eid) or {}
+            friendly = (self.ha.states[eid].get("attributes") or {}).get("friendly_name") or ""
+            also = " ".join([friendly, reg.get("name") or "", *(reg.get("aliases") or [])])
+            if q and q not in f"{eid} {c['n']} {also}".lower():
                 continue
             area = self.ha.area_of(eid)
             out.append({

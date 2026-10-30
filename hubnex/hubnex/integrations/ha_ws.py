@@ -137,6 +137,22 @@ class HAWatcher:
         self.devices = {d["id"]: d for d in devices}
         self.entities = {e["entity_id"]: e for e in entities}
         self.states = {s["entity_id"]: s for s in states}
+        await self._load_aliases()
+
+    async def _load_aliases(self) -> None:
+        """The aliases set in Home Assistant (entity settings → Aliases): the list above leaves
+        them out, the full entries have them."""
+        if not self.entities:
+            return
+        try:
+            full = await self._command({"type": "config/entity_registry/get_entries", "entity_ids": list(self.entities)})
+        except (HAWatcherError, asyncio.TimeoutError) as exc:  # older Home Assistant
+            log.debug("alias non disponibili: %s", exc)
+            return
+        for eid, entry in (full or {}).items():
+            aliases = [a.strip() for a in (entry or {}).get("aliases") or [] if isinstance(a, str) and a.strip()]
+            if aliases and eid in self.entities:
+                self.entities[eid]["aliases"] = aliases
 
     async def _event(self, event: dict) -> None:
         etype = event.get("event_type")

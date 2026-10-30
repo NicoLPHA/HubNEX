@@ -92,6 +92,8 @@ class FakeWS:
             "get_states": STATES,
             "config/auth/list": USERS,
         }.get(t)
+        if t == "config/entity_registry/get_entries":
+            result = {eid: {"entity_id": eid, "aliases": ALIASES.get(eid, [])} for eid in msg["entity_ids"]}
         if t == "config/entity_registry/update":
             result = {"entity_entry": {"entity_id": msg["entity_id"], "area_id": msg["area_id"], "device_id": None}}
         self.inbox.put_nowait({"id": msg["id"], "type": "result", "success": True, "result": result})
@@ -99,6 +101,9 @@ class FakeWS:
     def push(self, event_type, data):
         self.inbox.put_nowait({"type": "event", "event": {"event_type": event_type, "data": data}})
 
+
+# Aliases set in Home Assistant (entity settings → Aliases).
+ALIASES = {"light.angolo": ["Luce dell'angolo", "abat-jour"]}
 
 USERS = [
     {"id": "owner", "name": "Io", "is_owner": True, "group_ids": ["system-admin"]},
@@ -413,3 +418,15 @@ def test_users_who_are_not_admins_only_get_the_house(settings, make_hq):
         settings.non_admin_access = "completo"
         assert client.get("/api/state", headers=wife).status_code == 200
         client.portal.call(lambda: task.cancel())
+
+
+async def test_aliases_set_in_home_assistant_name_the_entities(make_hq):
+    hq = make_hq([])
+    w, ws, task = await connected()
+    hq.casa.ha = hq.watcher = w
+    assert w.entities["light.angolo"]["aliases"] == ["Luce dell'angolo", "abat-jour"]
+    assert hq.casa.compact("light.angolo")["n"] == "Luce dell'angolo"
+    assert "aliases" not in w.entities["light.lampada"]
+    found = [c["entity_id"] for c in hq.casa.candidates("abat-jour", "soggiorno")]
+    assert found == ["light.angolo"]
+    task.cancel()

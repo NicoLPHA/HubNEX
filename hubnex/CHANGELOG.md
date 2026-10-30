@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1
+- Nomi delle entità: se in Home Assistant hai dato degli alias a un'entità, la vista Casa
+  mostra il primo; la ricerca per aggiungere entità trova anche gli alias.
+- Documentazione: percorso consigliato per configurare tutto, nel primo avvio.
+
 ## 1.3.0
 - HubNEX è visibile a tutti gli utenti di Home Assistant, non solo agli amministratori.
 - Chi non è amministratore ha solo la Casa (comandi dei dispositivi, telecamere, allarme):
