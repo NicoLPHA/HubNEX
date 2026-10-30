@@ -72,7 +72,8 @@ button, input { font-family: inherit; }
 #deadlines .soon .due { color: var(--warn); }
 #deadlines .late .due { color: var(--danger); }
 #deadlines .t { flex: 1; }
-#deadlines .check { background: none; border: 1px solid var(--panel-border); color: var(--muted); border-radius: 4px; cursor: pointer; width: 22px; height: 22px; }
+#deadlines .check { flex: none; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 26px; height: 26px; min-height: 0; padding: 0; background: none; border: 1px solid var(--panel-border); color: var(--muted); border-radius: 6px; cursor: pointer; }
+#deadlines .check svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 #deadlines .check:hover { color: var(--ok); border-color: var(--ok); }
 #deadline-form { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 

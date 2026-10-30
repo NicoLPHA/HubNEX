@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.1
+- Scadenze: la spunta "fatto" è centrata nel suo riquadro e allineata al testo.
+
 ## 1.4.0
 - Modifica stanza: si può aggiungere qualsiasi entità di Home Assistant, anche quelle nascoste
   (es. lettori di Music Assistant) o di diagnostica; le solite prima, con l'entity_id accanto.

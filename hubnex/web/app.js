@@ -622,7 +622,7 @@ function renderDeadlines() {
     const due = new Date(d.due.length <= 10 ? d.due + "T09:00" : d.due).getTime();
     const cls = due < now ? "late" : due - now < 3 * 864e5 ? "soon" : "";
     const label = new Date(due).toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
-    return `<li class="${cls}"><span class="due">${label}</span><span class="t">${esc(d.title)}</span><button class="check" data-id="${d.id}" title="Fatto">✓</button></li>`;
+    return `<li class="${cls}"><span class="due">${label}</span><span class="t">${esc(d.title)}</span><button class="check" data-id="${d.id}" title="Fatto" aria-label="Segna come fatta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></li>`;
   }).join("") || `<li><span class="t" style="color:var(--muted)">Nessuna scadenza</span></li>`;
   $("deadlines").querySelectorAll(".check").forEach((b) =>
     b.addEventListener("click", () => api(`/api/deadlines/${b.dataset.id}/done`, { method: "POST" })));
