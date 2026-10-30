@@ -118,6 +118,35 @@ class SuggestIn(BaseModel):
     image: str
 
 
+# What a Home Assistant user who is not an administrator may do from the house view: the
+# devices' own services, as in Home Assistant itself (never e.g. hassio.* or recorder.*).
+HOUSE_DOMAINS = {
+    "light", "switch", "fan", "cover", "climate", "lock", "alarm_control_panel", "media_player",
+    "scene", "script", "button", "input_button", "input_boolean", "input_select", "input_number",
+    "select", "number", "vacuum", "valve", "siren", "humidifier", "water_heater", "lawn_mower",
+}
+HOUSE_EVENTS = {"ha", "casa_changed"}
+
+
+def house_service(domain: str, service: str) -> bool:
+    if domain == "homeassistant":
+        return service in ("turn_on", "turn_off", "toggle")
+    return domain in HOUSE_DOMAINS
+
+
+def house_only(state: dict) -> dict:
+    """The snapshot for whoever only gets the house: no team, activity, mail or spending."""
+    return {
+        "role": "casa",
+        "boss": state["boss"],
+        "version": state["version"],
+        "companies": [], "agents": [], "routines": {}, "logs": [], "deadlines": [], "drafts": [], "actions": [],
+        "stats": {k: 0 for k in state["stats"]},
+        "integrations": {"home_assistant": state["integrations"]["home_assistant"], "telegram": False,
+                         "voice": False, "mail": False, "connectors": []},
+    }
+
+
 def create_app(settings: Settings | None = None, hq: HQ | None = None, start_workers: bool = True) -> FastAPI:
     settings = settings or Settings.from_env()
 
@@ -162,10 +191,32 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         # As an add-on with no token set, only the HA sidebar may get in.
         raise HTTPException(401, "token mancante o errato")
 
-    def auth(request: Request) -> None:
+    async def role_of(client_host: str | None, headers) -> str:
+        """"full", or "casa" for a Home Assistant user who is not an administrator: the sidebar
+        panel is open to every user, so the add-on checks who is asking (Supervisor headers)."""
+        if not (settings.trusted_proxy and client_host == settings.trusted_proxy) or settings.non_admin_access == "completo":
+            return "full"  # the token was checked already
+        user = headers.get("x-remote-user-id")
+        watcher = app.state.hq.watcher
+        try:
+            if watcher.enabled and not watcher.ready.is_set():
+                await asyncio.wait_for(watcher.ready.wait(), 10)  # just started
+            if user and await watcher.is_admin(user):
+                return "full"
+        except Exception as exc:
+            log.warning("Non so se l'utente %s è amministratore (%s): solo Casa", user, exc)
+        return "casa"
+
+    async def auth(request: Request) -> str:
         header = request.headers.get("authorization", "")
         token = header[7:] if header.lower().startswith("bearer ") else request.query_params.get("token")
-        check_token(token, request.client.host if request.client else None)
+        host = request.client.host if request.client else None
+        check_token(token, host)
+        return await role_of(host, request.headers)
+
+    async def full(role: str = Depends(auth)) -> None:
+        if role != "full":
+            raise HTTPException(403, "riservato agli amministratori di Home Assistant")
 
     def get_hq(request: Request) -> HQ:
         return request.app.state.hq
@@ -191,31 +242,31 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def ping(hq: HQ = Depends(get_hq)):
         return {"name": hq.org.boss_name}
 
-    @app.get("/api/logs", dependencies=[Depends(auth)])
+    @app.get("/api/logs", dependencies=[Depends(full)])
     async def logs(before: int | None = None, limit: int = 25, hq: HQ = Depends(get_hq)):
         """Older activity for the dashboard's "Mostra precedenti" button."""
         return await hq.store.recent_logs(min(limit, 100), before_id=before)
 
-    @app.get("/api/graph", dependencies=[Depends(auth)])
+    @app.get("/api/graph", dependencies=[Depends(full)])
     async def graph(hq: HQ = Depends(get_hq)):
         return await build_graph(hq)
 
-    @app.get("/api/state", dependencies=[Depends(auth)])
+    @app.get("/api/state", dependencies=[Depends(full)])
     async def state(hq: HQ = Depends(get_hq)):
         return await hq.snapshot()
 
-    @app.post("/api/chat", dependencies=[Depends(auth)])
+    @app.post("/api/chat", dependencies=[Depends(full)])
     async def chat(body: ChatIn, hq: HQ = Depends(get_hq)):
         reply = await hq.chat(body.channel, body.text, voice=body.voice)
         return {"reply": reply or "L'agente ha risposto direttamente nel gruppo Telegram."}
 
-    @app.get("/api/agents/{agent_id}", dependencies=[Depends(auth)])
+    @app.get("/api/agents/{agent_id}", dependencies=[Depends(full)])
     async def agent_detail(agent_id: str, hq: HQ = Depends(get_hq)):
         if agent_id not in hq.agents:
             raise HTTPException(404, "agente sconosciuto")
         return {"tasks": await hq.store.agent_tasks(agent_id, 10)}
 
-    @app.post("/api/agents/{agent_id}/task", dependencies=[Depends(auth)])
+    @app.post("/api/agents/{agent_id}/task", dependencies=[Depends(full)])
     async def assign(agent_id: str, body: TaskIn, hq: HQ = Depends(get_hq)):
         if hq.org.agent(agent_id) is None:
             raise HTTPException(404, "agente sconosciuto")
@@ -224,7 +275,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         hq.run_agent_background(agent_id, body.task, source="user", report=False)
         return {"status": "started"}
 
-    @app.post("/api/deadlines", dependencies=[Depends(auth)])
+    @app.post("/api/deadlines", dependencies=[Depends(full)])
     async def add_deadline(body: DeadlineIn, hq: HQ = Depends(get_hq)):
         try:
             datetime.fromisoformat(body.due)
@@ -234,7 +285,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         await hq.emit_deadlines()
         return {"id": did}
 
-    @app.post("/api/deadlines/{deadline_id}/done", dependencies=[Depends(auth)])
+    @app.post("/api/deadlines/{deadline_id}/done", dependencies=[Depends(full)])
     async def done_deadline(deadline_id: int, hq: HQ = Depends(get_hq)):
         await hq.store.deadline_done(deadline_id)
         await hq.emit_deadlines()
@@ -245,7 +296,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             raise HTTPException(503, "casella email non configurata")
         return hq.maildesk
 
-    @app.post("/api/drafts/{draft_id}/revise", dependencies=[Depends(auth)])
+    @app.post("/api/drafts/{draft_id}/revise", dependencies=[Depends(full)])
     async def revise_draft(draft_id: int, body: ReviseIn, hq: HQ = Depends(get_hq)):
         d = await hq.store.draft(draft_id)
         if not d:
@@ -256,7 +307,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             raise HTTPException(409, "Bozza non più attiva")
         return {"ok": True}
 
-    @app.post("/api/drafts/{draft_id}/{action}", dependencies=[Depends(auth)])
+    @app.post("/api/drafts/{draft_id}/{action}", dependencies=[Depends(full)])
     async def finish_draft(draft_id: int, action: Literal["send", "save", "drop"], hq: HQ = Depends(get_hq)):
         try:
             note = await desk(hq).finish(draft_id, action)
@@ -264,7 +315,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             raise HTTPException(409, "Bozza non più attiva")
         return {"ok": True, "note": note}
 
-    @app.post("/api/actions/{action_id}/{decision}", dependencies=[Depends(auth)])
+    @app.post("/api/actions/{action_id}/{decision}", dependencies=[Depends(full)])
     async def decide_action(action_id: int, decision: Literal["ok", "no"], hq: HQ = Depends(get_hq)):
         try:
             note = await hq.actions.decide(action_id, decision == "ok")
@@ -274,7 +325,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             raise HTTPException(502, str(exc))
         return {"ok": True, "note": note}
 
-    @app.post("/api/tts", dependencies=[Depends(auth)])
+    @app.post("/api/tts", dependencies=[Depends(full)])
     async def tts(body: TTSIn, hq: HQ = Depends(get_hq)):
         if not hq.tts_enabled:
             raise HTTPException(503, "Voce non configurata (ElevenLabs o sintesi vocale di Home Assistant)")
@@ -284,7 +335,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             raise HTTPException(502, str(exc))
         return Response(audio, media_type=ctype)
 
-    @app.post("/api/ha/event", dependencies=[Depends(auth)])
+    @app.post("/api/ha/event", dependencies=[Depends(full)])
     async def ha_event(body: HAEventIn, hq: HQ = Depends(get_hq)):
         """Home Assistant automations push events here (rest_command) for Jarvis to handle."""
         ORIGIN.set("event")  # an automation, not the owner: Jarvis can only look and report
@@ -304,9 +355,11 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         return hq.casa.build()
 
     @app.post("/api/casa/call", dependencies=[Depends(auth)])
-    async def casa_call(body: ServiceIn, hq: HQ = Depends(get_hq)):
+    async def casa_call(body: ServiceIn, hq: HQ = Depends(get_hq), role: str = Depends(auth)):
         """A button pressed by the owner in the house view: no AI involved."""
         need_ha(hq)
+        if role != "full" and not house_service(body.domain, body.service):
+            raise HTTPException(403, f"{body.domain}.{body.service}: riservato agli amministratori di Home Assistant")
         try:
             await hq.ha.call_service(body.domain, body.service, body.data, by_owner=True)
         except HomeAssistantError as exc:
@@ -340,12 +393,12 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             raise HTTPException(502, str(exc))
         return StreamingResponse(chunks, media_type=ctype, headers={"Cache-Control": "no-store"})
 
-    @app.get("/api/casa/entities", dependencies=[Depends(auth)])
+    @app.get("/api/casa/entities", dependencies=[Depends(full)])
     async def casa_entities(q: str = "", area: str | None = None, hq: HQ = Depends(get_hq)):
         need_ha(hq)
         return hq.casa.candidates(q, area)
 
-    @app.post("/api/casa/rooms/{area_id}/entities", dependencies=[Depends(auth)])
+    @app.post("/api/casa/rooms/{area_id}/entities", dependencies=[Depends(full)])
     async def casa_add(area_id: str, body: RoomEntityIn, hq: HQ = Depends(get_hq)):
         need_ha(hq)
         if area_id not in hq.watcher.areas:
@@ -363,7 +416,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
 
-    @app.post("/api/casa/entities/{entity_id}/kind", dependencies=[Depends(auth)])
+    @app.post("/api/casa/entities/{entity_id}/kind", dependencies=[Depends(full)])
     async def casa_kind(entity_id: str, body: KindIn, hq: HQ = Depends(get_hq)):
         need_ha(hq)
         if entity_id not in hq.watcher.states:
@@ -372,7 +425,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
 
-    @app.post("/api/casa/rooms/{area_id}/temperature", dependencies=[Depends(auth)])
+    @app.post("/api/casa/rooms/{area_id}/temperature", dependencies=[Depends(full)])
     async def casa_temperature(area_id: str, body: RoomTempIn, hq: HQ = Depends(get_hq)):
         need_ha(hq)
         if area_id not in hq.watcher.areas:
@@ -381,8 +434,8 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
 
-    @app.post("/api/casa/rooms/{area_id}/entities/{entity_id}/remove", dependencies=[Depends(auth)])
-    @app.delete("/api/casa/rooms/{area_id}/entities/{entity_id}", dependencies=[Depends(auth)])
+    @app.post("/api/casa/rooms/{area_id}/entities/{entity_id}/remove", dependencies=[Depends(full)])
+    @app.delete("/api/casa/rooms/{area_id}/entities/{entity_id}", dependencies=[Depends(full)])
     async def casa_remove(area_id: str, entity_id: str, hq: HQ = Depends(get_hq)):
         """Taken off this room in the dashboard only: Home Assistant is left as it is."""
         need_ha(hq)
@@ -390,13 +443,13 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
 
-    @app.get("/api/casa/layout", dependencies=[Depends(auth)])
+    @app.get("/api/casa/layout", dependencies=[Depends(full)])
     async def casa_layout(hq: HQ = Depends(get_hq)):
         return {"text": hq.casa.layout_text(), "error": hq.casa.layout_error, "file": hq.casa.host_path(),
                 "areas": sorted(a.get("name") or k for k, a in hq.watcher.areas.items())}
 
-    @app.post("/api/casa/layout", dependencies=[Depends(auth)])
-    @app.put("/api/casa/layout", dependencies=[Depends(auth)])
+    @app.post("/api/casa/layout", dependencies=[Depends(full)])
+    @app.put("/api/casa/layout", dependencies=[Depends(full)])
     async def casa_save_layout(body: LayoutIn, hq: HQ = Depends(get_hq)):
         try:
             hq.casa.save_layout(body.text)
@@ -407,14 +460,14 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
 
-    @app.get("/api/casa/plan", dependencies=[Depends(auth)])
+    @app.get("/api/casa/plan", dependencies=[Depends(full)])
     async def casa_plan(hq: HQ = Depends(get_hq)):
         """The floor plan as data, for the visual editor."""
         hq.casa.layout_text()
         return {**hq.casa.layout, "error": hq.casa.layout_error,
                 "areas": sorted(a.get("name") or k for k, a in hq.watcher.areas.items())}
 
-    @app.post("/api/casa/plan", dependencies=[Depends(auth)])
+    @app.post("/api/casa/plan", dependencies=[Depends(full)])
     async def casa_plan_save(body: PlanIn, hq: HQ = Depends(get_hq)):
         try:
             hq.casa.save_layout_data(body.model_dump())
@@ -425,7 +478,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
 
-    @app.post("/api/casa/plan-image", dependencies=[Depends(auth)])
+    @app.post("/api/casa/plan-image", dependencies=[Depends(full)])
     async def casa_plan_image_upload(request: Request, floor: int = 1, hq: HQ = Depends(get_hq)):
         """A photo, image or PDF of the plan (raw body)."""
         data = await request.body()
@@ -442,7 +495,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             raise HTTPException(404, "immagine non trovata")
         return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
 
-    @app.post("/api/casa/plan-suggest", dependencies=[Depends(auth)])
+    @app.post("/api/casa/plan-suggest", dependencies=[Depends(full)])
     async def casa_plan_suggest(body: SuggestIn, hq: HQ = Depends(get_hq)):
         """Claude looks at the plan and proposes the rooms (to check in the editor)."""
         path = hq.casa.plan_image_path(body.image)
@@ -476,13 +529,17 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         except HTTPException:
             await websocket.close(code=4401)
             return
+        role = await role_of(websocket.client.host if websocket.client else None, websocket.headers)
         await websocket.accept()
         hq: HQ = websocket.app.state.hq
         queue = hq.subscribe()
         try:
-            await websocket.send_json({"type": "snapshot", "state": await hq.snapshot()})
+            state = await hq.snapshot()
+            await websocket.send_json({"type": "snapshot", "state": state if role == "full" else house_only(state)})
             while True:
-                await websocket.send_json(await queue.get())
+                event = await queue.get()
+                if role == "full" or event.get("type") in HOUSE_EVENTS:
+                    await websocket.send_json(event)
         except (WebSocketDisconnect, RuntimeError):
             pass
         finally:

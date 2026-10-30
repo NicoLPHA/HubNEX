@@ -90,6 +90,7 @@ class FakeWS:
             "config/device_registry/list": DEVICES,
             "config/entity_registry/list": ENTITIES,
             "get_states": STATES,
+            "config/auth/list": USERS,
         }.get(t)
         if t == "config/entity_registry/update":
             result = {"entity_entry": {"entity_id": msg["entity_id"], "area_id": msg["area_id"], "device_id": None}}
@@ -97,6 +98,12 @@ class FakeWS:
 
     def push(self, event_type, data):
         self.inbox.put_nowait({"type": "event", "event": {"event_type": event_type, "data": data}})
+
+
+USERS = [
+    {"id": "owner", "name": "Io", "is_owner": True, "group_ids": ["system-admin"]},
+    {"id": "wife", "name": "Moglie", "is_owner": False, "group_ids": ["system-users"]},
+]
 
 
 async def connected(events=None):
@@ -361,4 +368,48 @@ def test_editor_saves_the_plan_and_ai_proposes_rooms(settings, make_hq):
         view = client.get("/api/casa").json()
         assert view["floors"][0]["image"] == "pianta-1.jpg" and view["floors"][0]["rooms"][0]["area_id"] == "sala"
         assert "Sala da Pranzo" in client.get("/api/casa/layout").json()["text"]  # still a readable YAML
+        client.portal.call(lambda: task.cancel())
+
+
+def test_users_who_are_not_admins_only_get_the_house(settings, make_hq):
+    settings.trusted_proxy = "testclient"  # TestClient plays the Supervisor's ingress proxy
+    hq = make_hq([])
+    calls = []
+
+    class FakeREST:
+        enabled = True
+
+        async def call_service(self, domain, service, data, by_owner=False):
+            calls.append((domain, service))
+            return []
+
+        async def close(self):
+            pass
+
+    hq.ha = FakeREST()
+    with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
+        w, ws, task = client.portal.call(connected)
+        hq.casa.ha = hq.watcher = w
+        wife, owner = {"X-Remote-User-Id": "wife"}, {"X-Remote-User-Id": "owner"}
+
+        assert client.get("/api/casa", headers=wife).status_code == 200
+        assert client.post("/api/casa/call", headers=wife, json={"domain": "light", "service": "turn_off", "data": {"entity_id": "light.lampada"}}).status_code == 200
+        assert client.post("/api/casa/call", headers=wife, json={"domain": "hassio", "service": "addon_stop", "data": {}}).status_code == 403
+        assert calls == [("light", "turn_off")]
+        for method, path, body in [("get", "/api/state", None), ("post", "/api/chat", {"text": "ciao"}),
+                                   ("get", "/api/logs", None), ("post", "/api/casa/plan", {"floors": []}),
+                                   ("post", "/api/casa/rooms/soggiorno/entities", {"entity_id": "light.angolo", "mode": "ha"})]:
+            r = getattr(client, method)(path, headers=wife, **({"json": body} if body else {}))
+            assert r.status_code == 403, path
+        assert client.get("/api/state", headers=owner).status_code == 200
+        assert client.get("/api/state").status_code == 403  # nobody named: house only
+
+        with client.websocket_connect("/ws", headers=wife) as sock:
+            state = sock.receive_json()["state"]
+            assert state["role"] == "casa" and state["logs"] == [] and state["integrations"]["home_assistant"]
+        with client.websocket_connect("/ws", headers=owner) as sock:
+            assert sock.receive_json()["state"]["agents"]
+
+        settings.non_admin_access = "completo"
+        assert client.get("/api/state", headers=wife).status_code == 200
         client.portal.call(lambda: task.cancel())

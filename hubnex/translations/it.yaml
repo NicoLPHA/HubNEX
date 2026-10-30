@@ -69,5 +69,8 @@ configuration:
   install_assist_integration:
     name: Integrazione Assist
     description: Installa e aggiorna l'integrazione che rende Jarvis l'agente di conversazione di Assist (voce da app di HA e speaker).
+  non_admin_access:
+    name: Utenti non amministratori
+    description: "casa: gli utenti di Home Assistant che non sono amministratori vedono solo la Casa (niente assistente, posta, agenti, modifiche alla piantina). completo: vedono tutto come un amministratore."
 network:
   8765/tcp: Dashboard e API (facoltativa, richiede il token HQ)

@@ -11,6 +11,7 @@ import asyncio
 import itertools
 import json
 import logging
+import time
 from typing import Any, Awaitable, Callable
 
 import websockets
@@ -50,6 +51,8 @@ class HAWatcher:
         self._ids = itertools.count(1)
         self._pending: dict[int, asyncio.Future] = {}
         self._reload_task: asyncio.Task | None = None
+        self._admins: dict[str, bool] = {}  # user id -> administrator
+        self._admins_at = 0.0
 
     @property
     def enabled(self) -> bool:
@@ -178,6 +181,16 @@ class HAWatcher:
             return reg["area_id"]
         dev = self.devices.get(reg.get("device_id") or "")
         return dev.get("area_id") if dev else None
+
+    async def is_admin(self, user_id: str) -> bool:
+        """Whether a Home Assistant user is an administrator (owner or in the admin group)."""
+        if user_id not in self._admins or time.monotonic() - self._admins_at > 300:
+            users = await self._command({"type": "config/auth/list"})
+            self._admins = {
+                u["id"]: bool(u.get("is_owner")) or "system-admin" in (u.get("group_ids") or []) for u in users or []
+            }
+            self._admins_at = time.monotonic()
+        return self._admins.get(user_id, False)
 
     async def set_area(self, entity_id: str, area_id: str | None) -> None:
         if entity_id not in self.entities:

@@ -503,12 +503,16 @@ function setUI(value) {
 
 function applyUI() {
   const hasCasa = !S.data || S.data.integrations.home_assistant; // without HA nothing can replace HQ
-  const onlyCasa = !UI.hq && hasCasa;
+  const houseOnly = S.data?.role === "casa"; // HA user who is not an administrator (decided by the add-on)
+  const onlyCasa = (!UI.hq || houseOnly) && hasCasa;
+  document.body.classList.toggle("role-casa", houseOnly);
   document.body.classList.toggle("no-hq", onlyCasa);
-  document.body.classList.toggle("no-ai", !UI.ai);
+  document.body.classList.toggle("no-ai", !UI.ai || houseOnly);
   setSwitch("pref-hq", UI.hq);
   setSwitch("pref-ai", UI.ai);
-  $("pref-ui-note").textContent = !UI.hq && !hasCasa ? "Senza Home Assistant collegato la Casa non c'è: HQ resta visibile." : "";
+  $("pref-ui-note").textContent = houseOnly
+    ? "Il tuo account di Home Assistant non è amministratore: HubNEX mostra solo la Casa."
+    : !UI.hq && !hasCasa ? "Senza Home Assistant collegato la Casa non c'è: HQ resta visibile." : "";
   if (!onlyCasa && S.view !== "casa") document.body.classList.remove("casa");
   if (!onlyCasa || S.view === "casa") return;
   if (S.data) setView("casa");
@@ -1113,7 +1117,7 @@ function handle(ev) {
       $("chat-input").placeholder = `Parla con ${S.data.boss.name}…`;
       buildArena(); renderStats(); renderDeadlines(); renderFeed(); renderDrafts();
       $("view-casa").classList.toggle("hidden", !S.data.integrations.home_assistant);
-      if (!UI.hq && S.data.integrations.home_assistant) { if (S.view !== "casa") setView("casa"); }
+      if ((!UI.hq || S.data.role === "casa") && S.data.integrations.home_assistant) { if (S.view !== "casa") setView("casa"); }
       else if (safeGet("hq_view") === "map" && S.view !== "map") setView("map");
       else if (safeGet("hq_view") === "casa" && S.view !== "casa" && S.data.integrations.home_assistant) setView("casa");
       applyUI();

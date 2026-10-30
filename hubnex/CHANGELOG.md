@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0
+- HubNEX è visibile a tutti gli utenti di Home Assistant, non solo agli amministratori.
+- Chi non è amministratore ha solo la Casa (comandi dei dispositivi, telecamere, allarme):
+  assistente, posta, agenti, attività, costi e modifiche alla piantina restano agli
+  amministratori. Il controllo è fatto dall'add-on su ogni richiesta. Nuova opzione
+  "Utenti non amministratori" (casa / completo).
+
 ## 1.2.0
 - Preferenze per utente: si possono spegnere le schede HQ e Mappa (HubNEX si apre sulla Casa)
   e l'assistente AI (niente chat, voce e approvazioni). Dentro Home Assistant valgono per

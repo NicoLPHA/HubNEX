@@ -1,5 +1,5 @@
 name: HubNEX
-version: "1.2.0"
+version: "1.3.0"
 slug: hubnex
 description: Il quartier generale AI per casa e lavoro - un team di agenti Claude, plancia 3D di Home Assistant, Telegram, voce e connettori MCP.
 url: https://github.com/P1pp89/HubNEX
@@ -14,6 +14,9 @@ homeassistant_api: true
 # Dashboard nella barra laterale di HA
 ingress: true
 ingress_port: 8765
+# Visible to every Home Assistant user; who is not an administrator gets the house only
+# (non_admin_access), checked by the add-on on every request.
+panel_admin: false
 panel_icon: mdi:robot-happy-outline
 panel_title: HubNEX
 # Porta esterna facoltativa (disattivata di default): serve solo per aprire la dashboard
@@ -57,6 +60,7 @@ options:
   voice_tts_entity: ""
   ha_blocked_services: lock.unlock,lock.open,alarm_control_panel.alarm_disarm
   install_assist_integration: true
+  non_admin_access: casa
 schema:
   anthropic_api_key: password
   model_jarvis: str
@@ -84,3 +88,4 @@ schema:
   voice_tts_entity: str?
   ha_blocked_services: str?
   install_assist_integration: bool
+  non_admin_access: list(casa|completo)

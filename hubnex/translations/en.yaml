@@ -57,5 +57,8 @@ configuration:
   install_assist_integration:
     name: Assist integration
     description: Install and update the integration that makes Jarvis an Assist conversation agent.
+  non_admin_access:
+    name: Non-admin users
+    description: "casa: Home Assistant users who are not administrators only get the house view (no assistant, mail, agents or floor plan changes). completo: they get everything, like an administrator."
 network:
   8765/tcp: Dashboard and API (optional, requires the HQ token)

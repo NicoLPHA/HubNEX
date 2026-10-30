@@ -53,6 +53,7 @@ ADDON_OPTIONS = {
     "voice_tts_entity": "VOICE_TTS_ENTITY",
     "ha_blocked_services": "HA_BLOCKED_SERVICES",
     "install_assist_integration": "HUBNEX_INSTALL_ASSIST",
+    "non_admin_access": "HUBNEX_NON_ADMIN_ACCESS",
     "anthropic_credit_usd": "ANTHROPIC_CREDIT_USD",
 }
 # The Supervisor's ingress proxy: requests from here were already authenticated by HA.
@@ -154,6 +155,8 @@ class Settings:
     casa_file: str = ""  # floor plan of the house view; default: casa.yaml next to agents.yaml
     # Client IP whose requests skip the token check (HA ingress); None outside the add-on
     trusted_proxy: str | None = None
+    # What HA users who are not administrators get from the sidebar: "casa" or "completo"
+    non_admin_access: str = "casa"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -203,6 +206,7 @@ class Settings:
             agents_file=e("HUBNEX_AGENTS_FILE") or "config/agents.yaml",
             casa_file=e("HUBNEX_CASA_FILE", ""),
             trusted_proxy=INGRESS_PROXY_IP if addon else None,
+            non_admin_access="completo" if (e("HUBNEX_NON_ADMIN_ACCESS") or "").strip().lower() == "completo" else "casa",
         )
 
 

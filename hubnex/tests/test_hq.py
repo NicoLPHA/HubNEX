@@ -179,11 +179,11 @@ def test_addon_without_token_only_allows_ingress(settings, make_hq):
     settings.trusted_proxy = "testclient"  # TestClient's client host plays the ingress proxy
     app = create_app(settings, hq=make_hq([]), start_workers=False)
     with TestClient(app) as client:
-        assert client.get("/api/state").status_code == 200
+        assert client.get("/api/ping").status_code == 200
     settings.trusted_proxy = "172.30.32.2"
     app = create_app(settings, hq=make_hq([]), start_workers=False)
     with TestClient(app) as client:
-        assert client.get("/api/state").status_code == 401
+        assert client.get("/api/ping").status_code == 401
 
 
 def test_older_activity_is_paged(settings, make_hq):

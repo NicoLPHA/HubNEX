@@ -213,6 +213,13 @@ approvazioni: nessun credito Claude). Dentro Home Assistant la scelta è salvata
 di chi è collegato e vale su tutti i suoi dispositivi; fuori resta nel browser. È una comodità,
 non un blocco: chiunque può riaccenderle dallo stesso menu.
 
+**Utenti non amministratori**: HubNEX compare nella barra laterale di **tutti** gli utenti di
+Home Assistant. Chi non è amministratore ha solo la **Casa**: luci, clima, tapparelle, scene,
+telecamere e allarme (con codice), come in Home Assistant. Non vede l'assistente, la posta, gli
+agenti, l'attività e i costi, e non può modificare piantina e stanze. Il controllo lo fa l'add-on
+a ogni richiesta, non solo l'interfaccia. Per dare tutto anche a loro: opzione
+**Utenti non amministratori → completo**.
+
 ## Eventi dalle automazioni
 
 Le automazioni possono passare un evento all'assistente, che ti scrive cosa propone. Con un
