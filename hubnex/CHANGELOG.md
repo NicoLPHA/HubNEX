@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.0
+- Vista Casa ridisegnata in stile HUD: cruscotto in alto (persone, allarme, clima, luci,
+  energia, telecamere) e scene esagonali.
+- Una card per ogni tipo di entità: luci, clima con quadrante, tapparelle, valvole, media con
+  copertina, avanzamento, comandi e volume, prese con il consumo del dispositivo, serrature,
+  allarme, porte/finestre con "da quanto", sensori con il grafico delle ultime 24 ore, persone,
+  sirene, telecamere.
+- Scheda rapida della stanza con anelli di temperatura e umidità, luci come tasti, "da tenere
+  d'occhio" e telecamera; sul telefono sale dal basso (trascina giù per chiudere, su per aprire).
+- Serrature: con codice in Home Assistant il tastierino, altrimenti conferma nella card.
+- Consumo della stanza nella pagina della stanza.
+
 ## 1.4.2
 - Valvole (irrigazione, acqua): sezione propria con Apri / Chiudi (e Ferma, se la valvola lo
   permette). Prima erano trattate come tapparelle e i comandi non arrivavano.

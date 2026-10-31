@@ -30,6 +30,8 @@ ATTRS = (
     "target_temp_step", "min_temp", "max_temp", "hvac_modes", "hvac_action", "current_position",
     "unit_of_measurement", "device_class", "media_title", "source", "supported_color_modes",
     "supported_features", "code_format", "code_arm_required", "media_artist", "volume_level",
+    "entity_picture", "media_position", "media_duration", "media_position_updated_at", "color_temp_kelvin",
+    "current_humidity", "battery_level", "hvac_action",
 )
 # What the owner can say an entity really is, whatever its Home Assistant domain
 # (a relay "switch" that drives a light, a gate opened by an impulse…).
@@ -150,6 +152,20 @@ def clean_suggestion(raw: dict, areas: list[str]) -> list[dict]:
 # Italian spellings are accepted too.
 ALIASES = {"piani": "floors", "stanze": "rooms", "fuori": "outside", "energia": "energy", "nome": "name",
            "proporzione": "aspect", "contorno": "outline", "potenza": "power", "oggi": "today"}
+
+
+def downsample(points: list[tuple[str, str]], buckets: int = 48) -> list[list]:
+    """Numeric history for a sparkline: at most `buckets` points [iso time, value]."""
+    vals = []
+    for t, v in points:
+        try:
+            vals.append([t, float(v)])
+        except (TypeError, ValueError):
+            continue
+    if len(vals) <= buckets:
+        return vals
+    step = len(vals) / buckets
+    return [vals[int(i * step)] for i in range(buckets - 1)] + [vals[-1]]
 
 
 def _keys(d: dict) -> dict:
@@ -358,6 +374,8 @@ class Casa:
             "k": shown or native,
             "a": {k: attrs[k] for k in ATTRS if k in attrs and k != "friendly_name"},
         }
+        if s.get("last_changed"):
+            out["lc"] = s["last_changed"]  # since when (an open window, a person in a zone)
         if shown:
             out["nk"] = native  # what Home Assistant says it is
         return out
@@ -388,6 +406,22 @@ class Casa:
         mtime = self.path.stat().st_mtime if self.path.exists() else None
         if mtime != self._mtime:
             self.layout_text()
+
+    def power_sensors(self, eids: set[str]) -> dict[str, str]:
+        """For plugs and switches: the power sensor of the same device, shown on their card."""
+        by_device: dict[str, str] = {}
+        for eid, st in self.ha.states.items():
+            if eid.startswith("sensor.") and (st.get("attributes") or {}).get("device_class") == "power":
+                dev = (self.ha.entities.get(eid) or {}).get("device_id")
+                if dev:
+                    by_device.setdefault(dev, eid)
+        out = {}
+        for eid in eids:
+            if eid.split(".", 1)[0] in ("switch", "light", "fan", "media_player", "climate", "water_heater"):
+                dev = (self.ha.entities.get(eid) or {}).get("device_id")
+                if dev and dev in by_device:
+                    out[eid] = by_device[dev]
+        return out
 
     def build(self) -> dict:
         self._refresh_layout()
@@ -422,7 +456,8 @@ class Casa:
         # Who is at home: Home Assistant's people (home, away or the zone they are in).
         people = sorted(e for e in self.ha.states if e.startswith("person.") and not (self.ha.entities.get(e) or {}).get("disabled_by"))
         energy = {k: v for k, v in self.layout["energy"].items() if v in self.ha.states}
-        shown = {e for a in areas for e in a["entities"]} | set(scenes) | set(alarms) | set(energy.values()) | set(people)
+        power = self.power_sensors({e for a in areas for e in a["entities"]})
+        shown = {e for a in areas for e in a["entities"]} | set(scenes) | set(alarms) | set(energy.values()) | set(people) | set(power.values())
         if weather:
             shown.add(weather)
         self.shown = shown
@@ -434,6 +469,7 @@ class Casa:
             "scenes": scenes,
             "alarms": alarms,
             "people": people,
+            "power": power,
             "weather": weather,
             "energy": energy,
             "states": {e: s for e, s in states.items() if s},

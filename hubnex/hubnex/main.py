@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from hubnex.addon import setup_assist
-from hubnex.casa import SUGGEST_SCHEMA, LayoutError, clean_suggestion, suggest_prompt
+from hubnex.casa import SUGGEST_SCHEMA, LayoutError, clean_suggestion, downsample, suggest_prompt
 from hubnex.llm import complete
 from hubnex.integrations.ha_ws import HAWatcherError
 from hubnex.integrations.homeassistant import HomeAssistantError
@@ -392,6 +392,19 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         except HomeAssistantError as exc:
             raise HTTPException(502, str(exc))
         return StreamingResponse(chunks, media_type=ctype, headers={"Cache-Control": "no-store"})
+
+    @app.get("/api/casa/history", dependencies=[Depends(auth)])
+    async def casa_history(e: str, hours: int = 24, hq: HQ = Depends(get_hq)):
+        """The last day of the sensors on a room page, for their little charts."""
+        need_ha(hq)
+        eids = [x for x in e.split(",") if x in hq.casa.shown][:20]  # only what the house shows
+        if not eids:
+            return {}
+        try:
+            raw = await hq.ha.history(eids, max(1, min(hours, 72)))
+        except HomeAssistantError as exc:
+            raise HTTPException(502, str(exc))
+        return {eid: downsample(points) for eid, points in raw.items()}
 
     @app.get("/api/casa/entities", dependencies=[Depends(full)])
     async def casa_entities(q: str = "", area: str | None = None, hq: HQ = Depends(get_hq)):

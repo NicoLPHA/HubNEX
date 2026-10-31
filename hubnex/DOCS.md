@@ -149,7 +149,13 @@ Imposta IMAP/SMTP del tuo provider (server, porte SSL 993/465, utente, password)
 
 ## Vista Casa
 
-Il pulsante **⌂ Casa** apre la plancia di Home Assistant. Le **stanze sono le aree di Home
+Il pulsante **⌂ Casa** apre la plancia di Home Assistant. In alto il **cruscotto**: chi è in
+casa, allarme, clima medio, luci accese, energia e telecamere; sotto le scene. Ogni entità ha la
+sua **card**: luci (tocca la card, barra della luminosità), clima con quadrante, tapparelle con la
+finestra disegnata, valvole, media con copertina e comandi, prese con il consumo, porte e finestre
+(rosse quando aperte, "da quanto"), sensori con il grafico delle ultime 24 ore, persone,
+telecamere. Le **serrature** con un codice in Home Assistant chiedono il codice sul tastierino,
+le altre una conferma nella card; l'**allarme** si disinserisce con il tastierino. Le **stanze sono le aree di Home
 Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nella stanza.
 
 - **Piantina**: **⚙ Piantina** apre l'editor.

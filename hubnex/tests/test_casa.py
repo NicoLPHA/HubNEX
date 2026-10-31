@@ -462,3 +462,49 @@ async def test_valves_are_their_own_kind(make_hq):
     c = hq.casa.compact("valve.irrigazione_giardino")
     assert c["k"] == "valve" and c["a"]["supported_features"] == 3
     task.cancel()
+
+
+def test_downsample_keeps_numbers_and_the_last_point():
+    from hubnex.casa import downsample
+    pts = [(f"t{i}", str(i)) for i in range(200)] + [("tx", "unavailable")]
+    out = downsample(pts, 48)
+    assert len(out) == 48 and out[-1] == ["t199", 199.0] and out[0] == ["t0", 0.0]
+
+
+async def test_plugs_show_the_power_of_their_device(make_hq):
+    hq = make_hq([])
+    w, ws, task = await connected()
+    hq.casa.ha = hq.watcher = w
+    w.states["switch.lavatrice"] = st("switch.lavatrice", "on", friendly_name="Lavatrice")
+    w.states["sensor.lavatrice_potenza"] = st("sensor.lavatrice_potenza", "1920", device_class="power", unit_of_measurement="W")
+    w.entities["switch.lavatrice"] = {"entity_id": "switch.lavatrice", "device_id": "dev-lav", "area_id": "soggiorno"}
+    w.entities["sensor.lavatrice_potenza"] = {"entity_id": "sensor.lavatrice_potenza", "device_id": "dev-lav", "area_id": None}
+    view = hq.casa.build()
+    assert view["power"]["switch.lavatrice"] == "sensor.lavatrice_potenza"
+    assert view["states"]["sensor.lavatrice_potenza"]["s"] == "1920"
+    task.cancel()
+
+
+def test_history_for_the_sensor_charts(settings, make_hq):
+    hq = make_hq([])
+    asked = []
+
+    class FakeREST:
+        enabled = True
+
+        async def history(self, eids, hours=24):
+            asked.append((eids, hours))
+            return {e: [(f"t{i}", str(20 + i / 10)) for i in range(100)] for e in eids}
+
+        async def close(self):
+            pass
+
+    hq.ha = FakeREST()
+    with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
+        w, ws, task = client.portal.call(connected)
+        hq.casa.ha = hq.watcher = w
+        client.get("/api/casa")  # what the house shows
+        out = client.get("/api/casa/history", params={"e": "light.lampada,sensor.segreto", "hours": 500}).json()
+        assert list(out) == ["light.lampada"] and len(out["light.lampada"]) == 48  # only shown entities, downsampled
+        assert asked == [(["light.lampada"], 72)]
+        client.portal.call(lambda: task.cancel())

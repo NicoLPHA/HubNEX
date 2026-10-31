@@ -55,6 +55,22 @@ class HomeAssistant:
             "last_changed": s.get("last_changed"),
         }
 
+    async def history(self, entity_ids: list[str], hours: int = 24) -> dict[str, list[tuple[str, str]]]:
+        """State changes of the last `hours` per entity: [(time, state), ...]."""
+        from datetime import datetime, timedelta, timezone
+
+        start = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        rows = await self._request("GET", f"/history/period/{start}", params={
+            "filter_entity_id": ",".join(entity_ids), "minimal_response": "", "no_attributes": "",
+        }) or []
+        out: dict[str, list[tuple[str, str]]] = {}
+        for series in rows:
+            if not series:
+                continue
+            eid = series[0].get("entity_id")
+            out[eid] = [(p.get("last_changed") or p.get("last_updated") or "", p.get("state")) for p in series]
+        return out
+
     async def list_entities(self, domain: str | None = None, search: str | None = None) -> list[dict]:
         states = await self._request("GET", "/states")
         out = []
