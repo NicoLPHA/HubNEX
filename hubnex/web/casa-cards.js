@@ -406,7 +406,9 @@ export const Cards = {
     // Two times of day (start / stop): the day's band and whether we are inside it.
     const times = eids.filter((e) => this.st(e).k === "datetime" && this.dtParts(e, this.st(e)).hasTime && !this.dtParts(e, this.st(e)).hasDate);
     let status = "", band = "";
-    const power = eids.find((e) => ["switch", "light", "climate"].includes(this.st(e).k));
+    // What really powers the device (a switch, light or thermostat); an input_boolean such as
+    // "automatica" is a setting, not the device being on.
+    const power = eids.find((e) => ["switch", "light", "climate", "fan"].includes(e.split(".")[0]));
     if (times.length >= 2) {
       const [a, b] = times.map((e) => this.dtParts(e, this.st(e)).time);
       if (a && b) {
@@ -433,9 +435,15 @@ export const Cards = {
       else body = `<span class="hc-state">${esc(String(this.value(e)).toLowerCase())}</span>`;
       return `<div class="hc-slot"><span class="hc-state">${esc(label(e))}</span>${body}</div>`;
     };
+    // Switches stack in one column, each with its name: the times keep their place.
+    const isToggle = (e) => ["switch", "light", "media", "siren"].includes(this.st(e).k);
+    const toggles = eids.filter(isToggle);
+    const toggleCol = toggles.length
+      ? `<div class="hc-slot hc-toggles">${toggles.map((e) => `<div class="hc-toggle-row"><span class="hc-state">${esc(label(e))}</span>${this.switchHTML(e)}</div>`).join("")}</div>`
+      : "";
     return `<article class="hc hc-composed ${card.size === "wide" ? "wide" : ""} ${lit ? "on" : ""}" data-card="${card.id}">
       <header class="hc-head"><b class="hc-name">${esc(card.name)}</b>${status ? `<span class="hc-state">${esc(status)}</span>` : ""}</header>
-      <div class="hc-slots">${eids.map(slot).join("") || `<span class="hc-state">entità non disponibili</span>`}</div>
+      <div class="hc-slots">${eids.filter((e) => !isToggle(e)).map(slot).join("")}${toggleCol}${eids.length ? "" : `<span class="hc-state">entità non disponibili</span>`}</div>
       ${band}
     </article>`;
   },

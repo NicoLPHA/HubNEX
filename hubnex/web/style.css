@@ -789,3 +789,16 @@ button.hud-item:hover { background: rgba(79, 209, 255, 0.04); }
 .hc-preview { margin-top: 6px; }
 .hc-preview .hc { width: 100% !important; }
 @media (max-width: 760px) { .hc-cardedit-cols { grid-template-columns: 1fr; } }
+
+/* switches of a composed card: one column, name on the left, switch on the right */
+.hc-toggles { gap: 8px; }
+.hc-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 26px; }
+.hc-toggle-row .hc-state { min-width: 0; overflow-wrap: anywhere; }
+/* cards on the same row take the same height (the tallest one's), content stays at the top */
+.hc-grid { align-items: stretch !important; }
+.hc-grid > .hc { justify-content: flex-start; }
+.hc-composed .hc-band { margin-top: auto; }
+/* groups side by side line up too: each group fills the row's height */
+.casa-sections { align-items: stretch !important; }
+.hc-sec { display: flex; flex-direction: column; }
+.hc-sec > .hc-grid { flex: 1; align-content: stretch; }

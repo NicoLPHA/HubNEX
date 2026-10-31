@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.2
+- Card su misura: gli interruttori stanno in una colonna, uno sotto l'altro con il loro nome,
+  invece di finire in fondo alle altre entità.
+- Un input_boolean (es. "automatica") non conta più come "stufa accesa/spenta": lo stato viene
+  solo da un interruttore, una luce o un termostato vero.
+- Le card della stessa riga hanno la stessa altezza, anche tra gruppi affiancati.
+
 ## 1.7.1
 - I gruppi della stanza (Luci, Clima, Prese…) restano sempre, anche dopo aver creato una card o
   cambiato l'ordine; non c'è più "Le mie card".
