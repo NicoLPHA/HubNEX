@@ -186,6 +186,15 @@ Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nel
 - **Nomi**: se a un'entità hai dato degli **alias** in Home Assistant (impostazioni
   dell'entità → Alias), HubNEX mostra il primo; altrimenti il nome di Home Assistant. Nella
   ricerca per aggiungere entità valgono tutti i nomi.
+- **Energia**: tocca "Energia" nel cruscotto. Tre viste a scelta, anche insieme: **il reattore**
+  (il periodo diviso per fascia attorno alla potenza adesso, in % del contatore), **la
+  giornata** (la potenza di oggi sulle fasce, con i kWh per fascia) e **la bolletta** (spesa,
+  stima a fine periodo al ritmo attuale, fasce a confronto col periodo precedente e un
+  consiglio quando una fascia cresce). Con **Configura** scegli le viste e i tuoi sensori: la
+  fascia (calendario ARERA calcolato da HubNEX con i festivi, un tuo sensore, o tariffa unica),
+  i kWh per fascia (es. i contatori "utility meter" di Home Assistant: da loro arrivano inizio
+  del periodo e confronto), prezzi o spesa, la potenza e la taglia del contatore, altri valori
+  (tensione, fattore di potenza…). Nessun calcolo usa l'AI.
 - **Persone**: le persone di Home Assistant (Impostazioni → Persone, con l'app sul telefono o un
   dispositivo di tracciamento) compaiono in alto nella Casa: *a casa*, *fuori* o il nome della
   zona in cui si trovano.

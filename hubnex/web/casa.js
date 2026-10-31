@@ -1,5 +1,6 @@
 import { PlanEditor } from "./plan-editor.js";
 import { Cards } from "./casa-cards.js";
+import { Energy } from "./casa-energy.js";
 
 // The house view: Home Assistant areas on the owner's floor plan, live.
 // Tap a room for its quick card, "Apri stanza" for all its entities; buttons call Home
@@ -100,9 +101,11 @@ export class CasaView {
     this.visible = true;
     if (!this.data) await this.reload();
     else this.render();
+    const e = this.data?.energy_panel;
+    if (e && (e.power || Object.keys(e.bands || {}).length) && !this.energyLive) this.loadEnergy(); // the band now, for the dashboard
   }
 
-  close() { this.visible = false; document.body.classList.remove("casa-sheet"); }
+  close() { this.visible = false; document.body.classList.remove("casa-sheet", "casa-modal-open"); }
 
   async reload(force = false) {
     this.loading ??= (async () => {
@@ -200,7 +203,7 @@ export class CasaView {
     if (s.k === "alarm") return { disarmed: "DISINSERITO", armed_home: "IN CASA", armed_away: "INSERITO", armed_night: "NOTTE", triggered: "SCATTATO!", pending: "IN ATTESA", arming: "INSERIMENTO" }[s.s] || s.s;
     if (s.k === "sensor") {
       const n = parseFloat(s.s);
-      return isNaN(n) || /[^\d.,\-e]/i.test(s.s) ? s.s : `${num(n)}${s.a.unit_of_measurement ? " " + s.a.unit_of_measurement : ""}`;
+      return isNaN(n) || /[^\d.,\-e]/i.test(s.s) ? s.s : `${num(n, Math.abs(n) < 10 && n % 1 ? 2 : 1)}${s.a.unit_of_measurement ? " " + s.a.unit_of_measurement : ""}`;
     }
     return s.s;
   }
@@ -510,6 +513,7 @@ export class CasaView {
     const { act, e: eid, area } = el.dataset;
     const domain = eid?.split(".")[0];
     if (this.editing && act === "toggle" && el.tagName === "ARTICLE") return; // arranging, not switching
+    if (await this.energyClick(act, el)) return;
     switch (act) {
       case "room":
         this.selected = this.selected === area ? null : area;
@@ -715,6 +719,11 @@ export class CasaView {
   }
 
   _input(e) {
+    if (e.target.id === "epick-find") {
+      clearTimeout(this._find);
+      this._find = setTimeout(() => this.ePickSearch(e.target.value), 250);
+      return;
+    }
     if (e.target.id === "card-find") {
       clearTimeout(this._find);
       this._find = setTimeout(() => this.cardSearch(e.target.value), 250);
@@ -782,9 +791,11 @@ export class CasaView {
     if (this.pad) html += this.padHTML();
     if (this.cardEdit) html += this.cardEditHTML();
     if (this.renaming) html += this.renameHTML();
+    if (this.energyOpen) html += this.energyHTML();
     this.root.innerHTML = html;
     this.root.scrollTop = scroll;
     document.body.classList.toggle("casa-sheet", !!(this.data && !this.page && this.selected && this.area(this.selected)));
+    document.body.classList.toggle("casa-modal-open", !!(this.energyOpen || this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen));
     if (this.editing && this.cands) {
       const box = this.root.querySelector("#casa-cands");
       if (box) box.innerHTML = this.candsHTML();
@@ -1190,4 +1201,4 @@ export class CasaView {
   }
 }
 
-Object.assign(CasaView.prototype, Cards);
+Object.assign(CasaView.prototype, Cards, Energy);

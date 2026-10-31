@@ -90,7 +90,10 @@ export const Cards = {
     const temps = d.areas.filter((a) => !a.outside).map((a) => this.temp(a)).filter((t) => t != null);
     const avg = temps.length ? temps.reduce((s, t) => s + t, 0) / temps.length : null;
     const outside = d.weather && this.st(d.weather)?.a?.temperature;
-    const power = d.energy.power && this.st(d.energy.power);
+    const ecfg = d.energy_panel || {};
+    const powerId = ecfg.power || d.energy.power;
+    const power = powerId && this.st(powerId);
+    const energyOn = !!power || Object.keys(ecfg.bands || {}).length || ecfg.total;
     const watts = power ? parseFloat(power.s) * (/kw/i.test(power.a.unit_of_measurement || "") ? 1000 : 1) : NaN;
     const cams = d.areas.reduce((n, a) => n + a.entities.filter((e) => this.st(e)?.k === "camera").length, 0);
     const parts = [];
@@ -112,8 +115,11 @@ export const Cards = {
     if (allLights.length) {
       parts.push(`<div class="hud-item">${ring({ size: 38, pct: lightsOn.length / allLights.length, color: "var(--warn)" })}<span><span class="hud-big">${lightsOn.length}<small>/${allLights.length}</small></span><span class="hud-sub">luci accese</span></span></div>`);
     }
-    if (power) {
-      parts.push(`<div class="hud-item"><span><span class="hud-big">${isNaN(watts) ? "—" : num(watts / 1000, 2)}<small>kW</small></span><span class="hud-sub">${d.energy.today ? `oggi ${esc(this.value(d.energy.today))}` : "adesso"}</span></span></div>`);
+    if (energyOn) {
+      // A tap opens the energy panel.
+      const band = ecfg.band_mode === "arera" ? this.energyLive?.band?.name : null;
+      const sub = [band, d.energy.today ? `oggi ${this.value(d.energy.today)}` : this.energyLive?.day?.kwh ? `oggi ${num(Object.values(this.energyLive.day.kwh).reduce((s, v) => s + v, 0))} kWh` : "energia"].filter(Boolean).join(" · ");
+      parts.push(`<button class="hud-item" data-act="energy"><span><span class="hud-big">${isNaN(watts) ? "—" : num(watts / 1000, 2)}<small>kW</small></span><span class="hud-sub">${esc(sub)}</span></span></button>`);
     }
     if (cams) {
       parts.push(`<button class="hud-item" data-act="cams">${icon("cam")}<span><span class="hud-val">${cams} ${cams === 1 ? "telecamera" : "telecamere"}</span><span class="hud-sub">tocca per vederle</span></span></button>`);

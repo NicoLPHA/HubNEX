@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.8.0
+- Pannello Energia (tocca "Energia" nel cruscotto della Casa) con tre viste a scelta:
+  - il reattore: il periodo diviso per fascia F1/F2/F3 attorno alla potenza adesso;
+  - la giornata: la potenza di oggi sullo sfondo delle fasce, kWh di oggi per fascia;
+  - la bolletta: spesa, stima a fine periodo, fasce col confronto sul periodo precedente e un
+    consiglio quando una fascia cresce.
+- Configurabile da HubNEX: viste, fascia (calendario ARERA con festivi, un proprio sensore,
+  tariffa unica), kWh per fascia, prezzi o spesa, potenza e contatore, altri valori.
+- Le finestre (editor, codice, energia) si aprono sotto la barra in alto e nascondono la chat.
+
 ## 1.7.5
 - Grafico a scelta: nell'editor della card su misura ogni sensore numerico ha l'interruttore
   "grafico"; sulle card singole, in "Modifica stanza", "Togli grafico" / "Mostra grafico".

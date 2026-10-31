@@ -37,6 +37,7 @@ ATTRS = (
     "entity_picture", "media_position", "media_duration", "media_position_updated_at", "color_temp_kelvin",
     "current_humidity", "battery_level", "hvac_action",
     "has_date", "has_time", "min", "max", "step", "mode", "options",
+    "last_period", "last_reset", "meter_period",  # utility meters: the previous period, its start
 )
 # What the owner can say an entity really is, whatever its Home Assistant domain
 # (a relay "switch" that drives a light, a gate opened by an impulse…).
@@ -241,7 +242,7 @@ class Casa:
         self.adjust = await self.store.get("casa_adjust", {"extra": {}, "hidden": {}})
         self.adjust.setdefault("temp", {})
         self.adjust.setdefault("kind", {})
-        for key in ("cards", "order", "names", "size"):
+        for key in ("cards", "order", "names", "size", "energy"):
             self.adjust.setdefault(key, {})
         self.layout_text()  # parse the saved floor plan
 
@@ -403,6 +404,29 @@ class Casa:
                 self.adjust.setdefault("size", {}).pop(entity_id, None)
         await self.store.put("casa_adjust", self.adjust)
 
+    def energy_config(self) -> dict:
+        from hubnex.energy import clean_config
+
+        cfg = clean_config(self.adjust.get("energy") or {})
+        if not cfg["power"]:
+            cfg["power"] = self.layout["energy"].get("power")  # the floor plan's, if set
+        return cfg
+
+    async def set_energy_config(self, raw: dict) -> dict:
+        from hubnex.energy import clean_config
+
+        cfg = clean_config(raw)
+        known = lambda e: e in self.ha.states  # noqa: E731
+        cfg["bands"] = {k: v for k, v in cfg["bands"].items() if known(v)}
+        cfg["prices"] = {k: v for k, v in cfg["prices"].items() if known(v)}
+        cfg["readouts"] = [e for e in cfg["readouts"] if known(e)]
+        for key in ("band_sensor", "total", "cost", "power"):
+            if cfg[key] and not known(cfg[key]):
+                cfg[key] = None
+        self.adjust["energy"] = cfg
+        await self.store.put("casa_adjust", self.adjust)
+        return cfg
+
     def _unhide(self, area_id: str, entity_id: str) -> None:
         hidden = self.adjust["hidden"].get(area_id, [])
         if entity_id in hidden:
@@ -520,6 +544,10 @@ class Casa:
         people = sorted(e for e in self.ha.states if e.startswith("person.") and not (self.ha.entities.get(e) or {}).get("disabled_by"))
         energy = {k: v for k, v in self.layout["energy"].items() if v in self.ha.states}
         in_cards = {e for cards in self.adjust.get("cards", {}).values() for c in cards for e in c["entities"] if e in self.ha.states}
+        from hubnex.energy import entities as energy_entities
+
+        energy_cfg = self.energy_config()
+        in_cards |= {e for e in energy_entities(energy_cfg) if e in self.ha.states}
         power = self.power_sensors({e for a in areas for e in a["entities"]} | in_cards)
         shown = {e for a in areas for e in a["entities"]} | in_cards | set(scenes) | set(alarms) | set(energy.values()) | set(people) | set(power.values())
         if weather:
@@ -536,6 +564,7 @@ class Casa:
             "power": power,
             "sizes": dict(self.adjust.get("size", {})),
             "nochart": list(self.adjust.get("nochart", [])),  # sensors whose chart the owner turned off
+            "energy_panel": energy_cfg,
             "weather": weather,
             "energy": energy,
             "states": {e: s for e, s in states.items() if s},

@@ -564,3 +564,31 @@ def test_cards_composed_in_a_room_and_helpers_set_from_the_dashboard(settings, m
         client.post("/api/casa/rooms/soggiorno/cards/c1/remove")
         assert [c["id"] for c in next(a for a in client.get("/api/casa").json()["areas"] if a["id"] == "soggiorno")["cards"]] == ["c2"]
         client.portal.call(lambda: task.cancel())
+
+
+def test_energy_panel_config_and_live_data(settings, make_hq):
+    hq = make_hq([])
+
+    class FakeREST:
+        enabled = True
+
+        async def history(self, eids, hours=24):
+            return {eids[0]: [("2000-01-01T00:00:00+00:00", "1000")]}  # 1 kW since long before midnight
+
+        async def close(self):
+            pass
+
+    hq.ha = FakeREST()
+    with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
+        w, ws, task = client.portal.call(connected)
+        hq.casa.ha = hq.watcher = w
+        w.states["sensor.f1"] = st("sensor.f1", "52.6", unit_of_measurement="kWh", last_period="70", last_reset="2026-09-01T00:00:00+02:00", meter_period="bimonthly")
+        w.states["sensor.w"] = st("sensor.w", "560", unit_of_measurement="W")
+        cfg = client.post("/api/casa/energy/config", json={"views": ["bill", "reactor"], "bands": {"F1": "sensor.f1", "F2": "sensor.nessuno"}, "power": "sensor.w", "readouts": ["sensor.nessuno"]}).json()
+        assert cfg["bands"] == {"F1": "sensor.f1"} and cfg["readouts"] == [] and cfg["views"] == ["bill", "reactor"]  # unknown entities dropped
+        view = client.get("/api/casa").json()
+        assert view["energy_panel"]["power"] == "sensor.w" and view["states"]["sensor.f1"]["a"]["last_period"] == "70"
+        live = client.get("/api/casa/energy").json()
+        assert live["band"]["name"] in ("F1", "F2", "F3") and len(live["band"]["until"]) == 5
+        assert sum(live["day"]["kwh"].values()) > 0 and live["day"]["points"][0][1] == 1000.0
+        client.portal.call(lambda: task.cancel())

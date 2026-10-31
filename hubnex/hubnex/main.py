@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from hubnex.addon import setup_assist
 from hubnex.casa import SUGGEST_SCHEMA, LayoutError, clean_suggestion, downsample, suggest_prompt
+from hubnex.energy import band_until, day_profile
 from hubnex.llm import complete
 from hubnex.integrations.ha_ws import HAWatcherError
 from hubnex.integrations.homeassistant import HomeAssistantError
@@ -426,6 +427,34 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         except HomeAssistantError as exc:
             raise HTTPException(502, str(exc))
         return {eid: downsample(points) for eid, points in raw.items()}
+
+    @app.get("/api/casa/energy", dependencies=[Depends(auth)])
+    async def casa_energy(hq: HQ = Depends(get_hq)):
+        """The energy panel's live part: the time band now and today's power by band."""
+        need_ha(hq)
+        cfg = hq.casa.energy_config()
+        now = datetime.now(hq.tz)
+        out: dict = {"band": None, "day": None}
+        if cfg["band_mode"] == "arera":
+            band, until = band_until(now)
+            out["band"] = {"name": band, "until": until.strftime("%H:%M"), "tomorrow": until.date() != now.date()}
+        power = cfg["power"]
+        if power and power in hq.watcher.states:
+            hours = int((now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds() // 3600) + 2
+            try:
+                raw = await hq.ha.history([power], hours)
+            except HomeAssistantError as exc:
+                raise HTTPException(502, str(exc))
+            unit = (hq.watcher.states[power].get("attributes") or {}).get("unit_of_measurement") or "W"
+            out["day"] = day_profile(raw.get(power, []), now, unit)
+        return out
+
+    @app.post("/api/casa/energy/config", dependencies=[Depends(full)])
+    async def casa_energy_config(body: dict, hq: HQ = Depends(get_hq)):
+        need_ha(hq)
+        cfg = await hq.casa.set_energy_config(body)
+        hq.emit({"type": "casa_changed"})
+        return cfg
 
     @app.get("/api/casa/entities", dependencies=[Depends(full)])
     async def casa_entities(q: str = "", area: str | None = None, all: bool = False, hq: HQ = Depends(get_hq)):
