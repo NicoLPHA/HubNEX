@@ -452,3 +452,13 @@ async def test_anything_in_home_assistant_can_be_added_and_people_are_shown(make
     assert view["people"] == ["person.anna"] and view["states"]["person.anna"]["k"] == "person"
     assert hq.casa.compact("media_player.salotto")["a"]["volume_level"] == 0.3
     task.cancel()
+
+
+async def test_valves_are_their_own_kind(make_hq):
+    hq = make_hq([])
+    w, ws, task = await connected()
+    hq.casa.ha = hq.watcher = w
+    w.states["valve.irrigazione_giardino"] = st("valve.irrigazione_giardino", "closed", friendly_name="Irrigazione", supported_features=3)
+    c = hq.casa.compact("valve.irrigazione_giardino")
+    assert c["k"] == "valve" and c["a"]["supported_features"] == 3
+    task.cancel()

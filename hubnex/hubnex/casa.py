@@ -22,7 +22,7 @@ KINDS = {
     "climate": "climate", "cover": "cover", "media_player": "media", "lock": "lock",
     "alarm_control_panel": "alarm", "scene": "scene", "script": "script", "button": "button",
     "input_button": "button", "sensor": "sensor", "binary_sensor": "binary", "camera": "camera",
-    "vacuum": "switch", "water_heater": "climate", "humidifier": "switch", "valve": "cover", "siren": "siren",
+    "vacuum": "switch", "water_heater": "climate", "humidifier": "switch", "valve": "valve", "siren": "siren",
     "person": "person", "device_tracker": "person", "remote": "switch",
 }
 ATTRS = (

@@ -15,7 +15,7 @@ const APPLIANCE = /bollitor|kettle|boiler|caldai|scaldabagn|acqua|water|frigo|fr
 const SHOW_AS = [["", "Come in Home Assistant"], ["light", "Luce"], ["switch", "Presa / interruttore"], ["gate", "Cancello / porta (impulso)"], ["siren", "Sirena"], ["sensor", "Solo stato"]];
 const HVAC = { heat: "Caldo", cool: "Freddo", auto: "Auto", heat_cool: "Auto", off: "Spento", dry: "Deum.", fan_only: "Ventola" };
 const SECTIONS = [
-  ["light", "Luci"], ["gate", "Cancelli e porte"], ["climate", "Clima"], ["cover", "Tapparelle e tende"], ["media", "Media"],
+  ["light", "Luci"], ["gate", "Cancelli e porte"], ["climate", "Clima"], ["cover", "Tapparelle e tende"], ["valve", "Valvole e irrigazione"], ["media", "Media"],
   ["switch", "Prese e interruttori"], ["people", "Persone"], ["security", "Sicurezza"], ["camera", "Telecamere"], ["sensor", "Sensori"], ["action", "Azioni"], ["other", "Altro"],
 ];
 
@@ -184,6 +184,7 @@ export class CasaView {
       if (dc === "smoke" || dc === "gas" || dc === "carbon_monoxide") return s.s === "on" ? "ALLARME!" : "OK";
       return s.s === "on" ? "ON" : "OFF";
     }
+    if (s.k === "valve") return { open: "APERTA", closed: "CHIUSA", opening: "APRE…", closing: "CHIUDE…" }[s.s] || s.s.toUpperCase();
     if (s.k === "person") return s.s === "home" ? "A CASA" : s.s === "not_home" ? "FUORI CASA" : s.s.toUpperCase(); // or the zone's name
     if (s.k === "lock") return { locked: "BLOCCATA", unlocked: "SBLOCCATA", locking: "BLOCCO…", unlocking: "SBLOCCO…", jammed: "INCEPPATA", open: "APERTA" }[s.s] || s.s.toUpperCase();
     if (s.k === "alarm") return { disarmed: "DISINSERITO", armed_home: "IN CASA", armed_away: "INSERITO", armed_night: "NOTTE", triggered: "SCATTATO!", pending: "IN ATTESA", arming: "INSERIMENTO" }[s.s] || s.s;
@@ -199,6 +200,7 @@ export class CasaView {
     if (!s) return "";
     if (s.k === "binary" && ALERT.has(s.a.device_class)) return s.s === "on" ? "bad" : "good";
     if (s.k === "lock") return s.s === "locked" ? "good" : "warn";
+    if (s.k === "valve") return s.s === "open" || s.s === "opening" ? "warm" : "";
     if (s.k === "person") return s.s === "home" ? "good" : "";
     if (s.k === "alarm") return s.s === "triggered" ? "bad" : s.s === "disarmed" ? "" : "good";
     return "";
@@ -207,7 +209,7 @@ export class CasaView {
   section(eid) {
     const s = this.st(eid);
     if (!s) return "other";
-    if (["light", "gate", "climate", "cover", "media", "switch"].includes(s.k)) return s.k;
+    if (["light", "gate", "climate", "cover", "valve", "media", "switch"].includes(s.k)) return s.k;
     if (s.k === "person") return "people";
     if (s.k === "lock" || s.k === "alarm" || s.k === "siren") return "security";
     if (s.k === "binary") return SECURITY_CLASSES.has(s.a.device_class) ? "security" : "sensor";
@@ -543,6 +545,7 @@ export class CasaView {
       case "kind": return;
       case "hvac": this.st(eid).s = el.dataset.m; this.call("climate", "set_hvac_mode", { entity_id: eid, hvac_mode: el.dataset.m }); break;
       case "cover": this.call(domain, el.dataset.s, { entity_id: eid }); return;
+      case "valve": this.call("valve", el.dataset.s, { entity_id: eid }, eid); return;
       case "media": this.call("media_player", el.dataset.s, { entity_id: eid }, eid); return;
       case "lock": {
         const unlock = this.st(eid)?.s === "locked";
@@ -890,6 +893,16 @@ export class CasaView {
           <button class="casa-mini" data-act="cover" data-s="open_cover" data-e="${e}" aria-label="Alza">▲</button>
           <button class="casa-mini" data-act="cover" data-s="stop_cover" data-e="${e}" aria-label="Ferma">■</button>
           <button class="casa-mini" data-act="cover" data-s="close_cover" data-e="${e}" aria-label="Abbassa">▼</button></div></div>`;
+      }).join("");
+    } else if (kind === "valve") {
+      // Valves (irrigation, water mains): open / close, stop and position when the valve has them.
+      body = eids.map((e) => {
+        const s = this.st(e), pos = s.a.current_position, open = s.s === "open" || s.s === "opening";
+        const stop = (s.a.supported_features & 8) ? `<button class="casa-mini" data-act="valve" data-s="stop_valve" data-e="${e}" aria-label="Ferma">■</button>` : "";
+        return `<div class="casa-cover casa-valve"><div class="casa-row"><span>${esc(s.n)}</span><span class="casa-val ${this.valueClass(e)}">${pos != null && open ? pos + "% · " : ""}${esc(this.value(e))}</span></div>
+          <div class="casa-cover-ctl"><div class="casa-bar"><i style="width:${pos ?? (open ? 100 : 0)}%"></i></div>
+          <button class="casa-mini" data-act="valve" data-s="open_valve" data-e="${e}">Apri</button>${stop}
+          <button class="casa-mini" data-act="valve" data-s="close_valve" data-e="${e}">Chiudi</button></div></div>`;
       }).join("");
     } else if (kind === "gate") {
       body = eids.map((e) => {

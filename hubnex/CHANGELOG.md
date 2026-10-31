@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.2
+- Valvole (irrigazione, acqua): sezione propria con Apri / Chiudi (e Ferma, se la valvola lo
+  permette). Prima erano trattate come tapparelle e i comandi non arrivavano.
+
 ## 1.4.1
 - Scadenze: la spunta "fatto" è centrata nel suo riquadro e allineata al testo.
 
