@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.1
+- Le card tornano al carattere di prima (niente testo monospaziato negli stati).
+- "Spegni tutte" non sposta più in basso le card delle luci rispetto alle sezioni accanto.
+
 ## 1.5.0
 - Vista Casa ridisegnata in stile HUD: cruscotto in alto (persone, allarme, clima, luci,
   energia, telecamere) e scene esagonali.
