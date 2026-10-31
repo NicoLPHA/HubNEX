@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.0
+- Vista Casa più sobria, in stile Jarvis: carattere Saira, numeri sottili, stati in minuscolo,
+  card piatte e più piccole senza etichetta del tipo; una sottile linea ambra in alto quando
+  una cosa è accesa, rossa quando c'è un problema.
+- Cruscotto come una riga sottile; scene, interruttori e cursori più discreti; modalità del
+  clima e dell'allarme come parole sottolineate; "Spegni tutte" e "Sblocca" come link.
+
 ## 1.5.1
 - Le card tornano al carattere di prima (niente testo monospaziato negli stati).
 - "Spegni tutte" non sposta più in basso le card delle luci rispetto alle sezioni accanto.

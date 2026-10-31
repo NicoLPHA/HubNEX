@@ -784,7 +784,7 @@ export class CasaView {
   }
 
   sectionHTML(kind, title, eids, a) {
-    const extra = kind === "light" && eids.some((e) => this.isOn(e)) ? `<button class="hc-btn" data-act="all-off" data-area="${a.id}">Spegni tutte</button>` : "";
+    const extra = kind === "light" && eids.some((e) => this.isOn(e)) ? `<button class="hc-link" data-act="all-off" data-area="${a.id}">Spegni tutte</button>` : "";
     const body = kind === "action"
       ? `<div class="hc-scenes">${eids.map((e) => `<button class="hc-scene" data-act="scene" data-e="${e}">${esc(this.st(e).n)}</button>`).join("")}</div>`
       : `<div class="hc-grid">${eids.map((e) => this.cardHTML(e)).join("")}</div>`;

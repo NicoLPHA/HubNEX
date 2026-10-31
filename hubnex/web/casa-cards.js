@@ -95,36 +95,32 @@ export const Cards = {
     const cams = d.areas.reduce((n, a) => n + a.entities.filter((e) => this.st(e)?.k === "camera").length, 0);
     const parts = [];
     if (people.length) {
-      parts.push(`<div class="hc hud-people"><span class="hc-kick">Chi è in casa</span><div class="hc-people">${people.map((e) => {
-        const s = this.st(e), home = s.s === "home";
-        const where = home ? "a casa" : s.s === "not_home" ? "fuori" : s.s;
-        return `<div class="hc-person ${home ? "home" : ""}" title="${esc(s.n)}: ${esc(where)} ${esc(since(s.lc))}"><span class="hc-avatar">${esc((s.n || "?").trim()[0] || "?")}</span><small>${esc(where)}</small></div>`;
-      }).join("")}</div></div>`);
+      const home = people.filter((e) => this.st(e).s === "home").length;
+      parts.push(`<div class="hud-item"><div class="hc-people">${people.map((e) => {
+        const s = this.st(e), at = s.s === "home";
+        const where = at ? "a casa" : s.s === "not_home" ? "fuori" : s.s;
+        return `<span class="hc-avatar ${at ? "home" : ""}" title="${esc(s.n)}: ${esc(where)} ${esc(since(s.lc))}">${esc((s.n || "?").trim()[0] || "?")}</span>`;
+      }).join("")}</div><span class="hud-sub">${home ? `${home} in casa` : "nessuno in casa"}</span></div>`);
     }
     if (alarm) {
       const s = this.st(alarm), armed = s.s !== "disarmed", bad = s.s === "triggered";
-      parts.push(`<button class="hc hud-gauge ${bad ? "alert" : ""}" data-act="alarm-panel">${ring({ pct: armed ? 1 : 0.02, color: bad ? "var(--danger)" : armed ? "var(--ok)" : "var(--muted)", label: armed ? "ON" : "OFF" })}
-        <span class="hc-txt"><span class="hc-kick">Allarme</span><b class="${bad ? "bad" : armed ? "good" : ""}">${esc(this.value(alarm))}</b><span class="hc-state">tocca per i comandi</span></span></button>`);
+      parts.push(`<button class="hud-item" data-act="alarm-panel"><span class="hud-dot ${bad ? "bad" : armed ? "ok" : ""}"></span><span><span class="hud-lbl">Allarme</span><span class="hud-val">${esc(this.value(alarm).toLowerCase())}</span></span></button>`);
     }
     if (avg != null) {
-      parts.push(`<div class="hc hud-gauge">${ring({ pct: (avg - 14) / 14, label: `${num(avg, 0)}°`, sub: "media" })}
-        <span class="hc-txt"><span class="hc-kick">Clima</span><b>${num(avg)}°</b><span class="hc-state">${outside != null ? `esterno ${num(outside)}°` : `${temps.length} stanze`}</span></span></div>`);
+      parts.push(`<div class="hud-item">${ring({ size: 38, pct: (avg - 14) / 14 })}<span><span class="hud-big">${num(avg)}<small>°</small></span><span class="hud-sub">${outside != null ? `esterno ${num(outside)}°` : "media della casa"}</span></span></div>`);
     }
     if (allLights.length) {
-      parts.push(`<div class="hc hud-gauge ${lightsOn.length ? "on" : ""}">${ring({ pct: lightsOn.length / allLights.length, color: "var(--warn)", label: String(lightsOn.length), sub: "accese" })}
-        <span class="hc-txt"><span class="hc-kick">Luci</span><b>${lightsOn.length} ${lightsOn.length === 1 ? "accesa" : "accese"}</b><span class="hc-state">su ${allLights.length}</span></span></div>`);
+      parts.push(`<div class="hud-item">${ring({ size: 38, pct: lightsOn.length / allLights.length, color: "var(--warn)" })}<span><span class="hud-big">${lightsOn.length}<small>/${allLights.length}</small></span><span class="hud-sub">luci accese</span></span></div>`);
     }
     if (power) {
-      parts.push(`<div class="hc hud-gauge">${ring({ pct: isNaN(watts) ? 0 : watts / 3300, color: watts > 3000 ? "var(--danger)" : "var(--warn)", label: isNaN(watts) ? "—" : num(watts / 1000), sub: "kW" })}
-        <span class="hc-txt"><span class="hc-kick">Energia</span><b>${esc(this.value(d.energy.power))}</b><span class="hc-state">${d.energy.today ? `oggi ${esc(this.value(d.energy.today))}` : "adesso"}</span></span></div>`);
+      parts.push(`<div class="hud-item"><span><span class="hud-big">${isNaN(watts) ? "—" : num(watts / 1000, 2)}<small>kW</small></span><span class="hud-sub">${d.energy.today ? `oggi ${esc(this.value(d.energy.today))}` : "adesso"}</span></span></div>`);
     }
     if (cams) {
-      parts.push(`<button class="hc hud-gauge" data-act="cams"><span class="hc-camico">${icon("cam", "hc-ico big")}<i></i></span>
-        <span class="hc-txt"><span class="hc-kick">Telecamere</span><b>${cams} dal vivo</b><span class="hc-state">tocca per vederle</span></span></button>`);
+      parts.push(`<button class="hud-item" data-act="cams">${icon("cam")}<span><span class="hud-val">${cams} ${cams === 1 ? "telecamera" : "telecamere"}</span><span class="hud-sub">tocca per vederle</span></span></button>`);
     }
     const scenes = d.scenes.map((e) => `<button class="hc-scene" data-act="scene" data-e="${e}">${esc(this.st(e)?.n || e)}</button>`).join("");
     return `<div class="hud-row">${parts.join("")}</div>
-      <div class="hud-actions"><div class="hc-scenes">${scenes}</div><button class="casa-gear" data-act="layout" title="Modifica la piantina">⚙ Piantina</button></div>`;
+      <div class="hud-actions"><div class="hc-scenes">${scenes}</div><button class="hc-link" data-act="layout" title="Modifica la piantina">Piantina</button></div>`;
   },
 
   // ---------------------------------------------------------------- a card per kind of entity
@@ -153,8 +149,9 @@ export const Cards = {
     return unavailable ? html.replace('class="hc ', 'class="hc off ') : html;
   },
 
+  // The kind is clear from the card itself: only the name, and what goes on the right.
   head(kick, s, right = "") {
-    return `<header class="hc-head"><div><span class="hc-kick">${kick}</span><b class="hc-name">${esc(s.n)}</b></div>${right}</header>`;
+    return `<header class="hc-head" title="${esc(kick)}"><b class="hc-name">${esc(s.n)}</b>${right}</header>`;
   },
 
   lightCard(eid, s) {
@@ -163,7 +160,7 @@ export const Cards = {
     const dim = (s.a.supported_color_modes || []).some((m) => m !== "onoff") || s.a.brightness != null;
     const color = on && s.a.rgb_color ? `<span class="hc-swatch" style="background:rgb(${s.a.rgb_color.join(",")})"></span>` : "";
     const kelvin = on && s.a.color_temp_kelvin ? `<span class="hc-state">${s.a.color_temp_kelvin} K</span>` : "";
-    const state = s.s === "unavailable" ? "Non disponibile" : on ? `Accesa${dim ? ` · ${pct}%` : ""}` : "Spenta";
+    const state = s.s === "unavailable" ? "non disponibile" : on ? `accesa${dim ? ` · ${pct}%` : ""}` : "spenta";
     return `<article class="hc hc-light ${on ? "on" : ""}" data-act="toggle" data-e="${eid}" role="button" tabindex="0" aria-pressed="${on}" aria-label="${esc(s.n)}">
       ${this.head(s.nk ? "Luce (relè)" : "Luce", s, icon("bulb"))}
       <div class="hc-line"><span class="hc-state">${state}</span>${color}${kelvin}</div>
@@ -178,7 +175,7 @@ export const Cards = {
     const kick = domain === "fan" ? "Ventilatore" : domain === "vacuum" ? "Aspirapolvere" : domain === "humidifier" ? "Umidificatore" : domain === "input_boolean" ? "Interruttore" : "Presa / interruttore";
     return `<article class="hc hc-switch ${on ? "on" : ""}">
       ${this.head(kick, s, this.switchHTML(eid))}
-      ${pw ? `<div class="hc-watt"><b>${esc(num(parseFloat(pw.s) || 0, 0))}</b><span class="hc-state">${esc(pw.a.unit_of_measurement || "W")} adesso</span></div>` : `<div class="hc-line"><span class="hc-state">${on ? "Acceso" : s.s === "unavailable" ? "Non disponibile" : "Spento"}</span></div>`}
+      ${pw ? `<div class="hc-watt"><b>${esc(num(parseFloat(pw.s) || 0, 0))}</b><span class="hc-state">${esc(pw.a.unit_of_measurement || "W")} adesso</span></div>` : `<div class="hc-line"><span class="hc-state">${on ? "acceso" : s.s === "unavailable" ? "non disponibile" : "spento"}</span></div>`}
     </article>`;
   },
 
@@ -218,20 +215,19 @@ export const Cards = {
   climateCard(eid, s) {
     const cur = s.a.current_temperature, target = s.a.temperature;
     const action = ACTION[s.a.hvac_action] ?? "";
-    const modes = (s.a.hvac_modes || []).map((m) => `<button class="hc-mode ${s.s === m ? "sel" : ""}" data-act="hvac" data-e="${eid}" data-m="${m}">${HVAC[m] || m}</button>`).join("");
-    const color = s.s === "cool" ? "var(--accent)" : s.s === "off" ? "var(--muted)" : "var(--warn)";
+    const modes = (s.a.hvac_modes || []).map((m) => `<button class="hc-tab ${s.s === m ? "sel" : ""}" data-act="hvac" data-e="${eid}" data-m="${m}">${HVAC[m] || m}</button>`).join("");
     return `<article class="hc hc-climate ${s.s !== "off" ? "on" : ""}">
-      ${this.head("Clima", s, action ? `<span class="hc-state warm">${action}</span>` : "")}
-      <div class="hc-dialrow">${ring({ size: 116, pct: cur != null ? (cur - 14) / 14 : 0, color, label: cur != null ? `${num(cur)}°` : "—", sub: target != null ? `obiettivo ${num(target)}°` : "attuale", ticks: 40 })}
-        ${target != null ? `<div class="hc-steps"><button class="hc-step" data-act="temp" data-e="${eid}" data-d="1" aria-label="Alza">+</button><button class="hc-step" data-act="temp" data-e="${eid}" data-d="-1" aria-label="Abbassa">−</button></div>` : ""}</div>
-      <div class="hc-modes">${modes}</div>
+      ${this.head("Clima", s, action ? `<span class="hc-state">${action.toLowerCase()}</span>` : "")}
+      <div class="hc-dialrow"><span class="hc-temp">${cur != null ? num(cur) : "—"}<small>°</small></span>
+        ${target != null ? `<span class="hc-target"><span class="hc-state">obiettivo ${num(target)}°</span><span class="hc-steps row"><button class="hc-step" data-act="temp" data-e="${eid}" data-d="-1" aria-label="Abbassa">−</button><button class="hc-step" data-act="temp" data-e="${eid}" data-d="1" aria-label="Alza">+</button></span></span>` : ""}</div>
+      <div class="hc-tabs">${modes}</div>
       ${s.a.current_humidity != null ? `<span class="hc-state">umidità ${num(s.a.current_humidity, 0)}%</span>` : ""}
     </article>`;
   },
 
   coverCard(eid, s) {
     const pos = s.a.current_position ?? (s.s === "open" ? 100 : s.s === "closed" ? 0 : 50);
-    const state = s.a.current_position != null ? `${pos}% aperta` : { open: "Aperta", closed: "Chiusa", opening: "Si alza…", closing: "Si abbassa…" }[s.s] || s.s;
+    const state = s.a.current_position != null ? `${pos}% aperta` : { open: "aperta", closed: "chiusa", opening: "si alza…", closing: "si abbassa…" }[s.s] || s.s;
     return `<article class="hc hc-cover">
       ${this.head(this.dc(eid) === "awning" ? "Tenda" : this.dc(eid) === "garage" ? "Garage" : "Tapparella", s, `<span class="hc-state">${esc(state)}</span>`)}
       <div class="hc-blind"><div class="hc-window"><div class="hc-slats" style="height:${100 - pos}%"></div></div>
@@ -248,13 +244,13 @@ export const Cards = {
     const f = Number(s.a.supported_features) || 0;
     const pos = s.a.current_position;
     return `<article class="hc hc-valve ${open ? "on" : ""}">
-      ${this.head("Valvola", s, `<span class="hc-state ${open ? "warm" : ""}">${esc(this.value(eid))}${open && s.lc ? ` · ${since(s.lc)}` : ""}</span>`)}
+      ${this.head("Valvola", s, `<span class="hc-state ${open ? "warm" : ""}">${esc(this.value(eid).toLowerCase())}${open && s.lc ? ` ${since(s.lc)}` : ""}</span>`)}
       <div class="hc-dialrow">
         <svg class="hc-pipe" viewBox="0 0 64 64" aria-hidden="true"><path class="tube" d="M6 34h52"/>${open ? '<path class="flow" d="M6 34h52"/>' : ""}<rect class="wheel" x="24" y="14" width="16" height="10" rx="2"/><path class="wheel" d="M32 24v6"/></svg>
-        <div class="hc-modes">
-          <button class="hc-mode ${open ? "sel" : ""}" data-act="valve" data-s="open_valve" data-e="${eid}">Apri</button>
-          ${f & 8 ? `<button class="hc-mode" data-act="valve" data-s="stop_valve" data-e="${eid}">Ferma</button>` : ""}
-          <button class="hc-mode ${open ? "" : "sel"}" data-act="valve" data-s="close_valve" data-e="${eid}">Chiudi</button>
+        <div class="hc-tabs">
+          <button class="hc-tab ${open ? "sel" : ""}" data-act="valve" data-s="open_valve" data-e="${eid}">Apri</button>
+          ${f & 8 ? `<button class="hc-tab" data-act="valve" data-s="stop_valve" data-e="${eid}">Ferma</button>` : ""}
+          <button class="hc-tab ${open ? "" : "sel"}" data-act="valve" data-s="close_valve" data-e="${eid}">Chiudi</button>
         </div>
       </div>
       ${pos != null ? `<div class="hc-bar"><i style="width:${pos}%"></i></div>` : ""}
@@ -262,7 +258,7 @@ export const Cards = {
   },
 
   gateCard(eid, s) {
-    const state = { open: "APERTO", opening: "APRE…", closed: "CHIUSO", closing: "CHIUDE…", locked: "BLOCCATA", unlocked: "SBLOCCATA" }[s.s] || "";
+    const state = { open: "aperto", opening: "apre…", closed: "chiuso", closing: "chiude…", locked: "bloccata", unlocked: "sbloccata" }[s.s] || "";
     return `<article class="hc hc-gate">
       ${this.head("Cancello / porta", s, icon("gate"))}
       <div class="hc-line">${state ? `<span class="hc-state">${state}</span>` : ""}<button class="hc-btn primary" data-act="gate" data-e="${eid}">▶ Comanda</button></div>
@@ -273,11 +269,11 @@ export const Cards = {
     const locked = s.s === "locked";
     const asking = this.lockAsk === eid;
     const body = asking
-      ? `<div class="hc-ask"><b>Sbloccare ${esc(s.n)}?</b><div class="hc-modes"><button class="hc-btn primary" data-act="lock-yes" data-e="${eid}">Sì, sblocca</button><button class="hc-btn" data-act="lock-no">No</button></div></div>`
-      : `<button class="hc-btn ${locked ? "" : "primary"}" data-act="lock" data-e="${eid}">${locked ? "Sblocca" : "Blocca"}</button>`;
+      ? `<div class="hc-ask"><span>Sbloccare ${esc(s.n)}?</span><span class="hc-modes"><button class="hc-btn primary" data-act="lock-yes" data-e="${eid}">Sì, sblocca</button><button class="hc-btn" data-act="lock-no">No</button></span></div>`
+      : `<button class="hc-link" data-act="lock" data-e="${eid}">${locked ? "Sblocca" : "Blocca"}</button>`;
     return `<article class="hc hc-lock ${locked ? "" : "warn"}">
-      ${this.head("Serratura", s, `<span class="hc-state ${locked ? "good" : "warm"}">${esc(this.value(eid))}</span>`)}
-      <div class="hc-lockrow">${icon(locked ? "lock" : "unlock", `hc-ico huge ${locked ? "good" : "warm"}`)}${body}</div>
+      ${this.head("Serratura", s, `<span class="hc-state ${locked ? "good" : "warm"}">${esc(this.value(eid).toLowerCase())}</span>`)}
+      ${body}
     </article>`;
   },
 
@@ -287,8 +283,8 @@ export const Cards = {
     const armed = s.s !== "disarmed";
     const current = { armed_home: "alarm_arm_home", armed_away: "alarm_arm_away", armed_night: "alarm_arm_night", armed_vacation: "alarm_arm_vacation" }[s.s];
     return `<article class="hc hc-alarm ${s.s === "triggered" ? "alert" : ""}">
-      ${this.head("Allarme", s, `<span class="hc-state ${s.s === "triggered" ? "bad" : armed ? "good" : ""}">${esc(this.value(eid))}</span>`)}
-      <div class="hc-alarm-modes">${arm.map(([, svc, label]) => `<button class="hc-mode ${current === svc ? "sel ok" : ""}" data-act="alarm" data-s="${svc}" data-e="${eid}" ${armed ? "disabled" : ""}>${label}</button>`).join("")}</div>
+      ${this.head("Allarme", s, `<span class="hc-state ${s.s === "triggered" ? "bad" : armed ? "good" : ""}">${esc(this.value(eid).toLowerCase())}</span>`)}
+      <div class="hc-tabs">${arm.map(([, svc, label]) => `<button class="hc-tab ${current === svc ? "sel ok" : ""}" data-act="alarm" data-s="${svc}" data-e="${eid}" ${armed ? "disabled" : ""}>${label}</button>`).join("")}</div>
       ${armed ? `<button class="hc-btn primary" data-act="alarm" data-s="alarm_disarm" data-e="${eid}">Disinserisci</button>` : ""}
     </article>`;
   },
@@ -298,11 +294,8 @@ export const Cards = {
     const opening = OPENING.has(dc), danger = DANGER.has(dc), presence = PRESENCE.has(dc);
     const alert = on && (opening || danger);
     const kick = { door: "Porta", window: "Finestra", garage_door: "Basculante", opening: "Apertura", smoke: "Fumo", moisture: "Allagamento", gas: "Gas", carbon_monoxide: "Monossido", motion: "Movimento", occupancy: "Presenza", presence: "Presenza" }[dc] || "Sensore";
-    const ico = dc === "door" || dc === "garage_door" ? "door" : opening ? "window" : dc === "moisture" ? "drop" : dc === "smoke" || dc === "gas" ? "flame" : presence ? "motion" : "gauge";
     return `<article class="hc hc-binary ${alert ? "alert" : presence && on ? "live" : ""}">
-      ${this.head(kick, s, icon(ico))}
-      <div class="hc-line"><b class="hc-big ${alert ? "bad" : presence && on ? "warm" : ""}">${esc(this.value(eid))}</b><span class="hc-state">${esc(since(s.lc))}</span></div>
-      ${alert ? '<div class="hc-stripe"></div>' : ""}
+      ${this.head(kick, s, `<span class="hc-state ${alert ? "bad" : presence && on ? "warm" : ""}">${esc(this.value(eid).toLowerCase())} ${esc(since(s.lc))}</span>`)}
     </article>`;
   },
 
@@ -313,10 +306,9 @@ export const Cards = {
     const hist = this.hist?.[eid];
     const vals = (hist || []).map((p) => p[1]);
     return `<article class="hc hc-sensor">
-      ${this.head(hist?.length > 1 ? `${kick} · 24 ore` : kick, s)}
-      <div class="hc-bigval">${numeric ? `${num(n)}<small>${esc(s.a.unit_of_measurement || "")}</small>` : esc(this.value(eid))}</div>
+      ${this.head(kick, s, `<span class="hc-num">${numeric ? `${num(n)}<small>${esc(s.a.unit_of_measurement || "")}</small>` : esc(this.value(eid).toLowerCase())}</span>`)}
       ${numeric ? spark(hist) : ""}
-      ${vals.length > 1 ? `<div class="hc-range-lbl"><span>min ${num(Math.min(...vals))}</span><span>max ${num(Math.max(...vals))}</span></div>` : ""}
+      ${vals.length > 1 ? `<span class="hc-state">24 ore · min ${num(Math.min(...vals))} · max ${num(Math.max(...vals))}</span>` : ""}
     </article>`;
   },
 
@@ -326,7 +318,7 @@ export const Cards = {
     return `<article class="hc hc-personcard">
       ${this.head(eid.startsWith("person.") ? "Persona" : "Posizione", s)}
       <div class="hc-line"><span class="hc-person ${home ? "home" : ""}"><span class="hc-avatar big">${esc((s.n || "?").trim()[0] || "?")}</span></span>
-        <span class="hc-nowtxt"><b>${esc(where)}</b><span class="hc-state">${esc(since(s.lc))}${s.a.battery_level != null ? ` · batteria ${s.a.battery_level}%` : ""}</span></span></div>
+        <span class="hc-nowtxt"><span>${esc(where)}</span><span class="hc-state">${esc(since(s.lc))}${s.a.battery_level != null ? ` · batteria ${s.a.battery_level}%` : ""}</span></span></div>
     </article>`;
   },
 
@@ -334,12 +326,12 @@ export const Cards = {
     const on = s.s === "on";
     return `<article class="hc hc-siren ${on ? "alert" : ""}">
       ${this.head("Sirena", s, this.switchHTML(eid))}
-      <div class="hc-line"><b class="hc-big ${on ? "bad" : ""}">${on ? "SUONA" : "SPENTA"}</b></div>
+      <div class="hc-line"><span class="hc-state ${on ? "bad" : ""}">${on ? "suona" : "spenta"}</span></div>
     </article>`;
   },
 
   plainCard(eid, s) {
-    return `<article class="hc hc-plain">${this.head(eid.split(".")[0].replace(/_/g, " "), s)}<div class="hc-line"><span class="hc-big sm">${esc(this.value(eid))}</span></div></article>`;
+    return `<article class="hc hc-plain">${this.head(eid.split(".")[0].replace(/_/g, " "), s, `<span class="hc-state">${esc(String(this.value(eid)).toLowerCase())}</span>`)}</article>`;
   },
 
   // ---------------------------------------------------------------- quick card of a room
@@ -359,10 +351,7 @@ export const Cards = {
       return false;
     });
     const cam = a.entities.find((e) => this.st(e)?.k === "camera");
-    const rings = [
-      t != null ? ring({ size: 62, pct: (t - 14) / 14, label: `${num(t)}°`, sub: "temp" }) : "",
-      hum ? ring({ size: 62, pct: parseFloat(hum.s) / 100, color: "#7fe0c3", label: `${num(parseFloat(hum.s), 0)}%`, sub: "umid." }) : "",
-    ].join("");
+    const figures = [t != null ? `${num(t)}°` : "", hum ? `${num(parseFloat(hum.s), 0)}%` : ""].filter(Boolean).join(" · ");
     const watchRow = (e) => {
       const s = this.st(e);
       const pw = this.data.power?.[e] && this.st(this.data.power[e]);
@@ -370,17 +359,17 @@ export const Cards = {
         : s.k === "valve" ? `<button class="hc-btn" data-act="valve" data-s="close_valve" data-e="${e}">Chiudi</button>`
         : s.k === "switch" || s.k === "siren" ? this.switchHTML(e) : "";
       const what = s.k === "switch" && pw ? `${num(parseFloat(pw.s), 0)} ${pw.a.unit_of_measurement || "W"} · ${since(s.lc)}` : `${this.value(e).toLowerCase()} ${since(s.lc)}`;
-      return `<div class="hc-watch"><span><b>${esc(s.n)}</b> <span class="hc-state bad">${esc(what)}</span></span>${right}</div>`;
+      return `<div class="hc-watch"><span>${esc(s.n)} <span class="hc-state bad">${esc(what)}</span></span>${right}</div>`;
     };
     return `
       <section class="hc casa-quick">
         <div class="hc-grab" data-act="unselect" aria-hidden="true"></div>
-        <div class="hc-head"><div><span class="hc-kick">${a.outside ? "Fuori casa" : "Stanza"}</span><h2>${esc(a.name)}</h2></div>
-          <div class="hc-qrings">${rings}</div><button class="casa-x" data-act="unselect" aria-label="Chiudi">×</button></div>
+        <div class="hc-head"><div><h2>${esc(a.name)}</h2></div>
+          <span class="hc-num">${figures}</span><button class="casa-x" data-act="unselect" aria-label="Chiudi">×</button></div>
         ${lights.length ? `<span class="hc-kick">Luci</span><div class="hc-tiles">${lights.slice(0, 8).map((e) => {
           const s = this.st(e), on = s.s === "on";
           const pct = on && s.a.brightness != null ? Math.round((s.a.brightness / 255) * 100) : on ? 100 : 0;
-          return `<button class="hc-tile ${on ? "on" : ""}" data-act="toggle" data-e="${e}" aria-pressed="${on}"><b>${esc(s.n)}</b><span class="hc-state">${on ? `Accesa${pct < 100 ? ` · ${pct}%` : ""}` : "Spenta"}</span><span class="hc-bar thin"><i style="width:${pct}%"></i></span></button>`;
+          return `<button class="hc-tile ${on ? "on" : ""}" data-act="toggle" data-e="${e}" aria-pressed="${on}"><b>${esc(s.n)}</b><span class="hc-state">${on ? `accesa${pct < 100 ? ` · ${pct}%` : ""}` : "spenta"}</span><span class="hc-bar thin"><i style="width:${pct}%"></i></span></button>`;
         }).join("")}</div>${lights.length > 8 ? `<p class="casa-muted">+ altre ${lights.length - 8}</p>` : ""}` : ""}
         ${climate ? this.climateMini(climate) : ""}
         ${watch.length ? `<span class="hc-kick">Da tenere d'occhio</span>${watch.map(watchRow).join("")}` : ""}
@@ -388,14 +377,14 @@ export const Cards = {
         ${!a.entities.length ? `<p class="casa-muted">Nessuna entità in quest'area. Aprila e aggiungine con "Modifica stanza".</p>` : ""}
         <div class="casa-actions">
           <button class="hc-open" data-act="open" data-area="${a.id}">Apri stanza →</button>
-          ${lights.some((e) => this.isOn(e)) ? `<button class="hc-btn" data-act="all-off" data-area="${a.id}">Spegni luci</button>` : ""}
+          ${lights.some((e) => this.isOn(e)) ? `<button class="hc-link" data-act="all-off" data-area="${a.id}">Spegni luci</button>` : ""}
         </div>
       </section>`;
   },
 
   climateMini(eid) {
     const s = this.st(eid), target = s.a.temperature;
-    return `<div class="hc-climini"><span><span class="hc-kick">Clima</span><b>${esc(s.n)}</b> <span class="hc-state">${esc(HVAC[s.s] || s.s)}${s.a.current_temperature != null ? ` · ${num(s.a.current_temperature)}°` : ""}</span></span>
+    return `<div class="hc-climini"><span>${esc(s.n)} <span class="hc-state">${esc((HVAC[s.s] || s.s).toLowerCase())}${s.a.current_temperature != null ? ` · ${num(s.a.current_temperature)}°` : ""}</span></span>
       ${target != null ? `<span class="hc-steps row"><button class="hc-step" data-act="temp" data-e="${eid}" data-d="-1" aria-label="Abbassa">−</button><b>${num(target)}°</b><button class="hc-step" data-act="temp" data-e="${eid}" data-d="1" aria-label="Alza">+</button></span>` : ""}</div>`;
   },
 
@@ -406,7 +395,7 @@ export const Cards = {
       const s = this.st(e);
       return (s?.k === "binary" && (OPENING.has(s.a.device_class) || DANGER.has(s.a.device_class)) && s.s === "on") || s?.k === "lock" || (s?.k === "siren" && s.s === "on");
     }).map((e) => [e, a]));
-    const row = (e, a, right) => `<div class="hc-watch"><span><b>${esc(this.st(e).n)}</b> <span class="hc-state">${esc(a.name)}</span></span>${right}</div>`;
+    const row = (e, a, right) => `<div class="hc-watch"><span>${esc(this.st(e).n)} <span class="hc-state">${esc(a.name)}</span></span>${right}</div>`;
     return `
       <section class="hc">
         <span class="hc-kick">Luci accese</span>
@@ -414,7 +403,7 @@ export const Cards = {
       </section>
       <section class="hc">
         <span class="hc-kick">Porte, finestre, serrature</span>
-        ${sec.map(([e, a]) => row(e, a, this.st(e).k === "lock" ? `<button class="hc-btn" data-act="lock" data-e="${e}">${this.st(e).s === "locked" ? "Sblocca" : "Blocca"}</button>` : `<span class="hc-state ${this.valueClass(e)}">${esc(this.value(e))}</span>`)).join("") || `<p class="casa-muted">Porte e finestre chiuse.</p>`}
+        ${sec.map(([e, a]) => row(e, a, this.st(e).k === "lock" ? `<button class="hc-link" data-act="lock" data-e="${e}">${this.st(e).s === "locked" ? "Sblocca" : "Blocca"}</button>` : `<span class="hc-state ${this.valueClass(e)}">${esc(this.value(e).toLowerCase())}</span>`)).join("") || `<p class="casa-muted">Porte e finestre chiuse.</p>`}
       </section>`;
   },
 };
