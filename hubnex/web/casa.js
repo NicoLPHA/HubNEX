@@ -600,10 +600,10 @@ export class CasaView {
         return;
       }
       case "order-reset": this.saveOrder([]); break;
-      case "card-new": this.cardEdit = { area: this.page, id: null, name: "", entities: [], size: "wide", group: "", enable: null, q: "", cands: [] }; this.cardSearch(""); break;
+      case "card-new": this.cardEdit = { area: this.page, id: null, name: "", entities: [], size: "wide", group: "", enable: null, nochart: [], q: "", cands: [] }; this.cardSearch(""); break;
       case "card-edit": {
         const card = this.area(this.page).cards.find((c) => c.id === el.dataset.id);
-        this.cardEdit = { area: this.page, id: card.id, name: card.name, entities: [...card.entities], size: card.size, group: card.group || "", enable: card.enable ?? null, q: "", cands: [] };
+        this.cardEdit = { area: this.page, id: card.id, name: card.name, entities: [...card.entities], size: card.size, group: card.group || "", enable: card.enable ?? null, nochart: [...(card.nochart || [])], q: "", cands: [] };
         this.cardSearch("");
         break;
       }
@@ -630,12 +630,24 @@ export class CasaView {
         break;
       }
       case "card-size": this.cardKeep(); this.cardEdit.size = el.dataset.w; break;
+      case "card-chart": {
+        this.cardKeep();
+        const list = this.cardEdit.nochart;
+        if (list.includes(eid)) list.splice(list.indexOf(eid), 1); else list.push(eid);
+        break;
+      }
+      case "chart": {
+        const off = (this.data.nochart ||= []).includes(eid);
+        this.data.nochart = off ? this.data.nochart.filter((x) => x !== eid) : [...this.data.nochart, eid];
+        this.api(`/api/casa/entities/${encodeURIComponent(eid)}/display`, { method: "POST", body: JSON.stringify({ chart: off }) }).catch((err) => this.toast(`⚠ ${err.message}`));
+        break;
+      }
       case "card-save": {
         this.cardKeep();
         const c = this.cardEdit;
         if (!c.entities.length) { this.toast("Aggiungi almeno un'entità"); return; }
         try {
-          await this.api(`/api/casa/rooms/${encodeURIComponent(c.area)}/cards`, { method: "POST", body: JSON.stringify({ id: c.id, name: c.name || "Card", entities: c.entities, size: c.size, group: c.group || null, enable: c.enable && !c.entities.includes(c.enable) ? null : c.enable }) });
+          await this.api(`/api/casa/rooms/${encodeURIComponent(c.area)}/cards`, { method: "POST", body: JSON.stringify({ id: c.id, name: c.name || "Card", entities: c.entities, size: c.size, group: c.group || null, enable: c.enable && !c.entities.includes(c.enable) ? null : c.enable, nochart: c.nochart.filter((e) => c.entities.includes(e)) }) });
           this.cardEdit = null;
           this.toast("Card salvata");
           await this.reload(true);
@@ -890,6 +902,7 @@ export class CasaView {
         <button class="hc-handle" data-drag="${esc(id)}" aria-label="Trascina per spostare">⋮⋮</button>
         <button data-act="move" data-d="-1" data-id="${esc(id)}" aria-label="Sposta prima">‹</button><button data-act="move" data-d="1" data-id="${esc(id)}" aria-label="Sposta dopo">›</button>
         ${card ? `<button data-act="card-edit" data-id="${esc(id.slice(5))}">Modifica</button>` : `<button data-act="rename" data-e="${esc(id)}">Rinomina</button>`}
+        ${!card && this.st(id)?.k === "sensor" && !isNaN(parseFloat(this.st(id).s)) ? `<button data-act="chart" data-e="${esc(id)}">${(this.data.nochart || []).includes(id) ? "Mostra grafico" : "Togli grafico"}</button>` : ""}
         <button data-act="size" data-id="${esc(id)}" data-w="${wide ? "small" : "wide"}">${wide ? "Piccola" : "Larga"}</button>
         ${card ? `<button data-act="card-del" data-id="${esc(id.slice(5))}">Togli</button>` : `<button data-act="hide" data-area="${a.id}" data-e="${esc(id)}">Togli</button>`}
       </div>`;
@@ -1114,7 +1127,8 @@ export class CasaView {
 
   cardEditHTML() {
     const c = this.cardEdit;
-    const preview = this.composedCard({ id: "preview", name: c.name || "Card", entities: c.entities, size: c.size, enable: c.enable }).replace(/data-act="[^"]*"/g, "");
+    const preview = this.composedCard({ id: "preview", name: c.name || "Card", entities: c.entities, size: c.size, enable: c.enable, nochart: c.nochart }).replace(/data-act="[^"]*"/g, "");
+    const numeric = (e) => { const s = this.st(e); return s?.k === "sensor" && !isNaN(parseFloat(s.s)); };
     const toggles = c.entities.filter((e) => ["input_boolean", "switch"].includes(e.split(".")[0]));
     const hasTimes = c.entities.filter((e) => this.st(e)?.k === "datetime").length >= 2;
     const guessed = this.cardEnable({ entities: c.entities });
@@ -1126,7 +1140,7 @@ export class CasaView {
           <input id="card-name" class="hc-input" value="${esc(c.name)}" maxlength="60" placeholder="es. Stufa">
           <span class="hc-kick" style="margin-top:12px">Entità nella card</span>
           <div class="hc-chosen">${c.entities.map((e, i) => `<div class="hc-chosen-item"><span>${esc(this.st(e)?.n || e)}<small class="mono">${esc(e)}</small></span>
-            <span class="hc-chosen-ctl"><button data-act="card-up" data-e="${esc(e)}" aria-label="Su" ${i ? "" : "disabled"}>↑</button><button data-act="card-down" data-e="${esc(e)}" aria-label="Giù" ${i < c.entities.length - 1 ? "" : "disabled"}>↓</button><button data-act="card-rm" data-e="${esc(e)}" aria-label="Togli">×</button></span></div>`).join("") || `<p class="casa-muted">Ancora nessuna: cercale qui sotto.</p>`}</div>
+            <span class="hc-chosen-ctl">${numeric(e) ? `<label class="hc-chart-tg">grafico<button class="casa-switch ${c.nochart.includes(e) ? "" : "on"}" data-act="card-chart" data-e="${esc(e)}" role="switch" aria-checked="${!c.nochart.includes(e)}" aria-label="Grafico di ${esc(this.st(e)?.n || e)}"></button></label>` : ""}<button data-act="card-up" data-e="${esc(e)}" aria-label="Su" ${i ? "" : "disabled"}>↑</button><button data-act="card-down" data-e="${esc(e)}" aria-label="Giù" ${i < c.entities.length - 1 ? "" : "disabled"}>↓</button><button data-act="card-rm" data-e="${esc(e)}" aria-label="Togli">×</button></span></div>`).join("") || `<p class="casa-muted">Ancora nessuna: cercale qui sotto.</p>`}</div>
           <label class="hc-kick" for="card-find" style="margin-top:12px">Aggiungi entità</label>
           <input id="card-find" class="hc-input" value="${esc(c.q)}" placeholder="cerca per nome o entity_id…" autocomplete="off">
           <div id="card-cands" class="hc-cands">${this.cardCandsHTML()}</div>

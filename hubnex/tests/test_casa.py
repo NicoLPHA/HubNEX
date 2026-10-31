@@ -549,10 +549,18 @@ def test_cards_composed_in_a_room_and_helpers_set_from_the_dashboard(settings, m
         assert next(a for a in view["areas"] if a["id"] == "soggiorno")["order"] == ["light.lampada", "card:c1"]
         assert view["states"]["light.lampada"]["n"] == "Lampada grande" and view["sizes"] == {"light.lampada": "wide"}
         client.post("/api/casa/entities/light.lampada/display", json={"name": None})  # back to Home Assistant's name
+        w.states["sensor.lux"] = st("sensor.lux", "37", device_class="illuminance", unit_of_measurement="lx")
+        client.post("/api/casa/entities/sensor.lux/display", json={"chart": False})
+        assert client.get("/api/casa").json()["nochart"] == ["sensor.lux"]
+        client.post("/api/casa/entities/sensor.lux/display", json={"chart": True})
+        assert client.get("/api/casa").json()["nochart"] == []
+        r = client.post("/api/casa/rooms/soggiorno/cards", json={"name": "Luce", "entities": ["sensor.lux"], "nochart": ["sensor.lux", "light.altro"]})
+        luce = next(c for c in next(a for a in client.get("/api/casa").json()["areas"] if a["id"] == "soggiorno")["cards"] if c["id"] == r.json()["id"])
+        assert luce["nochart"] == ["sensor.lux"]  # only the card's own entities
         assert client.get("/api/casa").json()["sizes"] == {"light.lampada": "wide"}
 
         client.post("/api/casa/call", json={"domain": "input_datetime", "service": "set_datetime", "data": {"entity_id": "input_datetime.stufa_accensione", "time": "07:00:00"}})
         assert calls[-1] == ("input_datetime", "set_datetime", {"entity_id": "input_datetime.stufa_accensione", "time": "07:00:00"})
         client.post("/api/casa/rooms/soggiorno/cards/c1/remove")
-        assert next(a for a in client.get("/api/casa").json()["areas"] if a["id"] == "soggiorno")["cards"] == []
+        assert [c["id"] for c in next(a for a in client.get("/api/casa").json()["areas"] if a["id"] == "soggiorno")["cards"]] == ["c2"]
         client.portal.call(lambda: task.cancel())

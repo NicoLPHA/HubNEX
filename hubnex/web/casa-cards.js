@@ -308,7 +308,7 @@ export const Cards = {
     const n = parseFloat(s.s);
     const numeric = !isNaN(n) && !/[^\d.,\-e]/i.test(s.s);
     const kick = { temperature: "Temperatura", humidity: "Umidità", power: "Potenza", energy: "Energia", battery: "Batteria", illuminance: "Luce", pressure: "Pressione", carbon_dioxide: "CO₂", pm25: "PM2.5" }[s.a.device_class] || "Sensore";
-    const hist = this.hist?.[eid];
+    const hist = (this.data.nochart || []).includes(eid) ? null : this.hist?.[eid];
     const vals = (hist || []).map((p) => p[1]);
     return `<article class="hc hc-sensor">
       ${this.head(kick, s, `<span class="hc-num">${numeric ? `${num(n)}<small>${esc(s.a.unit_of_measurement || "")}</small>` : esc(this.value(eid).toLowerCase())}</span>`)}
@@ -437,7 +437,7 @@ export const Cards = {
       else if (s.k === "number") body = `<span class="hc-line"><button class="hc-step" data-act="numstep" data-d="-1" data-e="${e}" aria-label="Meno">−</button><span class="hc-num">${esc(s.s)}<small>${esc(s.a.unit_of_measurement || "")}</small></span><button class="hc-step" data-act="numstep" data-d="1" data-e="${e}" aria-label="Più">+</button></span>`;
       else if (s.k === "select") body = `<select class="hc-select" data-act="selopt" data-e="${e}" aria-label="${esc(s.n)}">${(s.a.options || []).map((o) => `<option ${o === s.s ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
       else if (s.k === "climate") body = `<span class="hc-num">${s.a.current_temperature != null ? num(s.a.current_temperature) : "—"}<small>°</small></span>`;
-      else if (s.k === "sensor") body = `<span class="hc-num">${esc(this.value(e))}</span>${spark(this.hist?.[e])}`;
+      else if (s.k === "sensor") body = `<span class="hc-num">${esc(this.value(e))}</span>${(card.nochart || []).includes(e) ? "" : spark(this.hist?.[e])}`;
       else body = `<span class="hc-state">${esc(String(this.value(e)).toLowerCase())}</span>`;
       // The line over each entity lights up when it is active: amber, red for an alarm
       // (a window open, water, smoke).

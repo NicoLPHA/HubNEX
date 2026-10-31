@@ -353,7 +353,7 @@ class Casa:
         await self.store.put("casa_adjust", self.adjust)
 
     # cards the owner composes in a room, their order, names and sizes (HubNEX only)
-    async def save_card(self, area_id: str, card_id: str | None, name: str, entities: list[str], size: str, group: str | None = None, enable: str | None = None) -> str:
+    async def save_card(self, area_id: str, card_id: str | None, name: str, entities: list[str], size: str, group: str | None = None, enable: str | None = None, nochart: list[str] | None = None) -> str:
         cards = self.adjust.setdefault("cards", {}).setdefault(area_id, [])
         card_id = card_id or f"c{max([int(c['id'][1:]) for c in cards if c['id'][1:].isdigit()] or [0]) + 1}"
         card = {"id": card_id, "name": name.strip()[:60] or "Card", "entities": list(dict.fromkeys(entities))[:12], "size": size}
@@ -361,6 +361,8 @@ class Casa:
             card["group"] = group
         if enable is not None:  # "" = the owner said: no switch, the times always apply
             card["enable"] = enable
+        if nochart:
+            card["nochart"] = [e for e in nochart if e in card["entities"]]
         for i, c in enumerate(cards):
             if c["id"] == card_id:
                 cards[i] = card
@@ -381,8 +383,14 @@ class Casa:
         self.adjust.setdefault("order", {})[area_id] = list(dict.fromkeys(items))[:300]
         await self.store.put("casa_adjust", self.adjust)
 
-    async def set_display(self, entity_id: str, name: str | None = None, size: str | None = None, *, rename: bool = False, resize: bool = False) -> None:
-        """Name and size of an entity's card in HubNEX (None: back to Home Assistant's name / normal)."""
+    async def set_display(self, entity_id: str, name: str | None = None, size: str | None = None, *, rename: bool = False, resize: bool = False, chart: bool | None = None) -> None:
+        """Name, size and chart of an entity's card in HubNEX (None: back to Home Assistant's name / normal)."""
+        if chart is not None:
+            hidden = self.adjust.setdefault("nochart", [])
+            if chart and entity_id in hidden:
+                hidden.remove(entity_id)
+            elif not chart and entity_id not in hidden:
+                hidden.append(entity_id)
         if rename:
             if name and name.strip():
                 self.adjust["names"][entity_id] = name.strip()[:60]
@@ -527,6 +535,7 @@ class Casa:
             "people": people,
             "power": power,
             "sizes": dict(self.adjust.get("size", {})),
+            "nochart": list(self.adjust.get("nochart", [])),  # sensors whose chart the owner turned off
             "weather": weather,
             "energy": energy,
             "states": {e: s for e, s in states.items() if s},

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.5
+- Grafico a scelta: nell'editor della card su misura ogni sensore numerico ha l'interruttore
+  "grafico"; sulle card singole, in "Modifica stanza", "Togli grafico" / "Mostra grafico".
+
 ## 1.7.4
 - Card su misura: i sensori numerici (luce, temperatura, consumo…) hanno il grafico delle
   ultime 24 ore, come nelle card singole.
