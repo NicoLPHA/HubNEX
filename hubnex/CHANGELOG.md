@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.4
+- Card su misura: i sensori numerici (luce, temperatura, consumo…) hanno il grafico delle
+  ultime 24 ore, come nelle card singole.
+- La linea sopra ogni entità di una card su misura si accende d'ambra quando quell'entità è
+  attiva (movimento rilevato, interruttore acceso…) e di rosso per un allarme (finestra
+  aperta, acqua, fumo).
+
 ## 1.7.3
 - Card con orari: l'interruttore che li attiva (es. "automatica") conta. Acceso: "attiva fino
   alle…" / "si attiva alle…"; spento: "automatica spenta · orari non attivi" e fascia grigia.

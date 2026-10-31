@@ -949,7 +949,8 @@ export class CasaView {
     this.histAt ||= {};
     if (this.histAt[a.id] && Date.now() - this.histAt[a.id] < 300000) return;
     this.histAt[a.id] = Date.now();
-    const eids = a.entities.filter((e) => { const s = this.st(e); return s?.k === "sensor" && !isNaN(parseFloat(s.s)); });
+    const eids = [...new Set([...a.entities, ...(a.cards || []).flatMap((c) => c.entities)])]
+      .filter((e) => { const s = this.st(e); return s?.k === "sensor" && !isNaN(parseFloat(s.s)); });
     if (!eids.length) return;
     try {
       const data = await (await this.api(`/api/casa/history?e=${encodeURIComponent(eids.join(","))}`)).json();

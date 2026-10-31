@@ -803,3 +803,12 @@ button.hud-item:hover { background: rgba(79, 209, 255, 0.04); }
 .hc-sec { display: flex; flex-direction: column; }
 .hc-sec > .hc-grid { flex: 1; align-content: stretch; }
 .hc-band.off i { background: rgba(255, 255, 255, 0.22); box-shadow: none; }
+/* a composed card's entity: its line lights up when active */
+.hc-slot { position: relative; }
+.hc-slot.on { border-top-color: var(--warn); }
+.hc-slot.on::before, .hc-slot.alert::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 1px; background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+.hc-slot.on > .hc-state:first-child { color: #f3c98a; }
+.hc-slot.alert { border-top-color: var(--danger); }
+.hc-slot.alert::before { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+.hc-slot.alert > .hc-state { color: #ff8da2; }
+.hc-slot .hc-spark { height: 30px; margin-top: 2px; }
