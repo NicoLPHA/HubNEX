@@ -508,3 +508,49 @@ def test_history_for_the_sensor_charts(settings, make_hq):
         assert list(out) == ["light.lampada"] and len(out["light.lampada"]) == 48  # only shown entities, downsampled
         assert asked == [(["light.lampada"], 72)]
         client.portal.call(lambda: task.cancel())
+
+
+def test_cards_composed_in_a_room_and_helpers_set_from_the_dashboard(settings, make_hq):
+    hq = make_hq([])
+    calls = []
+
+    class FakeREST:
+        enabled = True
+
+        async def call_service(self, domain, service, data, by_owner=False):
+            calls.append((domain, service, data))
+            return []
+
+        async def close(self):
+            pass
+
+    hq.ha = FakeREST()
+    settings.trusted_proxy = None
+    with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
+        w, ws, task = client.portal.call(connected)
+        hq.casa.ha = hq.watcher = w
+        w.states["input_datetime.stufa_accensione"] = st("input_datetime.stufa_accensione", "06:30:00", has_date=False, has_time=True, friendly_name="Stufa accensione")
+        w.states["input_datetime.stufa_spegnimento"] = st("input_datetime.stufa_spegnimento", "22:00:00", has_date=False, has_time=True)
+
+        r = client.post("/api/casa/rooms/soggiorno/cards", json={"name": "Stufa", "entities": ["input_datetime.stufa_accensione", "input_datetime.stufa_spegnimento"], "size": "wide"})
+        assert r.json() == {"ok": True, "id": "c1"}
+        assert client.post("/api/casa/rooms/soggiorno/cards", json={"name": "X", "entities": ["light.inesistente"]}).status_code == 422
+        view = client.get("/api/casa").json()
+        sogg = next(a for a in view["areas"] if a["id"] == "soggiorno")
+        assert sogg["cards"][0]["name"] == "Stufa" and sogg["order"] == ["card:c1"]
+        assert view["states"]["input_datetime.stufa_accensione"]["k"] == "datetime"  # sent although in no area
+        assert view["states"]["input_datetime.stufa_accensione"]["a"]["has_time"] is True
+
+        client.post("/api/casa/rooms/soggiorno/order", json={"items": ["light.lampada", "card:c1"]})
+        client.post("/api/casa/entities/light.lampada/display", json={"name": "Lampada grande", "size": "wide"})
+        view = client.get("/api/casa").json()
+        assert next(a for a in view["areas"] if a["id"] == "soggiorno")["order"] == ["light.lampada", "card:c1"]
+        assert view["states"]["light.lampada"]["n"] == "Lampada grande" and view["sizes"] == {"light.lampada": "wide"}
+        client.post("/api/casa/entities/light.lampada/display", json={"name": None})  # back to Home Assistant's name
+        assert client.get("/api/casa").json()["sizes"] == {"light.lampada": "wide"}
+
+        client.post("/api/casa/call", json={"domain": "input_datetime", "service": "set_datetime", "data": {"entity_id": "input_datetime.stufa_accensione", "time": "07:00:00"}})
+        assert calls[-1] == ("input_datetime", "set_datetime", {"entity_id": "input_datetime.stufa_accensione", "time": "07:00:00"})
+        client.post("/api/casa/rooms/soggiorno/cards/c1/remove")
+        assert next(a for a in client.get("/api/casa").json()["areas"] if a["id"] == "soggiorno")["cards"] == []
+        client.portal.call(lambda: task.cancel())

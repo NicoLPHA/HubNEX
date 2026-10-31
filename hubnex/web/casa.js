@@ -16,7 +16,7 @@ const APPLIANCE = /bollitor|kettle|boiler|caldai|scaldabagn|acqua|water|frigo|fr
 const SHOW_AS = [["", "Come in Home Assistant"], ["light", "Luce"], ["switch", "Presa / interruttore"], ["gate", "Cancello / porta (impulso)"], ["siren", "Sirena"], ["sensor", "Solo stato"]];
 const SECTIONS = [
   ["light", "Luci"], ["gate", "Cancelli e porte"], ["climate", "Clima"], ["cover", "Tapparelle e tende"], ["valve", "Valvole e irrigazione"], ["media", "Media"],
-  ["switch", "Prese e interruttori"], ["people", "Persone"], ["security", "Sicurezza"], ["camera", "Telecamere"], ["sensor", "Sensori"], ["action", "Azioni"], ["other", "Altro"],
+  ["switch", "Prese e interruttori"], ["people", "Persone"], ["security", "Sicurezza"], ["camera", "Telecamere"], ["sensor", "Sensori"], ["settings", "Orari e impostazioni"], ["action", "Azioni"], ["other", "Altro"],
 ];
 
 // Home Assistant's own frontend, when Jarvis is open inside it (same origin): its connection
@@ -75,6 +75,7 @@ export class CasaView {
     root.addEventListener("keydown", (e) => {
       if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("[role=button][data-act]")) { e.preventDefault(); e.target.click(); }
     });
+    root.addEventListener("pointerdown", (e) => this._dragStart(e));
     // Phone: the quick card is a sheet over the plan. Drag it down to close, up to open the room.
     root.addEventListener("touchstart", (e) => { this._touchY = e.target.closest(".hc-grab, .casa-quick > .hc-head") ? e.touches[0].clientY : null; }, { passive: true });
     root.addEventListener("touchend", (e) => {
@@ -225,6 +226,7 @@ export class CasaView {
     if (s.k === "sensor") return "sensor";
     if (s.k === "scene" || s.k === "script" || s.k === "button") return "action";
     if (s.k === "camera") return "camera";
+    if (["datetime", "number", "select", "text"].includes(s.k)) return "settings";
     return "other";
   }
 
@@ -507,6 +509,7 @@ export class CasaView {
     if (!el || !this.root.contains(el)) return;
     const { act, e: eid, area } = el.dataset;
     const domain = eid?.split(".")[0];
+    if (this.editing && act === "toggle" && el.tagName === "ARTICLE") return; // arranging, not switching
     switch (act) {
       case "room":
         this.selected = this.selected === area ? null : area;
@@ -557,6 +560,88 @@ export class CasaView {
       case "lock-yes": this.lockAsk = null; this.call("lock", "unlock", { entity_id: eid }, eid); this.toast(`Sblocco ${this.st(eid)?.n || eid}…`); break;
       case "lock-no": this.lockAsk = null; break;
       case "edit": this.editing = !this.editing; if (this.editing) this.search(""); break;
+      // helpers (time of day, numbers, lists)
+      case "pick": { const input = el.parentElement.querySelector("input[data-act='dt']"); try { input.showPicker(); } catch { input.focus(); } return; }
+      case "nudge": {
+        const st = this.st(eid), t = (String(st?.s).match(/\d{2}:\d{2}/) || ["00:00"])[0];
+        const m = (((Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) + Number(el.dataset.d)) % 1440) + 1440) % 1440;
+        this.setDateTime(eid, `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+        break;
+      }
+      case "numstep": {
+        const st = this.st(eid), step = Number(st.a.step ?? 1);
+        const v = Math.min(Number(st.a.max ?? Infinity), Math.max(Number(st.a.min ?? -Infinity), (parseFloat(st.s) || 0) + step * Number(el.dataset.d)));
+        this.setNumber(eid, Math.round(v / step) * step);
+        break;
+      }
+      case "selopt": if (el.tagName === "SELECT") return; this.setOption(eid, el.dataset.v); break;
+      // the room's cards, arranged by the owner
+      case "move": this.moveItem(el.dataset.id, Number(el.dataset.d)); return;
+      case "size": {
+        const id = el.dataset.id, w = el.dataset.w;
+        if (id.startsWith("card:")) {
+          const a = this.area(this.page), card = a.cards.find((c) => `card:${c.id}` === id);
+          if (card) { card.size = w; this.api(`/api/casa/rooms/${encodeURIComponent(a.id)}/cards`, { method: "POST", body: JSON.stringify(card) }).catch((err) => this.toast(`⚠ ${err.message}`)); }
+        } else {
+          (this.data.sizes ||= {})[id] = w;
+          if (w !== "wide") delete this.data.sizes[id];
+          this.api(`/api/casa/entities/${encodeURIComponent(id)}/display`, { method: "POST", body: JSON.stringify({ size: w }) }).catch((err) => this.toast(`⚠ ${err.message}`));
+        }
+        break;
+      }
+      case "rename": this.renaming = { eid, name: this.st(eid)?.n || "" }; break;
+      case "rename-close": this.renaming = null; break;
+      case "rename-save": case "rename-reset": {
+        const name = act === "rename-reset" ? null : this.root.querySelector("#casa-rename").value.trim() || null;
+        const e = this.renaming.eid;
+        this.renaming = null;
+        await this.api(`/api/casa/entities/${encodeURIComponent(e)}/display`, { method: "POST", body: JSON.stringify({ name }) }).catch((err) => this.toast(`⚠ ${err.message}`));
+        await this.reload(true);
+        return;
+      }
+      case "order-reset": this.saveOrder([]); break;
+      case "card-new": this.cardEdit = { area: this.page, id: null, name: "", entities: [], size: "wide", q: "", cands: [] }; this.cardSearch(""); break;
+      case "card-edit": {
+        const card = this.area(this.page).cards.find((c) => c.id === el.dataset.id);
+        this.cardEdit = { area: this.page, id: card.id, name: card.name, entities: [...card.entities], size: card.size, q: "", cands: [] };
+        this.cardSearch("");
+        break;
+      }
+      case "card-del": {
+        const card = this.area(this.page).cards.find((c) => c.id === el.dataset.id);
+        if (!confirm(`Togliere la card "${card?.name}"? Le entità restano in Home Assistant.`)) return;
+        await this.api(`/api/casa/rooms/${encodeURIComponent(this.page)}/cards/${encodeURIComponent(el.dataset.id)}/remove`, { method: "POST" }).catch((err) => this.toast(`⚠ ${err.message}`));
+        await this.reload(true);
+        return;
+      }
+      case "card-close": this.cardEdit = null; break;
+      case "card-add": {
+        const cand = this.cardEdit.cands.find((x) => x.entity_id === eid);
+        if (cand?.state && !this.data.states[eid]) this.data.states[eid] = cand.state; // preview before saving
+        if (!this.cardEdit.entities.includes(eid)) this.cardEdit.entities.push(eid);
+        this.cardKeep();
+        break;
+      }
+      case "card-rm": this.cardEdit.entities = this.cardEdit.entities.filter((x) => x !== eid); this.cardKeep(); break;
+      case "card-up": case "card-down": {
+        const list = this.cardEdit.entities, i = list.indexOf(eid), j = i + (act === "card-up" ? -1 : 1);
+        if (j >= 0 && j < list.length) [list[i], list[j]] = [list[j], list[i]];
+        this.cardKeep();
+        break;
+      }
+      case "card-size": this.cardKeep(); this.cardEdit.size = el.dataset.w; break;
+      case "card-save": {
+        this.cardKeep();
+        const c = this.cardEdit;
+        if (!c.entities.length) { this.toast("Aggiungi almeno un'entità"); return; }
+        try {
+          await this.api(`/api/casa/rooms/${encodeURIComponent(c.area)}/cards`, { method: "POST", body: JSON.stringify({ id: c.id, name: c.name || "Card", entities: c.entities, size: c.size }) });
+          this.cardEdit = null;
+          this.toast("Card salvata");
+          await this.reload(true);
+        } catch (err) { this.toast(`⚠ ${err.message.replace(/^\{"detail":"|"\}$/g, "")}`); }
+        return;
+      }
       case "hide": await this.api(`/api/casa/rooms/${encodeURIComponent(area)}/entities/${encodeURIComponent(eid)}/remove`, { method: "POST" }).catch((err) => this.toast(`⚠ ${err.message}`)); return;
       case "add": {
         try {
@@ -580,6 +665,17 @@ export class CasaView {
     const el = e.target;
     if (el.dataset.act === "bright") {
       this.call("light", "turn_on", { entity_id: el.dataset.e, brightness_pct: Number(el.value) });
+    } else if (el.dataset.act === "dt") {
+      this.setDateTime(el.dataset.e, el.value);
+    } else if (el.dataset.act === "numval") {
+      this.setNumber(el.dataset.e, Number(el.value));
+    } else if (el.dataset.act === "selopt" && el.tagName === "SELECT") {
+      this.setOption(el.dataset.e, el.value);
+      el.blur();
+    } else if (el.dataset.act === "textval") {
+      const domain = el.dataset.e.split(".")[0];
+      this.call(domain, "set_value", { entity_id: el.dataset.e, value: el.value }, el.dataset.e);
+      el.blur();
     } else if (el.dataset.act === "volume") {
       this.call("media_player", "volume_set", { entity_id: el.dataset.e, volume_level: Number(el.value) / 100 });
     } else if (el.name === "casa-mode") {
@@ -604,6 +700,11 @@ export class CasaView {
   }
 
   _input(e) {
+    if (e.target.id === "card-find") {
+      clearTimeout(this._find);
+      this._find = setTimeout(() => this.cardSearch(e.target.value), 250);
+      return;
+    }
     if (e.target.id === "casa-find") {
       clearTimeout(this._find);
       this._find = setTimeout(() => this.search(e.target.value), 250);
@@ -646,7 +747,7 @@ export class CasaView {
   render(force = false) {
     if (!this.visible) return;
     const active = document.activeElement;
-    if (!force && active && this.root.contains(active) && (active.type === "range" || active.tagName === "TEXTAREA" || active.id === "casa-find")) {
+    if (!force && active && this.root.contains(active) && (active.type === "range" || active.tagName === "TEXTAREA" || active.tagName === "SELECT" || active.id === "casa-find" || active.closest(".casa-modal") || active.classList.contains("hc-input"))) {
       this.dirty = true; // don't yank the control from under the finger: redraw on blur
       return;
     }
@@ -664,6 +765,8 @@ export class CasaView {
         <div class="hc-grid">${this.data.alarms.filter((e) => this.st(e)).map((e) => this.cardHTML(e)).join("")}</div></section></div>`;
     }
     if (this.pad) html += this.padHTML();
+    if (this.cardEdit) html += this.cardEditHTML();
+    if (this.renaming) html += this.renameHTML();
     this.root.innerHTML = html;
     this.root.scrollTop = scroll;
     document.body.classList.toggle("casa-sheet", !!(this.data && !this.page && this.selected && this.area(this.selected)));
@@ -744,6 +847,41 @@ export class CasaView {
     return `<button class="casa-switch ${this.isOn(eid) ? "on" : ""}" data-act="toggle" data-e="${eid}" aria-pressed="${this.isOn(eid)}" aria-label="${esc(this.st(eid)?.n)}"></button>`;
   }
 
+  // What the room shows: the composed cards, then the entities not inside one of them; in the
+  // owner's order when there is one.
+  roomItems(a) {
+    const inCards = new Set((a.cards || []).flatMap((c) => c.entities));
+    const groups = {};
+    for (const e of a.entities) if (!inCards.has(e)) (groups[this.section(e)] ||= []).push(e);
+    const all = [...(a.cards || []).map((c) => `card:${c.id}`), ...SECTIONS.flatMap(([k]) => groups[k] || [])];
+    const rank = new Map((a.order || []).map((x, i) => [x, i]));
+    return all.map((x, i) => [x, rank.has(x) ? rank.get(x) : 1e6 + i]).sort((p, q) => p[1] - q[1]).map(([x]) => x);
+  }
+
+  itemHTML(id, a) {
+    let html;
+    if (id.startsWith("card:")) {
+      const card = (a.cards || []).find((c) => `card:${c.id}` === id);
+      if (!card) return "";
+      html = this.composedCard(card);
+    } else {
+      html = this.cardHTML(id);
+      if (!html) return "";
+      if (this.data.sizes?.[id] === "wide") html = html.replace('class="hc ', 'class="hc wide ');
+    }
+    if (!this.editing) return html;
+    const card = id.startsWith("card:");
+    const wide = card ? (a.cards.find((c) => `card:${c.id}` === id)?.size === "wide") : this.data.sizes?.[id] === "wide" || /class="hc wide/.test(html);
+    const bar = `<div class="hc-editbar">
+        <button class="hc-handle" data-drag="${esc(id)}" aria-label="Trascina per spostare">⋮⋮</button>
+        <button data-act="move" data-d="-1" data-id="${esc(id)}" aria-label="Sposta prima">‹</button><button data-act="move" data-d="1" data-id="${esc(id)}" aria-label="Sposta dopo">›</button>
+        ${card ? `<button data-act="card-edit" data-id="${esc(id.slice(5))}">Modifica</button>` : `<button data-act="rename" data-e="${esc(id)}">Rinomina</button>`}
+        <button data-act="size" data-id="${esc(id)}" data-w="${wide ? "small" : "wide"}">${wide ? "Piccola" : "Larga"}</button>
+        ${card ? `<button data-act="card-del" data-id="${esc(id.slice(5))}">Togli</button>` : `<button data-act="hide" data-area="${a.id}" data-e="${esc(id)}">Togli</button>`}
+      </div>`;
+    return html.replace(/<\/(article|div)>\s*$/, `${bar}</$1>`).replace(/^(\s*<(?:article|div) class="hc )/, `$1hc-edit `).replace(/^(\s*<(?:article|div) )/, `$1data-item="${esc(id)}" `);
+  }
+
   roomHTML(a) {
     const groups = {};
     for (const e of a.entities) (groups[this.section(e)] ||= []).push(e);
@@ -768,7 +906,14 @@ export class CasaView {
       `<div><b>${a.entities.length}</b><span>entità</span></div>`,
     ].join("");
     const pills = this.data.areas.map((x) => `<button class="casa-pill ${x.id === a.id ? "on" : ""}" data-act="open" data-area="${x.id}">${esc(x.name)}</button>`).join("");
-    const sections = SECTIONS.filter(([k]) => groups[k]?.length).map(([k, title]) => this.sectionHTML(k, title, groups[k], a)).join("");
+    const items = this.roomItems(a);
+    // Arranged by the owner: one grid in their order. Otherwise grouped by kind.
+    const sections = (a.order || []).length || this.editing
+      ? `<section class="hc-sec hc-free"><div class="hc-grid ${this.editing ? "editing" : ""}" data-area="${a.id}">${items.map((id) => this.itemHTML(id, a)).join("")}</div></section>`
+      : [
+          a.cards.length ? `<section class="hc-sec"><h3 class="hc-sectitle"><span>Le mie card</span></h3><div class="hc-grid">${a.cards.map((c) => this.itemHTML(`card:${c.id}`, a)).join("")}</div></section>` : "",
+          ...SECTIONS.map(([k, title]) => [k, title, (groups[k] || []).filter((e) => items.includes(e))]).filter(([, , eids]) => eids.length).map(([k, title, eids]) => this.sectionHTML(k, title, eids, a)),
+        ].join("");
     return `
       <div class="casa-room">
         <header class="casa-room-head">
@@ -810,6 +955,9 @@ export class CasaView {
     return `
       <section class="panel casa-panel casa-editor">
         <div class="casa-edit-col">
+          <div class="hc-edit-actions"><button class="hc-btn primary" data-act="card-new">+ Nuova card</button>
+            ${(a.order || []).length ? `<button class="hc-link" data-act="order-reset">Ordine automatico</button>` : ""}</div>
+          <p class="casa-muted">Sotto, ogni card ha i suoi comandi: trascinala (⋮⋮) o spostala con ‹ ›, rinominala, rendila larga o piccola. Una card nuova raccoglie più entità, ad esempio la stufa con i suoi orari.</p>
           <h3>Entità in ${esc(a.name)}</h3>
           ${a.entities.map((e) => {
             const s = this.st(e);
@@ -833,6 +981,142 @@ export class CasaView {
           </fieldset>
         </div>
       </section>`;
+  }
+
+  // ---------------------------------------------------------------- helpers: service calls
+  setDateTime(eid, value) {
+    const s = this.st(eid), domain = eid.split(".")[0];
+    if (!s || !value) return;
+    const { hasDate, hasTime } = this.dtParts(eid, s);
+    const time = (value.match(/\d{2}:\d{2}/) || [""])[0], date = (value.match(/\d{4}-\d{2}-\d{2}/) || [""])[0];
+    let service = "set_value", data = { entity_id: eid };
+    if (domain === "input_datetime") {
+      service = "set_datetime";
+      if (hasDate && hasTime) data.datetime = `${date} ${time}:00`;
+      else if (hasDate) data.date = date;
+      else data.time = `${time}:00`;
+    } else if (domain === "time") data.time = `${time}:00`;
+    else if (domain === "date") data.date = date;
+    else data.datetime = `${date} ${time}:00`;
+    s.s = hasDate && hasTime ? `${date} ${time}:00` : hasDate ? date : `${time}:00`; // shown at once
+    this.call(domain, service, data, eid);
+    this.render(true);
+  }
+
+  setNumber(eid, value) {
+    const s = this.st(eid);
+    if (!s || isNaN(value)) return;
+    s.s = String(value);
+    this.call(eid.split(".")[0], "set_value", { entity_id: eid, value }, eid);
+  }
+
+  setOption(eid, option) {
+    const s = this.st(eid);
+    if (!s || option == null) return;
+    s.s = option;
+    this.call(eid.split(".")[0], "select_option", { entity_id: eid, option }, eid);
+  }
+
+  // ---------------------------------------------------------------- the room's arrangement
+  saveOrder(items) {
+    const a = this.area(this.page);
+    if (!a) return;
+    a.order = items;
+    this.api(`/api/casa/rooms/${encodeURIComponent(a.id)}/order`, { method: "POST", body: JSON.stringify({ items }) }).catch((err) => this.toast(`⚠ ${err.message}`));
+  }
+
+  moveItem(id, delta) {
+    const a = this.area(this.page);
+    const items = this.roomItems(a), i = items.indexOf(id), j = i + delta;
+    if (i < 0 || j < 0 || j >= items.length) return;
+    [items[i], items[j]] = [items[j], items[i]];
+    this.saveOrder(items);
+    this.render(true);
+  }
+
+  // Drag a card by its handle (mouse or finger) and drop it on another one.
+  _dragStart(e) {
+    const handle = e.target.closest("[data-drag]");
+    if (!handle || !this.editing) return;
+    e.preventDefault();
+    const id = handle.dataset.drag;
+    const card = handle.closest("[data-item]");
+    card?.classList.add("dragging");
+    let over = null;
+    const move = (ev) => {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("[data-item]");
+      if (over && over !== el) over.classList.remove("drop");
+      over = el && el !== card ? el : null;
+      over?.classList.add("drop");
+    };
+    const up = () => {
+      removeEventListener("pointermove", move);
+      removeEventListener("pointerup", up);
+      card?.classList.remove("dragging");
+      if (!over) return;
+      const items = this.roomItems(this.area(this.page)).filter((x) => x !== id);
+      items.splice(items.indexOf(over.dataset.item), 0, id);
+      this.saveOrder(items);
+      this.render(true);
+    };
+    addEventListener("pointermove", move);
+    addEventListener("pointerup", up);
+  }
+
+  renameHTML() {
+    const r = this.renaming;
+    return `<div class="casa-modal" role="dialog" aria-label="Rinomina"><section class="panel casa-panel hc-dialog">
+      <h3>Rinomina <button class="casa-x" data-act="rename-close" aria-label="Chiudi">×</button></h3>
+      <p class="casa-muted">Il nome cambia solo in HubNEX; in Home Assistant resta com'è (<span class="mono">${esc(r.eid)}</span>).</p>
+      <input id="casa-rename" class="hc-input" value="${esc(r.name)}" maxlength="60" aria-label="Nuovo nome">
+      <div class="casa-actions"><button class="hc-btn primary" data-act="rename-save">Salva</button><button class="hc-link" data-act="rename-reset">Torna al nome di Home Assistant</button></div>
+    </section></div>`;
+  }
+
+  // ---------------------------------------------------------------- composing a card
+  cardKeep() { const n = this.root.querySelector("#card-name"); if (n && this.cardEdit) this.cardEdit.name = n.value; }
+
+  async cardSearch(q) {
+    if (!this.cardEdit) return;
+    this.cardEdit.q = q;
+    try {
+      this.cardEdit.cands = await (await this.api(`/api/casa/entities?all=1&q=${encodeURIComponent(q)}&area=${encodeURIComponent(this.cardEdit.area || "")}`)).json();
+    } catch { this.cardEdit.cands = []; }
+    const box = this.root.querySelector("#card-cands");
+    if (box) box.innerHTML = this.cardCandsHTML();
+    else this.render(true);
+  }
+
+  cardCandsHTML() {
+    const c = this.cardEdit;
+    return c.cands.filter((x) => !c.entities.includes(x.entity_id)).slice(0, 12).map((x) => `<button class="hc-cand" data-act="card-add" data-e="${esc(x.entity_id)}"><span>${esc(x.name)}</span><span class="mono">${esc(x.entity_id)}</span></button>`).join("") || `<p class="casa-muted">Nessuna entità trovata.</p>`;
+  }
+
+  cardEditHTML() {
+    const c = this.cardEdit;
+    const preview = this.composedCard({ id: "preview", name: c.name || "Card", entities: c.entities, size: c.size }).replace(/data-act="[^"]*"/g, "");
+    return `<div class="casa-modal" role="dialog" aria-label="Card"><section class="panel casa-panel hc-dialog hc-cardedit">
+      <h3>${c.id ? "Modifica card" : "Nuova card"} <button class="casa-x" data-act="card-close" aria-label="Chiudi">×</button></h3>
+      <div class="hc-cardedit-cols">
+        <div>
+          <label class="hc-kick" for="card-name">Nome</label>
+          <input id="card-name" class="hc-input" value="${esc(c.name)}" maxlength="60" placeholder="es. Stufa">
+          <span class="hc-kick" style="margin-top:12px">Entità nella card</span>
+          <div class="hc-chosen">${c.entities.map((e, i) => `<div class="hc-chosen-item"><span>${esc(this.st(e)?.n || e)}<small class="mono">${esc(e)}</small></span>
+            <span class="hc-chosen-ctl"><button data-act="card-up" data-e="${esc(e)}" aria-label="Su" ${i ? "" : "disabled"}>↑</button><button data-act="card-down" data-e="${esc(e)}" aria-label="Giù" ${i < c.entities.length - 1 ? "" : "disabled"}>↓</button><button data-act="card-rm" data-e="${esc(e)}" aria-label="Togli">×</button></span></div>`).join("") || `<p class="casa-muted">Ancora nessuna: cercale qui sotto.</p>`}</div>
+          <label class="hc-kick" for="card-find" style="margin-top:12px">Aggiungi entità</label>
+          <input id="card-find" class="hc-input" value="${esc(c.q)}" placeholder="cerca per nome o entity_id…" autocomplete="off">
+          <div id="card-cands" class="hc-cands">${this.cardCandsHTML()}</div>
+        </div>
+        <div>
+          <span class="hc-kick">Dimensione</span>
+          <div class="hc-tabs" style="margin:6px 0 16px"><button class="hc-tab ${c.size === "small" ? "sel" : ""}" data-act="card-size" data-w="small">Piccola</button><button class="hc-tab ${c.size === "wide" ? "sel" : ""}" data-act="card-size" data-w="wide">Larga</button></div>
+          <span class="hc-kick">Anteprima</span>
+          <div class="hc-preview">${c.entities.length ? preview : `<p class="casa-muted">La card compare qui mentre la componi.</p>`}</div>
+          <div class="casa-actions"><button class="hc-btn primary" data-act="card-save">Salva card</button><button class="hc-link" data-act="card-close">Annulla</button></div>
+        </div>
+      </div>
+    </section></div>`;
   }
 
   candsHTML() {

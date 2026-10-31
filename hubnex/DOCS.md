@@ -189,6 +189,16 @@ Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nel
 - **Persone**: le persone di Home Assistant (Impostazioni → Persone, con l'app sul telefono o un
   dispositivo di tracciamento) compaiono in alto nella Casa: *a casa*, *fuori* o il nome della
   zona in cui si trovano.
+- **Orari e impostazioni**: gli helper di Home Assistant si usano dalla Casa. Un orario
+  (`input_datetime`, `time`) si cambia toccando l'ora o con −15 / +15; i numeri con il cursore,
+  le liste scegliendo l'opzione, i testi scrivendo. Il valore lo salva Home Assistant e le
+  automazioni lo usano come prima.
+- **Card su misura**: in *Modifica stanza* → **+ Nuova card** dai un nome, aggiungi le entità
+  (anche di altre stanze), le metti in ordine e scegli piccola o larga. Esempio: una card
+  "Stufa" con l'ora di accensione e di spegnimento mostra anche la fascia sulla giornata e
+  "attiva fino alle 22:00". Sempre in modifica ogni card si sposta (trascinando ⋮⋮ o con ‹ ›),
+  si rinomina solo in HubNEX, diventa larga o piccola, si toglie; *Ordine automatico* torna ai
+  gruppi per tipo. Tutto resta in HubNEX: in Home Assistant non cambia nulla.
 - **Stanza**: toccala per la scheda rapida, **Apri stanza** per tutte le entità divise per
   tipo. Con più sensori di temperatura scegli quale usare ("temperatura da").
 - **Modifica stanza**: aggiungi **qualsiasi entità** di Home Assistant (anche quelle che Home

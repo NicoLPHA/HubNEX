@@ -24,6 +24,10 @@ KINDS = {
     "input_button": "button", "sensor": "sensor", "binary_sensor": "binary", "camera": "camera",
     "vacuum": "switch", "water_heater": "climate", "humidifier": "switch", "valve": "valve", "siren": "siren",
     "person": "person", "device_tracker": "person", "remote": "switch",
+    # helpers the owner sets from the dashboard (the stove's start time, a target, a mode…)
+    "input_datetime": "datetime", "time": "datetime", "date": "datetime", "datetime": "datetime",
+    "input_number": "number", "number": "number", "input_select": "select", "select": "select",
+    "input_text": "text", "text": "text",
 }
 ATTRS = (
     "friendly_name", "brightness", "rgb_color", "color_mode", "current_temperature", "temperature",
@@ -32,6 +36,7 @@ ATTRS = (
     "supported_features", "code_format", "code_arm_required", "media_artist", "volume_level",
     "entity_picture", "media_position", "media_duration", "media_position_updated_at", "color_temp_kelvin",
     "current_humidity", "battery_level", "hvac_action",
+    "has_date", "has_time", "min", "max", "step", "mode", "options",
 )
 # What the owner can say an entity really is, whatever its Home Assistant domain
 # (a relay "switch" that drives a light, a gate opened by an impulse…).
@@ -229,13 +234,15 @@ class Casa:
         self.layout = {"floors": [], "outside": [], "energy": {}}
         self.layout_error: str | None = None
         self._mtime: float | None = None
-        self.adjust: dict[str, dict[str, list[str]]] = {"extra": {}, "hidden": {}}
+        self.adjust: dict[str, dict] = {"extra": {}, "hidden": {}, "temp": {}, "kind": {}, "cards": {}, "order": {}, "names": {}, "size": {}}
         self.shown: set[str] = set()  # entities on screen: only their changes go to the dashboard
 
     async def load(self) -> None:
         self.adjust = await self.store.get("casa_adjust", {"extra": {}, "hidden": {}})
         self.adjust.setdefault("temp", {})
         self.adjust.setdefault("kind", {})
+        for key in ("cards", "order", "names", "size"):
+            self.adjust.setdefault(key, {})
         self.layout_text()  # parse the saved floor plan
 
     # ------------------------------------------------------------------ floor plan
@@ -345,6 +352,46 @@ class Casa:
             kinds.pop(entity_id, None)
         await self.store.put("casa_adjust", self.adjust)
 
+    # cards the owner composes in a room, their order, names and sizes (HubNEX only)
+    async def save_card(self, area_id: str, card_id: str | None, name: str, entities: list[str], size: str) -> str:
+        cards = self.adjust.setdefault("cards", {}).setdefault(area_id, [])
+        card_id = card_id or f"c{max([int(c['id'][1:]) for c in cards if c['id'][1:].isdigit()] or [0]) + 1}"
+        card = {"id": card_id, "name": name.strip()[:60] or "Card", "entities": list(dict.fromkeys(entities))[:12], "size": size}
+        for i, c in enumerate(cards):
+            if c["id"] == card_id:
+                cards[i] = card
+                break
+        else:
+            cards.append(card)
+            self.adjust.setdefault("order", {}).setdefault(area_id, []).insert(0, f"card:{card_id}")  # a new card goes first
+        await self.store.put("casa_adjust", self.adjust)
+        return card_id
+
+    async def delete_card(self, area_id: str, card_id: str) -> None:
+        self.adjust["cards"][area_id] = [c for c in self.adjust.setdefault("cards", {}).get(area_id, []) if c["id"] != card_id]
+        order = self.adjust.setdefault("order", {}).get(area_id, [])
+        if f"card:{card_id}" in order:
+            order.remove(f"card:{card_id}")
+        await self.store.put("casa_adjust", self.adjust)
+
+    async def set_order(self, area_id: str, items: list[str]) -> None:
+        self.adjust.setdefault("order", {})[area_id] = list(dict.fromkeys(items))[:300]
+        await self.store.put("casa_adjust", self.adjust)
+
+    async def set_display(self, entity_id: str, name: str | None = None, size: str | None = None, *, rename: bool = False, resize: bool = False) -> None:
+        """Name and size of an entity's card in HubNEX (None: back to Home Assistant's name / normal)."""
+        if rename:
+            if name and name.strip():
+                self.adjust["names"][entity_id] = name.strip()[:60]
+            else:
+                self.adjust.setdefault("names", {}).pop(entity_id, None)
+        if resize:
+            if size in ("wide",):
+                self.adjust["size"][entity_id] = size
+            else:
+                self.adjust.setdefault("size", {}).pop(entity_id, None)
+        await self.store.put("casa_adjust", self.adjust)
+
     def _unhide(self, area_id: str, entity_id: str) -> None:
         hidden = self.adjust["hidden"].get(area_id, [])
         if entity_id in hidden:
@@ -365,7 +412,10 @@ class Casa:
         attrs = s.get("attributes") or {}
         reg = self.ha.entities.get(entity_id) or {}
         # The first alias set in Home Assistant wins: it is the name the owner chose for the house.
-        name = (reg.get("aliases") or [None])[0] or reg.get("name") or attrs.get("friendly_name") or reg.get("original_name") or entity_id
+        name = (
+            self.adjust.get("names", {}).get(entity_id)  # renamed in HubNEX
+            or (reg.get("aliases") or [None])[0] or reg.get("name") or attrs.get("friendly_name") or reg.get("original_name") or entity_id
+        )
         native = KINDS.get(entity_id.split(".", 1)[0], "other")
         shown = self.adjust.get("kind", {}).get(entity_id)
         out = {
@@ -445,6 +495,8 @@ class Casa:
                 "entities": sorted(rooms.get(aid, []), key=lambda e: (e.split(".", 1)[0], e)),
                 "outside": aid in outside_ids,
                 "temp": self.adjust.get("temp", {}).get(aid),
+                "cards": self.adjust.get("cards", {}).get(aid, []),
+                "order": self.adjust.get("order", {}).get(aid, []),
                 "placed": aid in placed,
             }
             for aid, a in sorted(self.ha.areas.items(), key=lambda kv: (kv[1].get("name") or "").lower())
@@ -456,8 +508,9 @@ class Casa:
         # Who is at home: Home Assistant's people (home, away or the zone they are in).
         people = sorted(e for e in self.ha.states if e.startswith("person.") and not (self.ha.entities.get(e) or {}).get("disabled_by"))
         energy = {k: v for k, v in self.layout["energy"].items() if v in self.ha.states}
-        power = self.power_sensors({e for a in areas for e in a["entities"]})
-        shown = {e for a in areas for e in a["entities"]} | set(scenes) | set(alarms) | set(energy.values()) | set(people) | set(power.values())
+        in_cards = {e for cards in self.adjust.get("cards", {}).values() for c in cards for e in c["entities"] if e in self.ha.states}
+        power = self.power_sensors({e for a in areas for e in a["entities"]} | in_cards)
+        shown = {e for a in areas for e in a["entities"]} | in_cards | set(scenes) | set(alarms) | set(energy.values()) | set(people) | set(power.values())
         if weather:
             shown.add(weather)
         self.shown = shown
@@ -470,6 +523,7 @@ class Casa:
             "alarms": alarms,
             "people": people,
             "power": power,
+            "sizes": dict(self.adjust.get("size", {})),
             "weather": weather,
             "energy": energy,
             "states": {e: s for e, s in states.items() if s},
@@ -477,12 +531,12 @@ class Casa:
             "layout_file": self.host_path(),
         }
 
-    def candidates(self, query: str = "", area_id: str | None = None, limit: int = 60) -> list[dict[str, Any]]:
+    def candidates(self, query: str = "", area_id: str | None = None, limit: int = 60, include_here: bool = False) -> list[dict[str, Any]]:
         """Entities that could be added to a room, for the dashboard's search: everything Home
         Assistant has, also what it hides (e.g. players hidden by Music Assistant) or files as
         diagnostic; the usual devices first."""
         q = query.strip().lower()
-        here = set(self.area_entities().get(area_id or "", []))
+        here = set() if include_here else set(self.area_entities().get(area_id or "", []))
         out = []
         for eid in sorted(self.ha.states, key=lambda e: (not self.visible(e), e)):
             if eid in here or (self.ha.entities.get(eid) or {}).get("disabled_by"):
@@ -501,6 +555,7 @@ class Casa:
                 "area": (self.ha.areas.get(area) or {}).get("name") if area else None,
                 "registered": eid in self.ha.entities,
                 "hidden": not self.visible(eid),
+                "state": c,  # so a card being composed can show it at once
             })
             if len(out) >= limit:
                 break

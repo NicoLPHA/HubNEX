@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.0
+- Orari, numeri, liste e testi di Home Assistant (input_datetime, time, date, input_number,
+  number, input_select, select, input_text, text) si comandano dalla Casa: ora grande con
+  −15 / +15, cursore, scelta dell'opzione, campo di testo.
+- Card su misura: in "Modifica stanza" → "+ Nuova card" si compone una card con più entità
+  (es. la stufa con accensione e spegnimento, fascia della giornata e "attiva fino alle…").
+- Disposizione della stanza: card da spostare (trascinando o con ‹ ›), rinominare solo in
+  HubNEX, rendere larghe o piccole, togliere; "Ordine automatico" per tornare ai gruppi.
+
 ## 1.6.0
 - Vista Casa più sobria, in stile Jarvis: carattere Saira, numeri sottili, stati in minuscolo,
   card piatte e più piccole senza etichetta del tipo; una sottile linea ambra in alto quando

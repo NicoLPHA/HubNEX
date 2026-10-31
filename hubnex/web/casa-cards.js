@@ -143,6 +143,11 @@ export const Cards = {
       case "sensor": html = this.sensorCard(eid, s); break;
       case "person": html = this.personCard(eid, s); break;
       case "siren": html = this.sirenCard(eid, s); break;
+      case "datetime": html = this.datetimeCard(eid, s); break;
+      case "number": html = this.numberCard(eid, s); break;
+      case "select": html = this.selectCard(eid, s); break;
+      case "text": html = this.textCard(eid, s); break;
+      case "scene": case "script": case "button": html = this.actionCard(eid, s); break;
       case "camera": html = `<div class="hc hc-camcard">${this.camHTML(eid)}</div>`; break;
       default: html = this.plainCard(eid, s);
     }
@@ -332,6 +337,107 @@ export const Cards = {
 
   plainCard(eid, s) {
     return `<article class="hc hc-plain">${this.head(eid.split(".")[0].replace(/_/g, " "), s, `<span class="hc-state">${esc(String(this.value(eid)).toLowerCase())}</span>`)}</article>`;
+  },
+
+  // ---------------------------------------------------------------- helpers set from the dashboard
+  // (the stove's start time, a target number, a mode…): Home Assistant stores the value and the
+  // owner's automations use it as before.
+  dtParts(eid, s) {
+    const domain = eid.split(".")[0];
+    const hasDate = domain === "date" || domain === "datetime" || (domain === "input_datetime" && s.a.has_date);
+    const hasTime = domain === "time" || domain === "datetime" || (domain === "input_datetime" && s.a.has_time !== false);
+    const raw = String(s.s || "");
+    const date = (raw.match(/\d{4}-\d{2}-\d{2}/) || [""])[0];
+    const time = (raw.match(/\d{2}:\d{2}/) || [""])[0];
+    return { hasDate, hasTime, date, time };
+  },
+
+  dtValueHTML(eid, s, big = true) {
+    const { hasDate, hasTime, date, time } = this.dtParts(eid, s);
+    const unknown = !date && !time;
+    const type = hasDate && hasTime ? "datetime-local" : hasDate ? "date" : "time";
+    const value = type === "datetime-local" ? `${date}T${time}` : type === "date" ? date : time;
+    const shown = unknown ? "—" : [hasDate && date ? date.split("-").reverse().join("/") : "", hasTime ? time : ""].filter(Boolean).join(" ");
+    return `<span class="hc-dt"><button class="hc-timev ${big ? "" : "sm"}" data-act="pick" data-e="${eid}" aria-label="Cambia ${esc(s.n)}">${esc(shown)}</button>
+      <input type="${type}" value="${esc(value)}" data-act="dt" data-e="${eid}" tabindex="-1" aria-hidden="true">
+      ${hasTime && !hasDate ? `<span class="hc-nudge"><button data-act="nudge" data-d="-15" data-e="${eid}">−15</button><button data-act="nudge" data-d="15" data-e="${eid}">+15</button></span>` : ""}</span>`;
+  },
+
+  datetimeCard(eid, s) {
+    return `<article class="hc hc-datetime">${this.head("Orario", s)}${this.dtValueHTML(eid, s)}</article>`;
+  },
+
+  numberCard(eid, s) {
+    const v = parseFloat(s.s), min = Number(s.a.min ?? 0), max = Number(s.a.max ?? 100), step = Number(s.a.step ?? 1);
+    const unit = s.a.unit_of_measurement || "";
+    return `<article class="hc hc-number">
+      ${this.head("Numero", s, `<span class="hc-num">${isNaN(v) ? "—" : num(v, 2)}<small>${esc(unit)}</small></span>`)}
+      <div class="hc-line"><button class="hc-step" data-act="numstep" data-d="-1" data-e="${eid}" aria-label="Meno">−</button>
+        <input class="hc-range" type="range" min="${min}" max="${max}" step="${step}" value="${isNaN(v) ? min : v}" data-act="numval" data-e="${eid}" aria-label="${esc(s.n)}" style="flex:1">
+        <button class="hc-step" data-act="numstep" data-d="1" data-e="${eid}" aria-label="Più">+</button></div>
+    </article>`;
+  },
+
+  selectCard(eid, s) {
+    const opts = s.a.options || [];
+    const short = opts.length <= 4 && opts.every((o) => String(o).length <= 14);
+    const body = short
+      ? `<div class="hc-tabs">${opts.map((o) => `<button class="hc-tab ${o === s.s ? "sel" : ""}" data-act="selopt" data-v="${esc(o)}" data-e="${eid}">${esc(o)}</button>`).join("")}</div>`
+      : `<select class="hc-select" data-act="selopt" data-e="${eid}" aria-label="${esc(s.n)}">${opts.map((o) => `<option ${o === s.s ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+    return `<article class="hc hc-selectcard">${this.head("Scelta", s, short ? "" : `<span class="hc-state">${esc(s.s)}</span>`)}${body}</article>`;
+  },
+
+  textCard(eid, s) {
+    return `<article class="hc hc-text">${this.head("Testo", s)}
+      <input class="hc-input" type="text" value="${esc(s.s)}" maxlength="${Number(s.a.max) || 255}" data-act="textval" data-e="${eid}" aria-label="${esc(s.n)}"></article>`;
+  },
+
+  actionCard(eid, s) {
+    return `<article class="hc hc-action">${this.head("Azione", s, `<button class="hc-link" data-act="scene" data-e="${eid}">Avvia</button>`)}</article>`;
+  },
+
+  // ---------------------------------------------------------------- a card composed in HubNEX
+  composedCard(card) {
+    const eids = card.entities.filter((e) => this.st(e));
+    const label = (e) => {
+      const n = this.st(e).n, pre = card.name.toLowerCase();
+      return n.toLowerCase().startsWith(pre) && n.length > pre.length + 1 ? n.slice(pre.length).trim() : n;
+    };
+    // Two times of day (start / stop): the day's band and whether we are inside it.
+    const times = eids.filter((e) => this.st(e).k === "datetime" && this.dtParts(e, this.st(e)).hasTime && !this.dtParts(e, this.st(e)).hasDate);
+    let status = "", band = "";
+    const power = eids.find((e) => ["switch", "light", "climate"].includes(this.st(e).k));
+    if (times.length >= 2) {
+      const [a, b] = times.map((e) => this.dtParts(e, this.st(e)).time);
+      if (a && b) {
+        const m = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+        const on = m(a), off = m(b), d = new Date(), now = d.getHours() * 60 + d.getMinutes();
+        const inside = on <= off ? now >= on && now < off : now >= on || now < off;
+        status = inside ? `attiva fino alle ${b}` : `si attiva alle ${a}`;
+        const width = ((off - on + 1440) % 1440) / 14.4;
+        band = `<div class="hc-band" aria-hidden="true"><i style="left:${on / 14.4}%;width:${width}%"></i>${on + width * 14.4 > 1440 ? `<i style="left:0;width:${(on + width * 14.4 - 1440) / 14.4}%"></i>` : ""}<b style="left:${now / 14.4}%"></b>
+          <span><em>0</em><em>6</em><em>12</em><em>18</em><em>24</em></span></div>`;
+      }
+    }
+    const lit = power ? this.isOn(power) : status.startsWith("attiva");
+    if (power) status = `${this.isOn(power) ? "accesa" : "spenta"}${status ? ` · ${status}` : ""}`;
+    const slot = (e) => {
+      const s = this.st(e);
+      let body;
+      if (s.k === "datetime") body = this.dtValueHTML(e, s, eids.length <= 3);
+      else if (["switch", "light", "media", "siren"].includes(s.k)) body = this.switchHTML(e);
+      else if (s.k === "number") body = `<span class="hc-line"><button class="hc-step" data-act="numstep" data-d="-1" data-e="${e}" aria-label="Meno">−</button><span class="hc-num">${esc(s.s)}<small>${esc(s.a.unit_of_measurement || "")}</small></span><button class="hc-step" data-act="numstep" data-d="1" data-e="${e}" aria-label="Più">+</button></span>`;
+      else if (s.k === "select") body = `<select class="hc-select" data-act="selopt" data-e="${e}" aria-label="${esc(s.n)}">${(s.a.options || []).map((o) => `<option ${o === s.s ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+      else if (s.k === "climate") body = `<span class="hc-num">${s.a.current_temperature != null ? num(s.a.current_temperature) : "—"}<small>°</small></span>`;
+      else if (s.k === "sensor") body = `<span class="hc-num">${esc(this.value(e))}</span>`;
+      else body = `<span class="hc-state">${esc(String(this.value(e)).toLowerCase())}</span>`;
+      return `<div class="hc-slot"><span class="hc-state">${esc(label(e))}</span>${body}</div>`;
+    };
+    return `<article class="hc hc-composed ${card.size === "wide" ? "wide" : ""} ${lit ? "on" : ""}" data-card="${card.id}">
+      <header class="hc-head"><b class="hc-name">${esc(card.name)}</b>${status ? `<span class="hc-state">${esc(status)}</span>` : ""}</header>
+      <div class="hc-slots">${eids.map(slot).join("") || `<span class="hc-state">entità non disponibili</span>`}</div>
+      ${band}
+    </article>`;
   },
 
   // ---------------------------------------------------------------- quick card of a room

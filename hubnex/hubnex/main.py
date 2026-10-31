@@ -88,6 +88,22 @@ class KindIn(BaseModel):
     kind: Literal["light", "switch", "gate", "siren", "sensor"] | None = None  # None: as in Home Assistant
 
 
+class CardIn(BaseModel):
+    id: str | None = Field(default=None, pattern=r"^c[0-9]{1,4}$")
+    name: str = Field(max_length=60)
+    entities: list[str] = Field(min_length=1, max_length=12)
+    size: Literal["small", "wide"] = "wide"
+
+
+class OrderIn(BaseModel):
+    items: list[str] = Field(max_length=300)
+
+
+class DisplayIn(BaseModel):
+    name: str | None = Field(default=None, max_length=60)
+    size: Literal["small", "wide"] | None = None
+
+
 class LayoutIn(BaseModel):
     text: str = Field(max_length=200_000)
 
@@ -124,6 +140,7 @@ HOUSE_DOMAINS = {
     "light", "switch", "fan", "cover", "climate", "lock", "alarm_control_panel", "media_player",
     "scene", "script", "button", "input_button", "input_boolean", "input_select", "input_number",
     "select", "number", "vacuum", "valve", "siren", "humidifier", "water_heater", "lawn_mower",
+    "input_datetime", "time", "date", "datetime", "input_text", "text",
 }
 HOUSE_EVENTS = {"ha", "casa_changed"}
 
@@ -407,9 +424,9 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         return {eid: downsample(points) for eid, points in raw.items()}
 
     @app.get("/api/casa/entities", dependencies=[Depends(full)])
-    async def casa_entities(q: str = "", area: str | None = None, hq: HQ = Depends(get_hq)):
+    async def casa_entities(q: str = "", area: str | None = None, all: bool = False, hq: HQ = Depends(get_hq)):
         need_ha(hq)
-        return hq.casa.candidates(q, area)
+        return hq.casa.candidates(q, area, include_here=all)
 
     @app.post("/api/casa/rooms/{area_id}/entities", dependencies=[Depends(full)])
     async def casa_add(area_id: str, body: RoomEntityIn, hq: HQ = Depends(get_hq)):
@@ -435,6 +452,46 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         if entity_id not in hq.watcher.states:
             raise HTTPException(404, "entità sconosciuta")
         await hq.casa.set_kind(entity_id, body.kind)
+        hq.emit({"type": "casa_changed"})
+        return {"ok": True}
+
+    @app.post("/api/casa/rooms/{area_id}/cards", dependencies=[Depends(full)])
+    async def casa_card(area_id: str, body: CardIn, hq: HQ = Depends(get_hq)):
+        """A card composed in "Modifica stanza" (e.g. the stove: switch, start and stop time)."""
+        need_ha(hq)
+        if area_id not in hq.watcher.areas:
+            raise HTTPException(404, "area sconosciuta")
+        unknown = [e for e in body.entities if e not in hq.watcher.states]
+        if unknown:
+            raise HTTPException(422, f"entità sconosciute: {', '.join(unknown)}")
+        card_id = await hq.casa.save_card(area_id, body.id, body.name, body.entities, body.size)
+        hq.emit({"type": "casa_changed"})
+        return {"ok": True, "id": card_id}
+
+    @app.post("/api/casa/rooms/{area_id}/cards/{card_id}/remove", dependencies=[Depends(full)])
+    async def casa_card_delete(area_id: str, card_id: str, hq: HQ = Depends(get_hq)):
+        need_ha(hq)
+        await hq.casa.delete_card(area_id, card_id)
+        hq.emit({"type": "casa_changed"})
+        return {"ok": True}
+
+    @app.post("/api/casa/rooms/{area_id}/order", dependencies=[Depends(full)])
+    async def casa_order(area_id: str, body: OrderIn, hq: HQ = Depends(get_hq)):
+        need_ha(hq)
+        if area_id not in hq.watcher.areas:
+            raise HTTPException(404, "area sconosciuta")
+        await hq.casa.set_order(area_id, body.items)
+        hq.emit({"type": "casa_changed"})
+        return {"ok": True}
+
+    @app.post("/api/casa/entities/{entity_id}/display", dependencies=[Depends(full)])
+    async def casa_display(entity_id: str, body: DisplayIn, hq: HQ = Depends(get_hq)):
+        """Rename or resize an entity's card in HubNEX only."""
+        need_ha(hq)
+        if entity_id not in hq.watcher.states:
+            raise HTTPException(404, "entità sconosciuta")
+        sent = body.model_fields_set
+        await hq.casa.set_display(entity_id, body.name, body.size, rename="name" in sent, resize="size" in sent)
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
 
