@@ -421,6 +421,12 @@ export const Cards = {
           <span><em>0</em><em>6</em><em>12</em><em>18</em><em>24</em></span></div>`;
       }
     }
+    // The switch that turns the times on ("automatica"): off, the times don't apply.
+    const gate = this.cardEnable(card, eids);
+    if (gate && band && !this.isOn(gate)) {
+      status = `${label(gate).toLowerCase()} spenta · orari non attivi`;
+      band = band.replace('class="hc-band"', 'class="hc-band off"');
+    }
     const lit = power ? this.isOn(power) : status.startsWith("attiva");
     if (power) status = `${this.isOn(power) ? "accesa" : "spenta"}${status ? ` · ${status}` : ""}`;
     const slot = (e) => {
@@ -446,6 +452,13 @@ export const Cards = {
       <div class="hc-slots">${eids.filter((e) => !isToggle(e)).map(slot).join("")}${toggleCol}${eids.length ? "" : `<span class="hc-state">entità non disponibili</span>`}</div>
       ${band}
     </article>`;
+  },
+
+  // Which switch of a composed card turns its times on: the one the owner chose, else one
+  // whose name says so (automatica, programma, timer…). "" = none.
+  cardEnable(card, eids = card.entities) {
+    if (card.enable !== undefined && card.enable !== null) return card.enable && this.st(card.enable) ? card.enable : null;
+    return eids.find((e) => ["input_boolean", "switch"].includes(e.split(".")[0]) && /automatic|programm|timer|\bauto\b|schedul/i.test(`${e} ${this.st(e)?.n || ""}`)) || null;
   },
 
   // ---------------------------------------------------------------- quick card of a room

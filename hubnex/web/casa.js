@@ -600,10 +600,10 @@ export class CasaView {
         return;
       }
       case "order-reset": this.saveOrder([]); break;
-      case "card-new": this.cardEdit = { area: this.page, id: null, name: "", entities: [], size: "wide", group: "", q: "", cands: [] }; this.cardSearch(""); break;
+      case "card-new": this.cardEdit = { area: this.page, id: null, name: "", entities: [], size: "wide", group: "", enable: null, q: "", cands: [] }; this.cardSearch(""); break;
       case "card-edit": {
         const card = this.area(this.page).cards.find((c) => c.id === el.dataset.id);
-        this.cardEdit = { area: this.page, id: card.id, name: card.name, entities: [...card.entities], size: card.size, group: card.group || "", q: "", cands: [] };
+        this.cardEdit = { area: this.page, id: card.id, name: card.name, entities: [...card.entities], size: card.size, group: card.group || "", enable: card.enable ?? null, q: "", cands: [] };
         this.cardSearch("");
         break;
       }
@@ -635,7 +635,7 @@ export class CasaView {
         const c = this.cardEdit;
         if (!c.entities.length) { this.toast("Aggiungi almeno un'entità"); return; }
         try {
-          await this.api(`/api/casa/rooms/${encodeURIComponent(c.area)}/cards`, { method: "POST", body: JSON.stringify({ id: c.id, name: c.name || "Card", entities: c.entities, size: c.size, group: c.group || null }) });
+          await this.api(`/api/casa/rooms/${encodeURIComponent(c.area)}/cards`, { method: "POST", body: JSON.stringify({ id: c.id, name: c.name || "Card", entities: c.entities, size: c.size, group: c.group || null, enable: c.enable && !c.entities.includes(c.enable) ? null : c.enable }) });
           this.cardEdit = null;
           this.toast("Card salvata");
           await this.reload(true);
@@ -665,6 +665,9 @@ export class CasaView {
     const el = e.target;
     if (el.dataset.act === "bright") {
       this.call("light", "turn_on", { entity_id: el.dataset.e, brightness_pct: Number(el.value) });
+    } else if (el.id === "card-enable" || el.id === "card-group") {
+      this.cardKeep();
+      this.render(true);
     } else if (el.dataset.act === "dt") {
       this.setDateTime(el.dataset.e, el.value);
     } else if (el.dataset.act === "numval") {
@@ -1086,9 +1089,10 @@ export class CasaView {
 
   // ---------------------------------------------------------------- composing a card
   cardKeep() {
-    const n = this.root.querySelector("#card-name"), g = this.root.querySelector("#card-group");
+    const n = this.root.querySelector("#card-name"), g = this.root.querySelector("#card-group"), en = this.root.querySelector("#card-enable");
     if (n && this.cardEdit) this.cardEdit.name = n.value;
     if (g && this.cardEdit) this.cardEdit.group = g.value;
+    if (en && this.cardEdit) this.cardEdit.enable = en.value === "auto" ? null : en.value;
   }
 
   async cardSearch(q) {
@@ -1109,7 +1113,10 @@ export class CasaView {
 
   cardEditHTML() {
     const c = this.cardEdit;
-    const preview = this.composedCard({ id: "preview", name: c.name || "Card", entities: c.entities, size: c.size }).replace(/data-act="[^"]*"/g, "");
+    const preview = this.composedCard({ id: "preview", name: c.name || "Card", entities: c.entities, size: c.size, enable: c.enable }).replace(/data-act="[^"]*"/g, "");
+    const toggles = c.entities.filter((e) => ["input_boolean", "switch"].includes(e.split(".")[0]));
+    const hasTimes = c.entities.filter((e) => this.st(e)?.k === "datetime").length >= 2;
+    const guessed = this.cardEnable({ entities: c.entities });
     return `<div class="casa-modal" role="dialog" aria-label="Card"><section class="panel casa-panel hc-dialog hc-cardedit">
       <h3>${c.id ? "Modifica card" : "Nuova card"} <button class="casa-x" data-act="card-close" aria-label="Chiudi">×</button></h3>
       <div class="hc-cardedit-cols">
@@ -1129,6 +1136,12 @@ export class CasaView {
             <option value="">Automatico${c.entities.length ? ` (${esc((SECTIONS.find(([k]) => k === this.cardGroup({ entities: c.entities })) || ["", "Altro"])[1])})` : ""}</option>
             ${SECTIONS.map(([k, title]) => `<option value="${k}" ${c.group === k ? "selected" : ""}>${title}</option>`).join("")}
           </select>
+          ${hasTimes && toggles.length ? `<label class="hc-kick" for="card-enable">Gli orari valgono quando è acceso</label>
+          <select id="card-enable" class="hc-select" style="margin-bottom:14px">
+            <option value="auto" ${c.enable == null ? "selected" : ""}>Automatico${guessed ? ` (${esc(this.st(guessed)?.n || guessed)})` : " (nessuno)"}</option>
+            ${toggles.map((e) => `<option value="${esc(e)}" ${c.enable === e ? "selected" : ""}>${esc(this.st(e)?.n || e)}</option>`).join("")}
+            <option value="" ${c.enable === "" ? "selected" : ""}>Nessuno: gli orari valgono sempre</option>
+          </select>` : ""}
           <span class="hc-kick">Dimensione</span>
           <div class="hc-tabs" style="margin:6px 0 16px"><button class="hc-tab ${c.size === "small" ? "sel" : ""}" data-act="card-size" data-w="small">Piccola</button><button class="hc-tab ${c.size === "wide" ? "sel" : ""}" data-act="card-size" data-w="wide">Larga</button></div>
           <span class="hc-kick">Anteprima</span>

@@ -802,3 +802,4 @@ button.hud-item:hover { background: rgba(79, 209, 255, 0.04); }
 .casa-sections { align-items: stretch !important; }
 .hc-sec { display: flex; flex-direction: column; }
 .hc-sec > .hc-grid { flex: 1; align-content: stretch; }
+.hc-band.off i { background: rgba(255, 255, 255, 0.22); box-shadow: none; }

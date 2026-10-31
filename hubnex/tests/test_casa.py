@@ -535,6 +535,8 @@ def test_cards_composed_in_a_room_and_helpers_set_from_the_dashboard(settings, m
         r = client.post("/api/casa/rooms/soggiorno/cards", json={"name": "Stufa", "entities": ["input_datetime.stufa_accensione", "input_datetime.stufa_spegnimento"], "size": "wide", "group": "climate"})
         assert r.json() == {"ok": True, "id": "c1"}
         assert client.post("/api/casa/rooms/soggiorno/cards", json={"name": "X", "entities": ["light.inesistente"]}).status_code == 422
+        bad = {"name": "Stufa", "entities": ["input_datetime.stufa_accensione"], "enable": "light.lampada"}
+        assert client.post("/api/casa/rooms/soggiorno/cards", json=bad).status_code == 422  # its switch must be in the card
         view = client.get("/api/casa").json()
         sogg = next(a for a in view["areas"] if a["id"] == "soggiorno")
         assert sogg["cards"][0]["name"] == "Stufa" and sogg["cards"][0]["group"] == "climate" and sogg["order"] == []

@@ -94,6 +94,7 @@ class CardIn(BaseModel):
     entities: list[str] = Field(min_length=1, max_length=12)
     size: Literal["small", "wide"] = "wide"
     group: str | None = Field(default=None, pattern=r"^[a-z]{1,20}$")  # the room's group it sits in (None: of its first entity)
+    enable: str | None = Field(default=None, max_length=255)  # the switch that turns the card's times on ("automatica"); "" = none
 
 
 class OrderIn(BaseModel):
@@ -465,7 +466,9 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         unknown = [e for e in body.entities if e not in hq.watcher.states]
         if unknown:
             raise HTTPException(422, f"entità sconosciute: {', '.join(unknown)}")
-        card_id = await hq.casa.save_card(area_id, body.id, body.name, body.entities, body.size, body.group)
+        if body.enable and body.enable not in body.entities:
+            raise HTTPException(422, "l'interruttore degli orari deve essere nella card")
+        card_id = await hq.casa.save_card(area_id, body.id, body.name, body.entities, body.size, body.group, body.enable)
         hq.emit({"type": "casa_changed"})
         return {"ok": True, "id": card_id}
 

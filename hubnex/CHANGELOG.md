@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.3
+- Card con orari: l'interruttore che li attiva (es. "automatica") conta. Acceso: "attiva fino
+  alle…" / "si attiva alle…"; spento: "automatica spenta · orari non attivi" e fascia grigia.
+- Nell'editor della card: "Gli orari valgono quando è acceso" (automatico dal nome, un
+  interruttore a scelta, o nessuno).
+
 ## 1.7.2
 - Card su misura: gli interruttori stanno in una colonna, uno sotto l'altro con il loro nome,
   invece di finire in fondo alle altre entità.
