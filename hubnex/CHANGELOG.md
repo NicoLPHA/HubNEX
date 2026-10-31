@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.1
+- Energia è una pagina come quelle delle stanze (← Casa per tornare), non più un popup: lo
+  scorrimento non torna in alto con gli aggiornamenti dal vivo. Anche gli editor mantengono
+  la posizione.
+- "Fuori casa" e le altre aree non toccano più la piantina.
+- Temperature delle stanze allineate qualunque sia il numero di decimali.
+
 ## 1.8.0
 - Pannello Energia (tocca "Energia" nel cruscotto della Casa) con tre viste a scelta:
   - il reattore: il periodo diviso per fascia F1/F2/F3 attorno alla potenza adesso;

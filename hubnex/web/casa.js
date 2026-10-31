@@ -520,7 +520,7 @@ export class CasaView {
         // On a phone the card sits under the plan: bring it up after drawing it.
         if (this.selected && innerWidth < 1100) setTimeout(() => this.root.querySelector(".casa-quick")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
         break;
-      case "open": this.page = area; this.selected = area; this.editing = false; this.root.scrollTop = 0; break;
+      case "open": this.page = area; this.selected = area; this.editing = false; this.energyOpen = false; this.root.scrollTop = 0; break;
       case "home": this.page = null; this.editing = false; break;
       case "unselect": this.selected = null; break;
       case "floor": this.floor = Number(el.dataset.i); break;
@@ -777,10 +777,12 @@ export class CasaView {
     }
     this.dirty = false;
     const scroll = this.root.scrollTop;
+    const panelScroll = this.root.querySelector(".casa-modal .panel")?.scrollTop || 0; // a dialog keeps its place too
     let html;
     if (this.error) html = `<div class="casa-empty panel">⚠ ${esc(this.error)}</div>`;
     else if (!this.data) html = `<div class="casa-empty panel">Collegamento a Home Assistant…</div>`;
     else if (!this.data.ready) html = `<div class="casa-empty panel">Home Assistant non è ancora collegato: riprovo…</div>`;
+    else if (this.energyOpen) html = this.energyHTML();
     else html = this.page && this.area(this.page) ? this.roomHTML(this.area(this.page)) : this.homeHTML();
     if (this.layout) html += this.layoutHTML();
     if (this.alarmOpen && this.data?.alarms?.length) {
@@ -791,11 +793,12 @@ export class CasaView {
     if (this.pad) html += this.padHTML();
     if (this.cardEdit) html += this.cardEditHTML();
     if (this.renaming) html += this.renameHTML();
-    if (this.energyOpen) html += this.energyHTML();
     this.root.innerHTML = html;
     this.root.scrollTop = scroll;
+    const panel = this.root.querySelector(".casa-modal .panel");
+    if (panel) panel.scrollTop = panelScroll;
     document.body.classList.toggle("casa-sheet", !!(this.data && !this.page && this.selected && this.area(this.selected)));
-    document.body.classList.toggle("casa-modal-open", !!(this.energyOpen || this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen));
+    document.body.classList.toggle("casa-modal-open", !!(this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen));
     if (this.editing && this.cands) {
       const box = this.root.querySelector("#casa-cands");
       if (box) box.innerHTML = this.candsHTML();

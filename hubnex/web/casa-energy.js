@@ -96,10 +96,15 @@ export const Energy = {
     const body = this.energyEdit ? this.energyCfgHTML()
       : views.length ? views.map((v) => ({ reactor: () => this.reactorHTML(d), day: () => this.dayHTML(d), bill: () => this.billHTML(d) })[v]?.() || "").join("")
       : `<p class="casa-muted">${configured ? "Nessuna vista scelta." : "Il pannello non è ancora configurato: scegli i sensori di consumo, fasce e potenza."} <button class="hc-link" data-act="energy-cfg">Configura</button></p>`;
-    return `<div class="casa-modal" role="dialog" aria-label="Energia"><section class="panel casa-panel hc-dialog hc-energy">
-      <h3>${this.energyEdit ? "Configura il pannello Energia" : "Energia"}<span class="hc-energy-actions">${this.energyEdit ? "" : `<button class="hc-link" data-act="energy-cfg">Configura</button>`}<button class="casa-x" data-act="energy-close" aria-label="Chiudi">×</button></span></h3>
-      ${body}
-    </section></div>`;
+    // A page like a room's (not a popup): it scrolls with the view and keeps its place on live updates.
+    return `<div class="casa-room hc-energy">
+      <header class="casa-room-head">
+        <button class="casa-back" data-act="energy-close">← Casa</button>
+        <div><span class="casa-lbl">Casa</span><h1>${this.energyEdit ? "Configura Energia" : "Energia"}</h1></div>
+        ${this.energyEdit ? "" : `<button class="casa-edit" data-act="energy-cfg">Configura</button>`}
+      </header>
+      <section class="hc hc-energy-body">${body}</section>
+    </div>`;
   },
 
   trendHTML(t) {
@@ -290,7 +295,8 @@ export const Energy = {
     const c = this.energyEdit;
     switch (act) {
       case "energy":
-        this.energyOpen = true; this.energyEdit = null;
+        this.energyOpen = true; this.energyEdit = null; this.page = null;
+        this.root.scrollTop = 0;
         this.loadEnergy();
         clearInterval(this._energyTimer);
         this._energyTimer = setInterval(() => (this.energyOpen && this.visible ? this.loadEnergy() : clearInterval(this._energyTimer)), 60000);

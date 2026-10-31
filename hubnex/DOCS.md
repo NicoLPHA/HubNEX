@@ -186,7 +186,7 @@ Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nel
 - **Nomi**: se a un'entità hai dato degli **alias** in Home Assistant (impostazioni
   dell'entità → Alias), HubNEX mostra il primo; altrimenti il nome di Home Assistant. Nella
   ricerca per aggiungere entità valgono tutti i nomi.
-- **Energia**: tocca "Energia" nel cruscotto. Tre viste a scelta, anche insieme: **il reattore**
+- **Energia**: tocca "Energia" nel cruscotto: si apre la sua pagina. Tre viste a scelta, anche insieme: **il reattore**
   (il periodo diviso per fascia attorno alla potenza adesso, in % del contatore), **la
   giornata** (la potenza di oggi sulle fasce, con i kWh per fascia) e **la bolletta** (spesa,
   stima a fine periodo al ritmo attuale, fasce a confronto col periodo precedente e un

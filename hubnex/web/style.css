@@ -905,3 +905,13 @@ body.casa-modal-open #chat, body.casa-modal-open #orb { display: none !important
 /* dialogs start under the top bar */
 .casa-modal { top: 64px; }
 @media (max-width: 1100px) { .casa-modal { top: 104px; align-items: start; } .casa-modal .panel { max-height: calc(100vh - 124px); } }
+/* energy page */
+.hc-energy-body { padding: 18px 20px; }
+.hc-energy-body .e-view:first-child { border-top: 0; padding-top: 0; }
+/* the temperatures line up whatever their decimals */
+.hc-temprow { grid-template-columns: minmax(0, 1fr) 60px 52px !important; }
+.hc-temprow > span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+/* "Fuori casa" and the other areas keep clear of the tilted plan */
+.plan-wrap { margin-bottom: -20px; }
+.casa-group { margin-top: 14px; }
+@media (max-width: 1100px) { .plan-wrap { margin-bottom: 4px; } .casa-group { margin-top: 10px; } }
