@@ -532,12 +532,12 @@ def test_cards_composed_in_a_room_and_helpers_set_from_the_dashboard(settings, m
         w.states["input_datetime.stufa_accensione"] = st("input_datetime.stufa_accensione", "06:30:00", has_date=False, has_time=True, friendly_name="Stufa accensione")
         w.states["input_datetime.stufa_spegnimento"] = st("input_datetime.stufa_spegnimento", "22:00:00", has_date=False, has_time=True)
 
-        r = client.post("/api/casa/rooms/soggiorno/cards", json={"name": "Stufa", "entities": ["input_datetime.stufa_accensione", "input_datetime.stufa_spegnimento"], "size": "wide"})
+        r = client.post("/api/casa/rooms/soggiorno/cards", json={"name": "Stufa", "entities": ["input_datetime.stufa_accensione", "input_datetime.stufa_spegnimento"], "size": "wide", "group": "climate"})
         assert r.json() == {"ok": True, "id": "c1"}
         assert client.post("/api/casa/rooms/soggiorno/cards", json={"name": "X", "entities": ["light.inesistente"]}).status_code == 422
         view = client.get("/api/casa").json()
         sogg = next(a for a in view["areas"] if a["id"] == "soggiorno")
-        assert sogg["cards"][0]["name"] == "Stufa" and sogg["order"] == ["card:c1"]
+        assert sogg["cards"][0]["name"] == "Stufa" and sogg["cards"][0]["group"] == "climate" and sogg["order"] == []
         assert view["states"]["input_datetime.stufa_accensione"]["k"] == "datetime"  # sent although in no area
         assert view["states"]["input_datetime.stufa_accensione"]["a"]["has_time"] is True
 

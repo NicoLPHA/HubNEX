@@ -93,6 +93,7 @@ class CardIn(BaseModel):
     name: str = Field(max_length=60)
     entities: list[str] = Field(min_length=1, max_length=12)
     size: Literal["small", "wide"] = "wide"
+    group: str | None = Field(default=None, pattern=r"^[a-z]{1,20}$")  # the room's group it sits in (None: of its first entity)
 
 
 class OrderIn(BaseModel):
@@ -464,7 +465,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         unknown = [e for e in body.entities if e not in hq.watcher.states]
         if unknown:
             raise HTTPException(422, f"entità sconosciute: {', '.join(unknown)}")
-        card_id = await hq.casa.save_card(area_id, body.id, body.name, body.entities, body.size)
+        card_id = await hq.casa.save_card(area_id, body.id, body.name, body.entities, body.size, body.group)
         hq.emit({"type": "casa_changed"})
         return {"ok": True, "id": card_id}
 

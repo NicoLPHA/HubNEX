@@ -353,17 +353,18 @@ class Casa:
         await self.store.put("casa_adjust", self.adjust)
 
     # cards the owner composes in a room, their order, names and sizes (HubNEX only)
-    async def save_card(self, area_id: str, card_id: str | None, name: str, entities: list[str], size: str) -> str:
+    async def save_card(self, area_id: str, card_id: str | None, name: str, entities: list[str], size: str, group: str | None = None) -> str:
         cards = self.adjust.setdefault("cards", {}).setdefault(area_id, [])
         card_id = card_id or f"c{max([int(c['id'][1:]) for c in cards if c['id'][1:].isdigit()] or [0]) + 1}"
         card = {"id": card_id, "name": name.strip()[:60] or "Card", "entities": list(dict.fromkeys(entities))[:12], "size": size}
+        if group:
+            card["group"] = group
         for i, c in enumerate(cards):
             if c["id"] == card_id:
                 cards[i] = card
                 break
         else:
-            cards.append(card)
-            self.adjust.setdefault("order", {}).setdefault(area_id, []).insert(0, f"card:{card_id}")  # a new card goes first
+            cards.append(card)  # placed at the end of its group, until the owner moves it
         await self.store.put("casa_adjust", self.adjust)
         return card_id
 

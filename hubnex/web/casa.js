@@ -600,10 +600,10 @@ export class CasaView {
         return;
       }
       case "order-reset": this.saveOrder([]); break;
-      case "card-new": this.cardEdit = { area: this.page, id: null, name: "", entities: [], size: "wide", q: "", cands: [] }; this.cardSearch(""); break;
+      case "card-new": this.cardEdit = { area: this.page, id: null, name: "", entities: [], size: "wide", group: "", q: "", cands: [] }; this.cardSearch(""); break;
       case "card-edit": {
         const card = this.area(this.page).cards.find((c) => c.id === el.dataset.id);
-        this.cardEdit = { area: this.page, id: card.id, name: card.name, entities: [...card.entities], size: card.size, q: "", cands: [] };
+        this.cardEdit = { area: this.page, id: card.id, name: card.name, entities: [...card.entities], size: card.size, group: card.group || "", q: "", cands: [] };
         this.cardSearch("");
         break;
       }
@@ -635,7 +635,7 @@ export class CasaView {
         const c = this.cardEdit;
         if (!c.entities.length) { this.toast("Aggiungi almeno un'entità"); return; }
         try {
-          await this.api(`/api/casa/rooms/${encodeURIComponent(c.area)}/cards`, { method: "POST", body: JSON.stringify({ id: c.id, name: c.name || "Card", entities: c.entities, size: c.size }) });
+          await this.api(`/api/casa/rooms/${encodeURIComponent(c.area)}/cards`, { method: "POST", body: JSON.stringify({ id: c.id, name: c.name || "Card", entities: c.entities, size: c.size, group: c.group || null }) });
           this.cardEdit = null;
           this.toast("Card salvata");
           await this.reload(true);
@@ -849,13 +849,24 @@ export class CasaView {
 
   // What the room shows: the composed cards, then the entities not inside one of them; in the
   // owner's order when there is one.
-  roomItems(a) {
+  // The room's groups (Luci, Clima…), each with its cards in the owner's order. A composed card
+  // sits in the group chosen for it, or in the group of its first entity.
+  roomGroups(a) {
     const inCards = new Set((a.cards || []).flatMap((c) => c.entities));
     const groups = {};
+    for (const c of a.cards || []) (groups[this.cardGroup(c)] ||= []).push(`card:${c.id}`);
     for (const e of a.entities) if (!inCards.has(e)) (groups[this.section(e)] ||= []).push(e);
-    const all = [...(a.cards || []).map((c) => `card:${c.id}`), ...SECTIONS.flatMap(([k]) => groups[k] || [])];
     const rank = new Map((a.order || []).map((x, i) => [x, i]));
-    return all.map((x, i) => [x, rank.has(x) ? rank.get(x) : 1e6 + i]).sort((p, q) => p[1] - q[1]).map(([x]) => x);
+    const sort = (list) => list.map((x, i) => [x, rank.has(x) ? rank.get(x) : 1e6 + i]).sort((p, q) => p[1] - q[1]).map(([x]) => x);
+    return SECTIONS.map(([k, title]) => [k, title, sort(groups[k] || [])]).filter(([, , ids]) => ids.length);
+  }
+
+  roomItems(a) { return this.roomGroups(a).flatMap(([, , ids]) => ids); }
+
+  cardGroup(card) {
+    if (card.group && SECTIONS.some(([k]) => k === card.group)) return card.group;
+    const first = card.entities.find((e) => this.st(e));
+    return first ? this.section(first) : "other";
   }
 
   itemHTML(id, a) {
@@ -906,14 +917,7 @@ export class CasaView {
       `<div><b>${a.entities.length}</b><span>entità</span></div>`,
     ].join("");
     const pills = this.data.areas.map((x) => `<button class="casa-pill ${x.id === a.id ? "on" : ""}" data-act="open" data-area="${x.id}">${esc(x.name)}</button>`).join("");
-    const items = this.roomItems(a);
-    // Arranged by the owner: one grid in their order. Otherwise grouped by kind.
-    const sections = (a.order || []).length || this.editing
-      ? `<section class="hc-sec hc-free"><div class="hc-grid ${this.editing ? "editing" : ""}" data-area="${a.id}">${items.map((id) => this.itemHTML(id, a)).join("")}</div></section>`
-      : [
-          a.cards.length ? `<section class="hc-sec"><h3 class="hc-sectitle"><span>Le mie card</span></h3><div class="hc-grid">${a.cards.map((c) => this.itemHTML(`card:${c.id}`, a)).join("")}</div></section>` : "",
-          ...SECTIONS.map(([k, title]) => [k, title, (groups[k] || []).filter((e) => items.includes(e))]).filter(([, , eids]) => eids.length).map(([k, title, eids]) => this.sectionHTML(k, title, eids, a)),
-        ].join("");
+    const sections = this.roomGroups(a).map(([k, title, ids]) => this.sectionHTML(k, title, ids, a)).join("");
     return `
       <div class="casa-room">
         <header class="casa-room-head">
@@ -928,11 +932,11 @@ export class CasaView {
       </div>`;
   }
 
-  sectionHTML(kind, title, eids, a) {
-    const extra = kind === "light" && eids.some((e) => this.isOn(e)) ? `<button class="hc-link" data-act="all-off" data-area="${a.id}">Spegni tutte</button>` : "";
-    const body = kind === "action"
-      ? `<div class="hc-scenes">${eids.map((e) => `<button class="hc-scene" data-act="scene" data-e="${e}">${esc(this.st(e).n)}</button>`).join("")}</div>`
-      : `<div class="hc-grid">${eids.map((e) => this.cardHTML(e)).join("")}</div>`;
+  sectionHTML(kind, title, ids, a) {
+    const extra = kind === "light" && ids.some((e) => !e.startsWith("card:") && this.isOn(e)) ? `<button class="hc-link" data-act="all-off" data-area="${a.id}">Spegni tutte</button>` : "";
+    const body = kind === "action" && !this.editing && ids.every((e) => !e.startsWith("card:"))
+      ? `<div class="hc-scenes">${ids.map((e) => `<button class="hc-scene" data-act="scene" data-e="${e}">${esc(this.st(e)?.n || e)}</button>`).join("")}</div>`
+      : `<div class="hc-grid ${this.editing ? "editing" : ""}" data-group="${kind}">${ids.map((id) => this.itemHTML(id, a)).join("")}</div>`;
     return `<section class="hc-sec hc-sec-${kind}"><h3 class="hc-sectitle"><span>${title}</span>${extra}</h3>${body}</section>`;
   }
 
@@ -957,7 +961,7 @@ export class CasaView {
         <div class="casa-edit-col">
           <div class="hc-edit-actions"><button class="hc-btn primary" data-act="card-new">+ Nuova card</button>
             ${(a.order || []).length ? `<button class="hc-link" data-act="order-reset">Ordine automatico</button>` : ""}</div>
-          <p class="casa-muted">Sotto, ogni card ha i suoi comandi: trascinala (⋮⋮) o spostala con ‹ ›, rinominala, rendila larga o piccola. Una card nuova raccoglie più entità, ad esempio la stufa con i suoi orari.</p>
+          <p class="casa-muted">Sotto, ogni card ha i suoi comandi: trascinala (⋮⋮) o spostala con ‹ › dentro il suo gruppo, rinominala, rendila larga o piccola. Una card nuova raccoglie più entità, ad esempio la stufa con i suoi orari, e va nel gruppo che scegli.</p>
           <h3>Entità in ${esc(a.name)}</h3>
           ${a.entities.map((e) => {
             const s = this.st(e);
@@ -1025,12 +1029,15 @@ export class CasaView {
     this.api(`/api/casa/rooms/${encodeURIComponent(a.id)}/order`, { method: "POST", body: JSON.stringify({ items }) }).catch((err) => this.toast(`⚠ ${err.message}`));
   }
 
+  // Moving stays inside the card's group; the saved order is the whole room, group by group.
   moveItem(id, delta) {
     const a = this.area(this.page);
-    const items = this.roomItems(a), i = items.indexOf(id), j = i + delta;
-    if (i < 0 || j < 0 || j >= items.length) return;
-    [items[i], items[j]] = [items[j], items[i]];
-    this.saveOrder(items);
+    const groups = this.roomGroups(a).map(([, , ids]) => ids);
+    const list = groups.find((ids) => ids.includes(id));
+    const i = list?.indexOf(id), j = i + delta;
+    if (!list || j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    this.saveOrder(groups.flat());
     this.render(true);
   }
 
@@ -1043,8 +1050,10 @@ export class CasaView {
     const card = handle.closest("[data-item]");
     card?.classList.add("dragging");
     let over = null;
+    const group = card?.closest("[data-group]");
     const move = (ev) => {
-      const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("[data-item]");
+      let el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("[data-item]");
+      if (el && el.closest("[data-group]") !== group) el = null; // only inside its own group
       if (over && over !== el) over.classList.remove("drop");
       over = el && el !== card ? el : null;
       over?.classList.add("drop");
@@ -1054,9 +1063,11 @@ export class CasaView {
       removeEventListener("pointerup", up);
       card?.classList.remove("dragging");
       if (!over) return;
-      const items = this.roomItems(this.area(this.page)).filter((x) => x !== id);
-      items.splice(items.indexOf(over.dataset.item), 0, id);
-      this.saveOrder(items);
+      const groups = this.roomGroups(this.area(this.page)).map(([, , ids]) => ids);
+      const list = groups.find((ids) => ids.includes(id));
+      list.splice(list.indexOf(id), 1);
+      list.splice(list.indexOf(over.dataset.item), 0, id);
+      this.saveOrder(groups.flat());
       this.render(true);
     };
     addEventListener("pointermove", move);
@@ -1074,7 +1085,11 @@ export class CasaView {
   }
 
   // ---------------------------------------------------------------- composing a card
-  cardKeep() { const n = this.root.querySelector("#card-name"); if (n && this.cardEdit) this.cardEdit.name = n.value; }
+  cardKeep() {
+    const n = this.root.querySelector("#card-name"), g = this.root.querySelector("#card-group");
+    if (n && this.cardEdit) this.cardEdit.name = n.value;
+    if (g && this.cardEdit) this.cardEdit.group = g.value;
+  }
 
   async cardSearch(q) {
     if (!this.cardEdit) return;
@@ -1109,6 +1124,11 @@ export class CasaView {
           <div id="card-cands" class="hc-cands">${this.cardCandsHTML()}</div>
         </div>
         <div>
+          <label class="hc-kick" for="card-group">Gruppo</label>
+          <select id="card-group" class="hc-select" style="margin-bottom:14px">
+            <option value="">Automatico${c.entities.length ? ` (${esc((SECTIONS.find(([k]) => k === this.cardGroup({ entities: c.entities })) || ["", "Altro"])[1])})` : ""}</option>
+            ${SECTIONS.map(([k, title]) => `<option value="${k}" ${c.group === k ? "selected" : ""}>${title}</option>`).join("")}
+          </select>
           <span class="hc-kick">Dimensione</span>
           <div class="hc-tabs" style="margin:6px 0 16px"><button class="hc-tab ${c.size === "small" ? "sel" : ""}" data-act="card-size" data-w="small">Piccola</button><button class="hc-tab ${c.size === "wide" ? "sel" : ""}" data-act="card-size" data-w="wide">Larga</button></div>
           <span class="hc-kick">Anteprima</span>

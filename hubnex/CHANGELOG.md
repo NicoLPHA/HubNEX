@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.1
+- I gruppi della stanza (Luci, Clima, Prese…) restano sempre, anche dopo aver creato una card o
+  cambiato l'ordine; non c'è più "Le mie card".
+- Ogni card su misura va in un gruppo: si sceglie nell'editor ("Gruppo"), di base quello della
+  prima entità.
+- Spostare una card (trascinando o con ‹ ›) la muove dentro il suo gruppo.
+
 ## 1.7.0
 - Orari, numeri, liste e testi di Home Assistant (input_datetime, time, date, input_number,
   number, input_select, select, input_text, text) si comandano dalla Casa: ora grande con
