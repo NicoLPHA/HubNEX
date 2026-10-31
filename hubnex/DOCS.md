@@ -198,7 +198,9 @@ Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nel
   quello della prima entità) e piccola o larga. Esempio: una card
   "Stufa" con l'ora di accensione e di spegnimento mostra anche la fascia sulla giornata e
   "attiva fino alle 22:00"; se nella card c'è l'interruttore che attiva gli orari (es.
-  "automatica", si sceglie nell'editor), da spento la card dice "orari non attivi". Sempre in modifica ogni card si sposta dentro il suo gruppo
+  "automatica", si sceglie nell'editor), da spento la card dice "orari non attivi". I sensori numerici mostrano il grafico delle
+  ultime 24 ore: nell'editor lo spegni con l'interruttore "grafico", sulle card singole con
+  "Togli grafico" in modifica. Sempre in modifica ogni card si sposta dentro il suo gruppo
   (trascinando ⋮⋮ o con ‹ ›), si rinomina solo in HubNEX, diventa larga o piccola, si toglie;
   *Ordine automatico* rimette l'ordine di partenza. Tutto resta in HubNEX: in Home Assistant non cambia nulla.
 - **Stanza**: toccala per la scheda rapida, **Apri stanza** per tutte le entità divise per
