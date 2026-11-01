@@ -287,3 +287,31 @@ def test_automation_events_can_only_report(settings, make_hq):
     with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
         r = client.post("/api/ha/event", json={"message": "porta aperta", "notify": False})
     assert r.json()["reply"] == "Porta aperta da 10 minuti." and calls == []
+
+
+async def test_spoken_summary_only_when_asked(make_hq, settings):
+    long = "Le verifiche sono:\n- isolamento: annuale\n- differenziali: annuale"
+    hq = make_hq(
+        [
+            response([text_block(long + "\n[VOCE] Signore, sono quasi tutte annuali: il dettaglio è qui sotto.")], "end_turn"),
+            response([text_block(long + "\n[VOCE]: Il dettaglio è qui sotto.")], "end_turn"),
+            response([text_block("Fatto, Signore.")], "end_turn"),
+        ]
+    )
+    # "completa" (default): no request for a summary, a stray [VOCE] line is still removed
+    assert await hq.converse("t", "verifiche?", spoken=True) == (long, None)
+    assert "[VOCE]" not in hq.client.requests[-1]["messages"][-1]["content"]
+
+    settings.voice_answers = "riassunto"
+    written, said = await hq.converse("t", "verifiche?", spoken=True)
+    assert written == long and said == "Il dettaglio è qui sotto."
+    assert "[VOCE]" in hq.client.requests[-1]["messages"][-1]["content"]
+    # a short answer has nothing to summarise: the voice reads it whole
+    assert await hq.converse("t", "spegni", spoken=True) == ("Fatto, Signore.", None)
+
+
+def test_split_voice():
+    from hubnex.speech import split_voice
+
+    assert split_voice("Testo.\n\n[VOCE] Breve.") == ("Testo.", "Breve.")
+    assert split_voice("Solo testo.") == ("Solo testo.", None)

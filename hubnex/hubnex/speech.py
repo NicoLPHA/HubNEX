@@ -54,6 +54,25 @@ _EMOJI = re.compile(
 )
 
 
+VOICE_TAG = "[VOCE]"
+VOICE_HINT = (
+    "\n[Questa risposta verrà anche letta ad alta voce. Se è lunga (più di tre frasi, oppure con "
+    f"elenchi o tabelle), scrivila completa come sempre e aggiungi in fondo una riga a parte che "
+    f"inizia con {VOICE_TAG}: il riassunto da dire a voce, una o due frasi parlate, senza elenchi "
+    "né simboli, che danno il succo e se serve rimandano al testo scritto. Se è breve non "
+    "aggiungere nulla.]"
+)
+_TAG_RE = re.compile(r"\s*\[VOCE\]\s*:?\s*(.*)$", re.S)
+
+
+def split_voice(reply: str) -> tuple[str, str | None]:
+    """The written answer and, if Jarvis added one, the summary for the voice (VOICE_TAG)."""
+    m = _TAG_RE.search(reply or "")
+    if not m:
+        return reply, None
+    return reply[: m.start()].rstrip(), (m.group(1).strip() or None)
+
+
 def for_voice(text: str, limit: int = 2500) -> str:
     """The written answer as the voice should read it: no markdown, emoji, links or symbols,
     units and abbreviations as words, list items as sentences (a pause instead of a dash)."""

@@ -44,6 +44,7 @@ class ChatIn(BaseModel):
     text: str = Field(min_length=1, max_length=8000)
     channel: str = "dashboard"
     voice: bool = False  # the answer will be spoken (Assist): keep it short
+    speak: bool = False  # the dashboard will read the answer aloud too
 
 
 class TaskIn(BaseModel):
@@ -280,10 +281,13 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
 
     @app.post("/api/chat", dependencies=[Depends(full)])
     async def chat(body: ChatIn, hq: HQ = Depends(get_hq)):
-        reply = await hq.chat(body.channel, body.text, voice=body.voice)
+        reply, spoken = await hq.converse(body.channel, body.text, voice=body.voice, spoken=body.speak)
         if body.voice and reply:
             reply = for_voice(reply)  # Assist reads it aloud: units and symbols as words
-        return {"reply": reply or "L'agente ha risposto direttamente nel gruppo Telegram."}
+        out = {"reply": reply or "L'agente ha risposto direttamente nel gruppo Telegram."}
+        if spoken:
+            out["spoken"] = spoken  # what the voice says of a long answer ("riassunto")
+        return out
 
     @app.get("/api/agents/{agent_id}", dependencies=[Depends(full)])
     async def agent_detail(agent_id: str, hq: HQ = Depends(get_hq)):

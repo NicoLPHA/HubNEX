@@ -933,7 +933,7 @@ async function reveal(el, text) {
 
 // Spoken answer: real loudness from the audio drives the orb, the text follows the voice.
 // Returns true when spoken, else { error, replay? } to show under the written answer.
-async function speak(text, el) {
+async function speak(text, el, written = text) {
   orb.caption("Preparo la voce…");
   let src;
   try {
@@ -958,7 +958,7 @@ async function speak(text, el) {
     }
     orb.show("speaking", "");
     const start = performance.now();
-    await typewrite(el, text, () => {
+    await typewrite(el, written, () => {
       if (audio.ended) return 1;
       if (Number.isFinite(audio.duration) && audio.duration > 0) return (audio.currentTime / audio.duration) * 1.08;
       return (performance.now() - start) / (text.length * 60);
@@ -983,13 +983,14 @@ async function sendChat(text) {
   try {
     // In a room of the house view Jarvis knows where you are ("spegni qui").
     const context = S.view === "casa" ? casa.context() : "";
-    const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ text: context + text }) });
-    const { reply } = await res.json();
+    const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ text: context + text, speak: !!voice }) });
+    const { reply, spoken: said } = await res.json();
     wait.classList.remove("pending");
     if (!talk.on) { wait.textContent = reply; return; } // conversation closed meanwhile
     wait.textContent = "";
     orbThought.textContent = "";
-    const spoken = voice ? await speak(reply, wait) : null;
+    // "Risposte a voce: riassunto": the voice says the gist, the text is the whole answer
+    const spoken = voice ? await speak(said || reply, wait, reply) : null;
     if (spoken === true) return;
     await reveal(wait, reply);
     if (spoken?.error) voiceNote(wait, spoken);

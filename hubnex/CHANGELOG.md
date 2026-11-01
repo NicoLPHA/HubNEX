@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.3
+- Nuova opzione "Risposte a voce": completa (come prima) o riassunto. Con riassunto, quando la
+  risposta è lunga Jarvis aggiunge una o due frasi da dire a voce e la voce legge solo quelle;
+  il testo scritto resta completo. Dashboard (altoparlante acceso) e vocali di Telegram.
+
 ## 1.8.2
 - La voce legge un testo preparato per l'ascolto: niente simboli, emoji e link; unità e sigle
   in parole (Ω, kW, kWh, °, MT/BT…), date per esteso, pause al posto dei trattini degli

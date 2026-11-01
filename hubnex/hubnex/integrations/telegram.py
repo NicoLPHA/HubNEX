@@ -207,17 +207,18 @@ class TelegramTeam:
         CURRENT_CHAT.set(chat_id)
         await ctx.bot.send_chat_action(chat_id, ChatAction.TYPING)
         try:
-            answer = await self.hq.chat(f"telegram:{chat_id}", text)
+            speak = voice and self.settings.telegram_voice_replies and self.hq.tts_enabled
+            answer, said = await self.hq.converse(f"telegram:{chat_id}", text, spoken=speak)
         except Exception as exc:
             log.exception("Errore Jarvis")
-            answer = f"Mi scusi, qualcosa è andato storto: {exc}"
+            answer, said = f"Mi scusi, qualcosa è andato storto: {exc}", None
         if not answer:
             return  # the delegated agent already answered in the group
         await self.post(JARVIS, answer, chat_id)
         if voice and self.settings.telegram_voice_replies and self.hq.tts_enabled:
             await ctx.bot.send_chat_action(chat_id, ChatAction.RECORD_VOICE)
             try:
-                audio, ctype = await self.hq.speak_audio(speakable(answer))
+                audio, ctype = await self.hq.speak_audio(speakable(said or answer))
             except Exception as exc:
                 await self.post(JARVIS, f"🔇 Risposta solo scritta: {exc}", chat_id)
                 return

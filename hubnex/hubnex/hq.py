@@ -16,7 +16,7 @@ import anthropic
 from hubnex import __version__
 from hubnex.config import AgentSpec, OrgChart, Settings
 from hubnex.integrations.elevenlabs import ElevenLabs
-from hubnex.speech import for_voice
+from hubnex.speech import VOICE_HINT, for_voice, split_voice
 from hubnex.actions import ActionDesk
 from hubnex.connectors import Connectors
 from hubnex.casa import Casa
@@ -468,11 +468,24 @@ class HQ:
         """A conversation turn with Jarvis. Returns "" when a delegated agent already answered.
 
         `voice`: the answer is spoken by Assist, so it must be short and quick."""
+        return (await self.converse(channel, text, voice=voice))[0]
+
+    async def converse(
+        self, channel: str, text: str, voice: bool = False, spoken: bool = False
+    ) -> tuple[str, str | None]:
+        """A conversation turn: the written answer and what the voice should say of it.
+
+        `spoken`: the answer will also be read aloud (dashboard speaker, Telegram voice note).
+        With "Risposte a voce: riassunto" a long answer comes with a short summary for the
+        voice; otherwise (or for a short answer) the voice reads the written answer."""
+        summary = spoken and not voice and self.settings.voice_answers == "riassunto"
         lock = self._chat_locks.setdefault(channel, asyncio.Lock())
         async with lock:
             prompt = f"{self._stamp()}\n{text}"
             if voice:
                 prompt += "\n[Risposta letta ad alta voce: al massimo due frasi, niente elenchi né simboli.]"
+            elif summary:
+                prompt += VOICE_HINT
             messages = await self._history_messages(channel, prompt)
             await self.store.chat_add(channel, "user", text)
             await self.log("chat", f"Tu ({channel}): {text}", BOSS_ID)
@@ -501,13 +514,14 @@ class HQ:
                 await self.set_status(BOSS_ID, "error", str(exc)[:200], task=None)
                 raise
             reply = "" if result.text.strip() == SILENCE else result.text.replace(SILENCE, "").strip() or "Fatto."
+            reply, said = split_voice(reply)  # the [VOCE] line is for the voice only
             await self.store.chat_add(channel, "assistant", reply or SILENCE)
             st = self.agents[BOSS_ID]
             await self.set_status(BOSS_ID, "sleeping", None, task=None, last_result=reply[:4000], done=st.done + 1)
             if reply:
                 await self.log("chat", f"{self.org.boss_name}: {reply}", BOSS_ID)
             await self.emit_stats()
-            return reply
+            return reply, (said if summary else None)
 
     # ------------------------------------------------------------------ snapshot for the dashboard
     async def snapshot(self) -> dict:

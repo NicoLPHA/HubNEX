@@ -66,6 +66,9 @@ configuration:
   voice_tts_voice:
     name: Voce del motore di Home Assistant
     description: Il nome della voce da usare con il motore qui sopra, per esempio Rinaldo o Diego per Home Assistant Cloud. Vuoto = la voce predefinita. La lingua è quella di Home Assistant.
+  voice_answers:
+    name: Risposte a voce
+    description: completa = la voce legge tutta la risposta; riassunto = per le risposte lunghe la voce dice solo il succo in una o due frasi, il testo scritto resta completo (dashboard e vocali Telegram).
   ha_blocked_services:
     name: Servizi HA bloccati
     description: Servizi che Jarvis non può mai chiamare da solo, separati da virgola.

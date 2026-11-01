@@ -111,6 +111,10 @@ dell'add-on>:8765`, l'hostname è nella pagina dell'add-on) e il **Token HQ**.
 - Prima di leggere, il testo viene preparato per l'ascolto: niente simboli, emoji o link,
   unità e sigle in parole (Ω → "ohm", kW → "chilowatt", MT/BT → "media e bassa tensione"),
   date per esteso, una pausa per ogni punto di un elenco. Lo scritto resta com'è.
+- **Risposte a voce**: `completa` (la voce legge tutta la risposta) oppure `riassunto`: per le
+  risposte lunghe la voce dice solo il succo in una o due frasi e il testo scritto resta
+  completo. Le risposte brevi vengono lette per intero. Vale per la dashboard con
+  l'altoparlante acceso e per i vocali di Telegram; Assist risponde già in due frasi.
 
 **3. Telegram**: mandi un vocale, viene trascritto con ElevenLabs e l'assistente risponde anche
 a voce (`telegram_voice_replies`). La trascrizione dei vocali richiede ElevenLabs.
