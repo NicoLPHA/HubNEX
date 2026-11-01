@@ -2,6 +2,10 @@
 
 **Il quartier generale AI per casa e lavoro**, come add-on per Home Assistant.
 
+**[Guarda la presentazione →](https://p1pp89.github.io/HubNEX/)**
+
+![La vista Casa di HubNEX](docs/img/casa.jpg)
+
 Un assistente (di serie si chiama Jarvis) coordina un team di agenti AI (Claude), ognuno con il
 suo ruolo: posta, amministrazione, ricerche tecniche, casa, sicurezza… Gli parli dalla dashboard
 3D nella barra laterale di Home Assistant, da un gruppo Telegram o a voce con Assist.
