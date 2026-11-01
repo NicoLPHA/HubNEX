@@ -51,6 +51,7 @@ ADDON_OPTIONS = {
     "elevenlabs_voice_id": "ELEVENLABS_VOICE_ID",
     "elevenlabs_model": "ELEVENLABS_MODEL",
     "voice_tts_entity": "VOICE_TTS_ENTITY",
+    "voice_tts_voice": "VOICE_TTS_VOICE",
     "ha_blocked_services": "HA_BLOCKED_SERVICES",
     "install_assist_integration": "HUBNEX_INSTALL_ASSIST",
     "non_admin_access": "HUBNEX_NON_ADMIN_ACCESS",
@@ -146,6 +147,7 @@ class Settings:
     mail: MailSettings = field(default_factory=MailSettings)
     # Voice from Home Assistant's own text-to-speech (Piper, HA Cloud, Google…) instead of ElevenLabs
     voice_tts_entity: str = ""  # e.g. tts.piper
+    voice_tts_voice: str = ""  # that engine's voice by name, e.g. Rinaldo (empty: its default)
     elevenlabs_key: str = ""
     elevenlabs_voice: str = ""
     elevenlabs_model: str = "eleven_flash_v2_5"
@@ -201,6 +203,7 @@ class Settings:
             elevenlabs_voice=e("ELEVENLABS_VOICE_ID", ""),
             elevenlabs_model=e("ELEVENLABS_MODEL") or "eleven_flash_v2_5",
             voice_tts_entity=(e("VOICE_TTS_ENTITY") or "").strip(),
+            voice_tts_voice=(e("VOICE_TTS_VOICE") or "").strip(),
             timezone=e("TZ") or "Europe/Rome",
             db_path=e("HUBNEX_DB") or "data/hubnex.db",
             agents_file=e("HUBNEX_AGENTS_FILE") or "config/agents.yaml",

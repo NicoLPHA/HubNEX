@@ -11,7 +11,6 @@ Only the configured group and user are obeyed.
 from __future__ import annotations
 
 import logging
-import re
 from typing import TYPE_CHECKING
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -20,6 +19,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 
 from hubnex.context import CURRENT_CHAT
 from hubnex.maildesk import MAIL_AGENT_ID, Buttons
+from hubnex.speech import for_voice
 
 if TYPE_CHECKING:
     from hubnex.config import Settings
@@ -37,10 +37,8 @@ def _markup(buttons: Buttons | None) -> InlineKeyboardMarkup | None:
 
 
 def speakable(text: str) -> str:
-    """Strip markdown so the voice doesn't read symbols out loud; keep it short."""
-    text = re.sub(r"[*_`#>•]", "", text)
-    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
-    return text[:1500]
+    """The answer as the voice should read it, kept short for a voice note."""
+    return for_voice(text, limit=1500)
 
 
 class TelegramTeam:

@@ -156,7 +156,7 @@ def test_voice_failures_are_explained(settings, make_hq):
     with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
         r = client.post("/api/tts", json={"text": "Buonasera"})
         assert r.status_code == 502
-        assert "chiave API non valida" in r.json()["detail"] and "Free Tier usage disabled" in r.json()["detail"]
+        assert "piano gratuito bloccato" in r.json()["detail"] and "Free Tier usage disabled" in r.json()["detail"]
         feed = client.get("/api/logs").json()
         assert any("Voce non disponibile" in e["text"] for e in (feed if isinstance(feed, list) else feed.get("logs", [])))
 
@@ -169,7 +169,7 @@ def test_voice_from_home_assistant_tts(settings, make_hq):
     class FakeHA:
         enabled = True
 
-        async def tts(self, engine, text, language=None):
+        async def tts(self, engine, text, language=None, options=None):
             asked.append((engine, text))
             return b"RIFFwav", "audio/wav"
 
@@ -180,7 +180,7 @@ def test_voice_from_home_assistant_tts(settings, make_hq):
     assert hq.tts_enabled  # no ElevenLabs needed
     with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
         r = client.post("/api/tts", json={"text": "Buonasera"})
-    assert r.content == b"RIFFwav" and r.headers["content-type"] == "audio/wav" and asked == [("tts.piper", "Buonasera")]
+    assert r.content == b"RIFFwav" and r.headers["content-type"] == "audio/wav" and asked == [("tts.piper", "Buonasera.")]
 
 
 async def test_home_assistant_tts_client():
@@ -199,3 +199,72 @@ async def test_home_assistant_tts_client():
     ha._client = httpx.AsyncClient(base_url="http://ha/api", transport=httpx.MockTransport(handler))
     assert await ha.tts("tts.piper", "ciao") == (b"mp3", "audio/mpeg")
     await ha.close()
+
+
+def test_elevenlabs_reasons():
+    import httpx
+
+    from hubnex.integrations.elevenlabs import _reason
+
+    def r(code, detail):
+        return httpx.Response(code, json={"detail": detail})
+
+    quota = {"status": "quota_exceeded", "message": "This request exceeds your quota of 10000. You have 523 credits remaining"}
+    assert "crediti ElevenLabs esauriti" in _reason(r(401, quota))
+    assert "chiave API non valida" in _reason(r(401, {"status": "invalid_api_key", "message": "Invalid API key"}))
+    assert "voce non trovata" in _reason(r(404, {"status": "voice_not_found", "message": "x"}))
+
+
+def test_voice_text_is_made_for_the_ear():
+    from hubnex.speech import for_voice
+
+    said = for_voice(
+        "Signore, ecco (CEI 64-8):\n\n• **Isolamento IT-M**: annuale\n- Nodo-PE: non oltre 0,2 Ω\n"
+        "- 1,84 kW, oggi 9,6 kWh → F3 · 21,8°C\n1. Impianti MT/BT e/o UPS ≥ 10 kVA, 16 A\n"
+        "Vedi DM 1/9/2021 e [la guida](https://x.it) ✅"
+    )
+    assert said == (
+        "Signore, ecco (CEI 64 8): Isolamento IT-M: annuale. Nodo-PE: non oltre 0,2 ohm. "
+        "1,84 chilowatt, oggi 9,6 chilowattora, F3, 21,8 gradi. Impianti media e bassa tensione e o UPS "
+        "maggiore o uguale a 10 chilovoltampere, 16 ampere. Vedi DM 1 settembre 2021 e la guida."
+    )
+    assert for_voice("Ciao. " * 100, limit=50) == "Ciao. " * 7 + "Ciao."
+    assert for_voice("Accendo alle 7:30, 3 volte su 5") == "Accendo alle 7:30, 3 volte su 5."
+
+
+def test_home_assistant_voice_by_name(settings, make_hq):
+    settings.voice_tts_entity = "tts.home_assistant_cloud"
+    settings.voice_tts_voice = "rinaldo"
+    hq = make_hq([])
+    asked, calls = [], []
+
+    async def command(payload, timeout=30):
+        calls.append(payload["type"])
+        return {
+            "get_config": {"language": "it"},
+            "tts/engine/get": {"provider": {"engine_id": "x", "supported_languages": ["en-US", "it-IT"]}},
+            "tts/engine/voices": {"voices": [{"voice_id": "DiegoNeural", "name": "Diego"},
+                                             {"voice_id": "RinaldoNeural", "name": "Rinaldo"}]},
+        }[payload["type"]]
+
+    hq.watcher._command = command
+
+    class FakeHA:
+        enabled = True
+
+        async def tts(self, engine, text, language=None, options=None):
+            asked.append((engine, text, language, options))
+            return b"mp3", "audio/mpeg"
+
+        async def close(self):
+            pass
+
+    hq.ha = FakeHA()
+    with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
+        assert client.post("/api/tts", json={"text": "Sono le 21,8°"}).status_code == 200
+        assert client.post("/api/tts", json={"text": "Ancora"}).status_code == 200
+        assert asked[0] == ("tts.home_assistant_cloud", "Sono le 21,8 gradi.", "it-IT", {"voice": "RinaldoNeural"})
+        assert calls.count("tts/engine/voices") == 1  # looked up once
+        settings.voice_tts_voice = "Gandalf"
+        r = client.post("/api/tts", json={"text": "Ciao"})
+        assert r.status_code == 502 and "Disponibili: Diego, Rinaldo" in r.json()["detail"]

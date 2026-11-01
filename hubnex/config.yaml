@@ -1,5 +1,5 @@
 name: HubNEX
-version: "1.8.1"
+version: "1.8.2"
 slug: hubnex
 description: Il quartier generale AI per casa e lavoro - un team di agenti Claude, plancia 3D di Home Assistant, Telegram, voce e connettori MCP.
 url: https://github.com/P1pp89/HubNEX
@@ -58,6 +58,7 @@ options:
   elevenlabs_voice_id: ""
   elevenlabs_model: eleven_flash_v2_5
   voice_tts_entity: ""
+  voice_tts_voice: ""
   ha_blocked_services: lock.unlock,lock.open,alarm_control_panel.alarm_disarm
   install_assist_integration: true
   non_admin_access: casa
@@ -86,6 +87,7 @@ schema:
   elevenlabs_voice_id: str?
   elevenlabs_model: str?
   voice_tts_entity: str?
+  voice_tts_voice: str?
   ha_blocked_services: str?
   install_assist_integration: bool
   non_admin_access: list(casa|completo)

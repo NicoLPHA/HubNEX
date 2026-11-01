@@ -21,8 +21,20 @@ def _reason(r: httpx.Response) -> str:
         msg = detail.get("message") or detail.get("status") or str(detail)
     else:
         msg = str(detail or r.text[:200] or r.reason_phrase)
-    hints = {401: "chiave API non valida", 402: "credito/piano ElevenLabs insufficiente", 404: "voce non trovata (controlla elevenlabs_voice_id)", 429: "troppe richieste o credito esaurito"}
-    return f"ElevenLabs {r.status_code}: {hints.get(r.status_code, '')}{' — ' if r.status_code in hints else ''}{msg}"
+    status = str(detail.get("status") or "") if isinstance(detail, dict) else ""
+    text = f"{status} {msg}".lower()
+    # ElevenLabs answers 401 for a wrong key but also for exhausted credits: tell them apart
+    if "quota" in text or "credits" in text:
+        hint = "crediti ElevenLabs esauriti (si rinnovano a inizio mese, o ricarica il piano)"
+    elif r.status_code == 401 and ("api_key" in text or "api key" in text):
+        hint = "chiave API non valida"
+    elif r.status_code == 401 and ("unusual" in text or "free tier" in text):
+        hint = "piano gratuito bloccato da ElevenLabs"
+    else:
+        hint = {401: "accesso rifiutato da ElevenLabs", 402: "credito/piano ElevenLabs insufficiente",
+                404: "voce non trovata (controlla elevenlabs_voice_id)",
+                429: "troppe richieste o credito esaurito"}.get(r.status_code, "")
+    return f"ElevenLabs {r.status_code}: {hint}{' — ' if hint else ''}{msg}"
 
 
 class ElevenLabs:

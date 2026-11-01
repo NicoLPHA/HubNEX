@@ -198,6 +198,33 @@ class HAWatcher:
         dev = self.devices.get(reg.get("device_id") or "")
         return dev.get("area_id") if dev else None
 
+    async def tts_voice(self, engine: str, wanted: str = "") -> tuple[str | None, str | None]:
+        """The language (Home Assistant's own, as the engine spells it) and the voice id for
+        a TTS engine; `wanted` is the voice's name as people see it ("Rinaldo") or its id.
+        Unknown voice: an error listing the ones there are."""
+        config = await self._command({"type": "get_config"}) or {}
+        lang = (config.get("language") or "").lower()
+        info = await self._command({"type": "tts/engine/get", "engine_id": engine}) or {}
+        langs = (info.get("provider") or {}).get("supported_languages") or []
+        language = next((x for x in langs if x.lower() == lang), None) or next(
+            (x for x in langs if x.lower().replace("_", "-").split("-")[0] == lang.split("-")[0]), None
+        )
+        if not wanted:
+            return language, None
+        if not language:
+            raise HAWatcherError(f"{engine} non parla la lingua di Home Assistant ({lang or '?'})")
+        res = await self._command({"type": "tts/engine/voices", "engine_id": engine, "language": language}) or {}
+        voices = res.get("voices") or []
+        w = wanted.casefold()
+        for test in (lambda v: w in (v["voice_id"].casefold(), v["name"].casefold()),
+                     lambda v: v["name"].casefold().startswith(w) or v["voice_id"].casefold().startswith(w),
+                     lambda v: w in v["name"].casefold() or w in v["voice_id"].casefold()):
+            hit = next((v for v in voices if test(v)), None)
+            if hit:
+                return language, hit["voice_id"]
+        names = ", ".join(v["name"] for v in voices[:30]) or "nessuna"
+        raise HAWatcherError(f"voce '{wanted}' non trovata in {engine} ({language}). Disponibili: {names}")
+
     async def is_admin(self, user_id: str) -> bool:
         """Whether a Home Assistant user is an administrator (owner or in the admin group)."""
         if user_id not in self._admins or time.monotonic() - self._admins_at > 300:

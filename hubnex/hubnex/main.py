@@ -27,6 +27,7 @@ from hubnex.integrations.homeassistant import HomeAssistantError
 from hubnex.config import Settings, load_org
 from hubnex.context import ORIGIN
 from hubnex.graph import build_graph
+from hubnex.speech import for_voice
 from hubnex.hq import HQ
 from hubnex.actions import ActionClosed
 from hubnex.maildesk import DraftClosed
@@ -280,6 +281,8 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     @app.post("/api/chat", dependencies=[Depends(full)])
     async def chat(body: ChatIn, hq: HQ = Depends(get_hq)):
         reply = await hq.chat(body.channel, body.text, voice=body.voice)
+        if body.voice and reply:
+            reply = for_voice(reply)  # Assist reads it aloud: units and symbols as words
         return {"reply": reply or "L'agente ha risposto direttamente nel gruppo Telegram."}
 
     @app.get("/api/agents/{agent_id}", dependencies=[Depends(full)])

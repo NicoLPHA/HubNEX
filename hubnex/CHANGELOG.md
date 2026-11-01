@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.2
+- La voce legge un testo preparato per l'ascolto: niente simboli, emoji e link; unità e sigle
+  in parole (Ω, kW, kWh, °, MT/BT…), date per esteso, pause al posto dei trattini degli
+  elenchi. Vale per la dashboard, i vocali di Telegram e Assist.
+- Nuova opzione "Voce del motore di Home Assistant": la voce per nome (es. Rinaldo con Home
+  Assistant Cloud). La lingua è sempre quella di Home Assistant, anche senza voce scelta.
+- ElevenLabs: crediti esauriti, chiave sbagliata e piano gratuito bloccato hanno ora messaggi
+  distinti (prima tutti "chiave API non valida").
+
 ## 1.8.1
 - Energia è una pagina come quelle delle stanze (← Casa per tornare), non più un popup: lo
   scorrimento non torna in alto con gli aggiornamenti dal vivo. Anche gli editor mantengono

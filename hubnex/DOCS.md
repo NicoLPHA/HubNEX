@@ -101,10 +101,16 @@ dell'add-on>:8765`, l'hostname è nella pagina dell'add-on) e il **Token HQ**.
   funziona dall'app di Home Assistant e da Nabu Casa, non da `http://homeassistant.local`.
 - L'assistente risponde con la voce scelta nella configurazione:
   - **Voce da Home Assistant**: scrivi un motore di sintesi vocale di Home Assistant, per
-    esempio `tts.piper` (locale, gratuito) o `tts.home_assistant_cloud`. Ha la precedenza;
+    esempio `tts.piper` (locale, gratuito) o `tts.home_assistant_cloud`. Ha la precedenza.
+    In **Voce del motore di Home Assistant** puoi scegliere la voce per nome (per esempio
+    `Rinaldo` o `Diego` con Home Assistant Cloud): se il nome non esiste, il messaggio d'errore
+    elenca quelle disponibili. La lingua è quella di Home Assistant;
   - oppure **ElevenLabs**: chiave API (elevenlabs.io → Profilo → API Keys), ID della voce
     (Voices → la voce → ID) e modello (`eleven_flash_v2_5`, il più economico, parla italiano).
 - Se la voce non parte, sotto la risposta compare il motivo.
+- Prima di leggere, il testo viene preparato per l'ascolto: niente simboli, emoji o link,
+  unità e sigle in parole (Ω → "ohm", kW → "chilowatt", MT/BT → "media e bassa tensione"),
+  date per esteso, una pausa per ogni punto di un elenco. Lo scritto resta com'è.
 
 **3. Telegram**: mandi un vocale, viene trascritto con ElevenLabs e l'assistente risponde anche
 a voce (`telegram_voice_replies`). La trascrizione dei vocali richiede ElevenLabs.

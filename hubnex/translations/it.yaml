@@ -63,6 +63,9 @@ configuration:
   voice_tts_entity:
     name: Voce da Home Assistant
     description: In alternativa a ElevenLabs, un motore di sintesi vocale di Home Assistant (es. tts.piper, gratuito e locale, o tts.home_assistant_cloud). Se impostato, ha la precedenza.
+  voice_tts_voice:
+    name: Voce del motore di Home Assistant
+    description: Il nome della voce da usare con il motore qui sopra, per esempio Rinaldo o Diego per Home Assistant Cloud. Vuoto = la voce predefinita. La lingua è quella di Home Assistant.
   ha_blocked_services:
     name: Servizi HA bloccati
     description: Servizi che Jarvis non può mai chiamare da solo, separati da virgola.

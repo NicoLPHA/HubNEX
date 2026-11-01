@@ -84,11 +84,16 @@ class HomeAssistant:
             out.append({"entity_id": eid, "name": name, "state": s["state"]})
         return out
 
-    async def tts(self, engine: str, text: str, language: str | None = None) -> tuple[bytes, str]:
-        """Speech from one of Home Assistant's TTS engines (e.g. tts.piper): audio and its type."""
+    async def tts(
+        self, engine: str, text: str, language: str | None = None, options: dict | None = None
+    ) -> tuple[bytes, str]:
+        """Speech from one of Home Assistant's TTS engines (e.g. tts.piper): audio and its type.
+        `options` are the engine's own, e.g. {"voice": "RinaldoNeural"}."""
         body = {"engine_id": engine, "message": text, "cache": True}
         if language:
             body["language"] = language
+        if options:
+            body["options"] = options
         info = await self._request("POST", "/tts_get_url", json=body)
         path = (info or {}).get("path") or ""
         if not path:

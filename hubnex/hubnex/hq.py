@@ -16,6 +16,7 @@ import anthropic
 from hubnex import __version__
 from hubnex.config import AgentSpec, OrgChart, Settings
 from hubnex.integrations.elevenlabs import ElevenLabs
+from hubnex.speech import for_voice
 from hubnex.actions import ActionDesk
 from hubnex.connectors import Connectors
 from hubnex.casa import Casa
@@ -77,6 +78,7 @@ class HQ:
         self.watcher = HAWatcher(settings.ha_url, settings.ha_token, self._ha_event)
         casa_file = settings.casa_file or str(Path(settings.agents_file).parent / "casa.yaml")
         self.casa = Casa(self.watcher, casa_file, store)
+        self._tts_cache: dict[tuple[str, str], tuple[str | None, str | None]] = {}
         self.voice = ElevenLabs(settings.elevenlabs_key, settings.elevenlabs_voice, settings.elevenlabs_model)
         if team is None and settings.telegram_token_jarvis:
             from hubnex.integrations.telegram import TelegramTeam
@@ -121,13 +123,29 @@ class HQ:
     async def speak_audio(self, text: str) -> tuple[bytes, str]:
         """The assistant's voice: Home Assistant's TTS engine if one is set, else ElevenLabs.
         A failure is written in the activity feed (and raised)."""
+        text = for_voice(text)
         try:
             if self.settings.voice_tts_entity and self.ha.enabled:
-                return await self.ha.tts(self.settings.voice_tts_entity, text)
+                engine = self.settings.voice_tts_entity
+                language, voice = await self._tts_voice(engine)
+                return await self.ha.tts(engine, text, language, {"voice": voice} if voice else None)
             return await self.voice.speak(text), "audio/mpeg"
         except Exception as exc:
             await self.log("error", f"Voce non disponibile: {exc}", BOSS_ID)
             raise
+
+    async def _tts_voice(self, engine: str) -> tuple[str | None, str | None]:
+        """Language and voice for Home Assistant's TTS engine, looked up once. Without a voice
+        chosen a failed lookup is not an error: the engine's own defaults are used."""
+        key = (engine, self.settings.voice_tts_voice)
+        if key not in self._tts_cache:
+            try:
+                self._tts_cache[key] = await self.watcher.tts_voice(engine, self.settings.voice_tts_voice)
+            except Exception:
+                if self.settings.voice_tts_voice:
+                    raise
+                return None, None  # not cached: tried again next time (HA may still be starting)
+        return self._tts_cache[key]
 
     # ------------------------------------------------------------------ events
     async def _ha_event(self, kind: str, entity_id: str | None, state: dict | None) -> None:
