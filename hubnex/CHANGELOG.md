@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.4
+- Energia torna a essere un popup, come gli altri della barra in alto: si chiude con ×, con
+  un clic sullo sfondo o con Esc. Impostazioni invariate.
+- I popup della Casa stanno in un livello a parte: gli aggiornamenti dal vivo della casa non
+  li ridisegnano più, e un popup si aggiorna solo quando cambia ciò che mostra, senza perdere
+  lo scorrimento.
+- Nuovi colori delle fasce, ben distinti: F1 arancione, F2 blu, F3 verde. Anche "fascia
+  adesso" prende il colore della fascia in corso.
+
 ## 1.8.3
 - Nuova opzione "Risposte a voce": completa (come prima) o riassunto. Con riassunto, quando la
   risposta è lunga Jarvis aggiunge una o due frasi da dire a voce e la voce legge solo quelle;

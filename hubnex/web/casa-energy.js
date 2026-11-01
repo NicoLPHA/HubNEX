@@ -5,7 +5,7 @@
 import { esc, num } from "./casa-cards.js";
 
 const BANDS = ["F1", "F2", "F3"];
-const BAND_COLOR = { F1: "#4fa3ff", F2: "#f2c14e", F3: "#8b7cf6" };
+const BAND_COLOR = { F1: "#ff9a3c", F2: "#4fa3ff", F3: "#3ddc97" }; // orange, blue, green: never confused
 const VIEWS = [["reactor", "Il reattore"], ["day", "La giornata"], ["bill", "La bolletta"]];
 const BAND_HINT = {
   F1: "Sono le ore diurne dei giorni feriali (8-19): gli elettrodomestici a orario si possono spostare la sera o nel weekend.",
@@ -96,14 +96,15 @@ export const Energy = {
     const body = this.energyEdit ? this.energyCfgHTML()
       : views.length ? views.map((v) => ({ reactor: () => this.reactorHTML(d), day: () => this.dayHTML(d), bill: () => this.billHTML(d) })[v]?.() || "").join("")
       : `<p class="casa-muted">${configured ? "Nessuna vista scelta." : "Il pannello non è ancora configurato: scegli i sensori di consumo, fasce e potenza."} <button class="hc-link" data-act="energy-cfg">Configura</button></p>`;
-    // A page like a room's (not a popup): it scrolls with the view and keeps its place on live updates.
-    return `<div class="casa-room hc-energy">
-      <header class="casa-room-head">
-        <button class="casa-back" data-act="energy-close">← Casa</button>
-        <div><span class="casa-lbl">Casa</span><h1>${this.energyEdit ? "Configura Energia" : "Energia"}</h1></div>
-        ${this.energyEdit ? "" : `<button class="casa-edit" data-act="energy-cfg">Configura</button>`}
-      </header>
-      <section class="hc hc-energy-body">${body}</section>
+    // A popup like the others in the top bar. It sits in the dialog layer: redrawn only when
+    // its content changes, and it keeps its scroll position.
+    return `<div class="casa-modal casa-energy-modal" role="dialog" aria-label="Energia" data-act="energy-bg">
+      <section class="panel casa-panel hc-energy">
+        <h3>${this.energyEdit ? "Configura Energia" : "Energia"}
+          <span class="hc-energy-actions">${this.energyEdit ? "" : `<button class="hc-link" data-act="energy-cfg">Configura</button>`}
+          <button class="casa-x" data-act="energy-close" aria-label="Chiudi">×</button></span></h3>
+        <div class="hc-energy-body">${body}</div>
+      </section>
     </div>`;
   },
 
@@ -152,7 +153,7 @@ export const Energy = {
         <text x="200" y="250" text-anchor="middle" class="e-s">watt${d.watts != null ? ` · ${num(p * 100, 0)}% del contatore` : ""}</text>
       </svg><div class="e-labels">${labels}</div></div>
       <div class="e-readouts">
-        ${d.now ? `<div class="e-ro now"><span class="hc-state">fascia adesso</span><span class="hc-num">${d.now}${d.until ? ` <small>fino alle ${d.until}</small>` : ""}</span></div>` : ""}
+        ${d.now ? `<div class="e-ro now" style="--band:${BAND_COLOR[d.now] || "var(--warn)"}"><span class="hc-state">fascia adesso</span><span class="hc-num">${d.now}${d.until ? ` <small>fino alle ${d.until}</small>` : ""}</span></div>` : ""}
         ${d.total != null ? `<div class="e-ro"><span class="hc-state">${d.period.name}</span><span class="hc-num">${num(d.total)}<small>kWh</small>${d.cost != null ? ` · ${num(d.cost, 2)}<small>€</small>` : ""}</span>${d.totalTrend != null ? `<span class="hc-state">${this.trendHTML(d.totalTrend)} sul ${d.period.name} scorso</span>` : ""}</div>` : ""}
         ${this.readoutsHTML(d)}
       </div>
@@ -216,7 +217,7 @@ export const Energy = {
       <div class="e-billhead">${head}</div>
       <div class="e-track" aria-hidden="true"><i class="done" style="width:${(d.period.frac * 100).toFixed(1)}%"></i><i class="proj" style="left:${(d.period.frac * 100).toFixed(1)}%;width:${(100 - d.period.frac * 100).toFixed(1)}%"></i>
         ${d.period.frac < 0.9 ? `<b style="left:${(d.period.frac * 100).toFixed(1)}%"><span>oggi</span></b>` : ""}<b style="left:100%"><span>fine</span></b></div>
-      ${d.bands.length ? `<div class="e-rows">${d.bands.map((b) => `<div class="e-row ${b.name === d.now ? "now" : ""}"><span>${b.name}${b.name === d.now ? " · ora" : ""}</span>
+      ${d.bands.length ? `<div class="e-rows">${d.bands.map((b) => `<div class="e-row ${b.name === d.now ? "now" : ""}" style="--band:${BAND_COLOR[b.name]}"><span>${b.name}${b.name === d.now ? " · ora" : ""}</span>
           <span class="e-bar"><i style="width:${total ? ((b.kwh || 0) / total) * 100 : 0}%;background:${BAND_COLOR[b.name]}"></i></span>
           <span class="hc-num">${b.kwh != null ? num(b.kwh) : "—"} <small>kWh</small></span><span class="e-trend">${this.trendHTML(b.trend)}</span><span class="hc-state">${total ? num(((b.kwh || 0) / total) * 100, 0) : 0}%</span></div>`).join("")}</div>` : ""}
       ${up ? `<div class="e-tip"><b>${up.name} è salita del ${num(up.trend * 100, 0)}%.</b> ${BAND_HINT[up.name]}</div>` : ""}
@@ -295,12 +296,13 @@ export const Energy = {
     const c = this.energyEdit;
     switch (act) {
       case "energy":
-        this.energyOpen = true; this.energyEdit = null; this.page = null;
-        this.root.scrollTop = 0;
+        this.energyOpen = true; this.energyEdit = null;
         this.loadEnergy();
         clearInterval(this._energyTimer);
         this._energyTimer = setInterval(() => (this.energyOpen && this.visible ? this.loadEnergy() : clearInterval(this._energyTimer)), 60000);
         break;
+      case "energy-bg": if (el !== this._clickTarget) return true; // a click inside the popup
+      // falls through: a click on the dimmed background closes it, like the other popups
       case "energy-close": this.energyOpen = false; this.energyEdit = null; clearInterval(this._energyTimer); break;
       case "energy-cfg": {
         const cur = this.ecfg();

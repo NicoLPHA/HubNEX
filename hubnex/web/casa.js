@@ -59,7 +59,11 @@ export class CasaView {
     });
     this.live = null; // the camera (or camera grid) open over the view
     setInterval(() => this.refreshCameras(), 1000);
-    addEventListener("keydown", (e) => { if (e.key === "Escape") this.closeCamera(); });
+    addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (this.live) this.closeCamera();
+      else if (this.energyOpen && !this.energyEdit && this.visible) { this.energyOpen = false; clearInterval(this._energyTimer); this.render(true); }
+    });
     this.data = null;
     this.loading = null;
     this.selected = null; // area id of the quick card
@@ -510,6 +514,7 @@ export class CasaView {
   async _click(e) {
     const el = e.target.closest("[data-act]");
     if (!el || !this.root.contains(el)) return;
+    this._clickTarget = e.target;
     const { act, e: eid, area } = el.dataset;
     const domain = eid?.split(".")[0];
     if (this.editing && act === "toggle" && el.tagName === "ARTICLE") return; // arranging, not switching
@@ -782,23 +787,35 @@ export class CasaView {
     if (this.error) html = `<div class="casa-empty panel">⚠ ${esc(this.error)}</div>`;
     else if (!this.data) html = `<div class="casa-empty panel">Collegamento a Home Assistant…</div>`;
     else if (!this.data.ready) html = `<div class="casa-empty panel">Home Assistant non è ancora collegato: riprovo…</div>`;
-    else if (this.energyOpen) html = this.energyHTML();
     else html = this.page && this.area(this.page) ? this.roomHTML(this.area(this.page)) : this.homeHTML();
-    if (this.layout) html += this.layoutHTML();
+    // Dialogs live in their own layer: a live update of the house underneath doesn't touch an
+    // open popup, and the popup itself is redrawn only when what it shows has changed.
+    let layer = "";
+    if (this.energyOpen && this.data?.ready) layer += this.energyHTML();
+    if (this.layout) layer += this.layoutHTML();
     if (this.alarmOpen && this.data?.alarms?.length) {
-      html += `<div class="casa-modal" role="dialog" aria-label="Allarme"><section class="panel casa-panel casa-alarm-modal">
+      layer += `<div class="casa-modal" role="dialog" aria-label="Allarme"><section class="panel casa-panel casa-alarm-modal">
         <h3>Allarme <button class="casa-x" data-act="alarm-close" aria-label="Chiudi">×</button></h3>
         <div class="hc-grid">${this.data.alarms.filter((e) => this.st(e)).map((e) => this.cardHTML(e)).join("")}</div></section></div>`;
     }
-    if (this.pad) html += this.padHTML();
-    if (this.cardEdit) html += this.cardEditHTML();
-    if (this.renaming) html += this.renameHTML();
-    this.root.innerHTML = html;
+    if (this.pad) layer += this.padHTML();
+    if (this.cardEdit) layer += this.cardEditHTML();
+    if (this.renaming) layer += this.renameHTML();
+    if (!this.pageEl || this.pageEl.parentNode !== this.root) {
+      this.root.innerHTML = `<div class="casa-pagebox"></div><div class="casa-layer"></div>`;
+      [this.pageEl, this.layerEl] = this.root.children;
+      this._pageHTML = this._layerHTML = null;
+    }
+    if (force || html !== this._pageHTML) { this.pageEl.innerHTML = html; this._pageHTML = html; }
+    if (force || layer !== this._layerHTML) {
+      this.layerEl.innerHTML = layer;
+      this._layerHTML = layer;
+      const panel = this.layerEl.querySelector(".casa-modal .panel");
+      if (panel) panel.scrollTop = panelScroll;
+    }
     this.root.scrollTop = scroll;
-    const panel = this.root.querySelector(".casa-modal .panel");
-    if (panel) panel.scrollTop = panelScroll;
     document.body.classList.toggle("casa-sheet", !!(this.data && !this.page && this.selected && this.area(this.selected)));
-    document.body.classList.toggle("casa-modal-open", !!(this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen));
+    document.body.classList.toggle("casa-modal-open", !!(this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen || this.energyOpen));
     if (this.editing && this.cands) {
       const box = this.root.querySelector("#casa-cands");
       if (box) box.innerHTML = this.candsHTML();
