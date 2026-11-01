@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.5
+- I popup della Casa (Energia compresa) scorrono senza la barra di scorrimento chiara, come il
+  resto di HubNEX.
+
 ## 1.8.4
 - Energia torna a essere un popup, come gli altri della barra in alto: si chiude con ×, con
   un clic sullo sfondo o con Esc. Impostazioni invariate.

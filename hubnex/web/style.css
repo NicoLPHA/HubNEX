@@ -419,7 +419,8 @@ button.plan-room.outline { cursor: pointer; }
 .casa-mode { border: 0; padding: 0; margin: 12px 0 0; }
 .casa-mode label { display: flex; gap: 8px; align-items: center; min-height: 36px; font-size: 15px; }
 .casa-modal { position: fixed; inset: 0; z-index: 20; background: rgba(2, 5, 10, 0.75); display: grid; place-items: center; padding: 16px; }
-.casa-modal .panel { width: min(760px, 100%); max-height: 90vh; overflow-y: auto; }
+.casa-modal .panel { width: min(760px, 100%); max-height: 90vh; overflow-y: auto; scrollbar-width: none; }
+.casa-modal .panel::-webkit-scrollbar { display: none; } /* scrolls like the rest of HubNEX, no light scrollbar */
 .casa-modal textarea { width: 100%; min-height: 320px; box-sizing: border-box; font-family: var(--mono); font-size: 13px; background: rgba(3, 6, 13, 0.7); color: var(--text); border: 1px solid var(--panel-border); border-radius: 8px; padding: 10px; }
 .casa-area-names { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
 .layout-error { color: #ff9aae; min-height: 18px; margin-top: 6px; font-size: 14px; }
