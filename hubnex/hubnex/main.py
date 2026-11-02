@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import json
 import base64
 import hmac
@@ -13,12 +14,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from hubnex import __version__
 from hubnex.addon import setup_assist
+from hubnex.backup import BackupError, apply_pending_restore, make_backup, stage_restore
 from hubnex.casa import SUGGEST_SCHEMA, LayoutError, clean_suggestion, downsample, suggest_prompt
 from hubnex.energy import band_until, day_profile
 from hubnex.llm import complete
@@ -171,15 +175,36 @@ def house_only(state: dict) -> dict:
     }
 
 
+def config_dir(settings: Settings) -> Path:
+    """The folder with agents.yaml, casa.yaml and the floor plan images."""
+    return Path(settings.casa_file).parent if settings.casa_file else Path(settings.agents_file).parent
+
+
+async def restart_addon() -> bool:
+    """Ask the Supervisor to restart this add-on (after a restore). False outside an add-on."""
+    token = os.environ.get("SUPERVISOR_TOKEN")
+    if not token:
+        return False
+    await asyncio.sleep(1.5)  # let the answer reach the browser first
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.post("http://supervisor/addons/self/restart", headers={"Authorization": f"Bearer {token}"})
+    return r.status_code < 400
+
+
 def create_app(settings: Settings | None = None, hq: HQ | None = None, start_workers: bool = True) -> FastAPI:
     settings = settings or Settings.from_env()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         nonlocal hq
+        restored = None
         if hq is None:
+            # A backup restored from the dashboard: put in place before the database is opened.
+            restored = apply_pending_restore(settings.db_path, config_dir(settings))
             hq = HQ(settings, load_org(settings.agents_file), Store(settings.db_path))
         await hq.load()
+        if restored:
+            await hq.log("system", f"Backup ripristinato (HubNEX {restored.get('version', '?')} del {restored.get('created', '?')}).")
         app.state.hq = hq
         if start_workers and settings.trusted_proxy:  # running as a Home Assistant add-on
             await setup_assist(hq)
@@ -595,6 +620,27 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         await hq.log("system", f"Piantina della casa salvata dall'editor: {rooms} stanze")
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
+
+    # ------------------------------------------------------------------ backup and restore
+    @app.get("/api/backup", dependencies=[Depends(full)])
+    async def backup_download():
+        """Everything HubNEX knows, in one zip (the add-on's options and keys excluded)."""
+        data = await asyncio.to_thread(make_backup, settings.db_path, config_dir(settings), __version__)
+        name = f"hubnex-backup-{datetime.now():%Y%m%d-%H%M}.zip"
+        return Response(data, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @app.post("/api/backup/restore", dependencies=[Depends(full)])
+    async def backup_restore(request: Request, hq: HQ = Depends(get_hq)):
+        """A backup zip (raw body): set aside and applied at the next start."""
+        try:
+            manifest = await asyncio.to_thread(stage_restore, await request.body(), settings.db_path)
+        except BackupError as exc:
+            raise HTTPException(422, str(exc))
+        await hq.log("system", "Backup caricato: viene applicato al riavvio di HubNEX.")
+        restarting = bool(os.environ.get("SUPERVISOR_TOKEN"))
+        if restarting:
+            asyncio.create_task(restart_addon())
+        return {"ok": True, "manifest": manifest, "restarting": restarting}
 
     @app.post("/api/casa/plan-image", dependencies=[Depends(full)])
     async def casa_plan_image_upload(request: Request, floor: int = 1, hq: HQ = Depends(get_hq)):

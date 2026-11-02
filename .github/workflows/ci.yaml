@@ -1,0 +1,50 @@
+# Checks every change: the add-on's tests, the dashboard's scripts and the add-on manifest.
+name: Controlli
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test dell'add-on
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hubnex
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: hubnex/requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+      - name: Integrazione Assist (sintassi)
+        run: python -m compileall -q integration/hubnex
+
+  dashboard:
+    name: Script della dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Sintassi dei moduli
+        run: for f in hubnex/web/*.js; do node --check "$f" || exit 1; done
+
+  addon:
+    name: Manifesto dell'add-on
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: frenck/action-addon-linter@v2
+        with:
+          path: "./hubnex"

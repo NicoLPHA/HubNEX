@@ -90,6 +90,18 @@
       <button type="button" id="pref-start" class="casa-switch" role="switch" aria-checked="false" aria-label="Apri HubNEX all'avvio di Home Assistant"></button>
     </label>
     <p class="pref-note" id="pref-start-note">Vale solo per il tuo account, su tutti i tuoi dispositivi. Gli altri utenti non cambiano.</p>
+    <div class="pref-backup">
+      <div class="pref-row">
+        <span>Backup<small>Memoria e mappa neurale, scadenze, chat, Casa, piantina, energia e agents.yaml. Le chiavi della configurazione non sono incluse.</small></span>
+        <button type="button" id="backup-get">Scarica</button>
+      </div>
+      <div class="pref-row">
+        <span>Ripristina<small>Da un backup di HubNEX: sostituisce i dati di questa installazione e riavvia HubNEX.</small></span>
+        <button type="button" id="backup-put">Carica…</button>
+      </div>
+      <input type="file" id="backup-file" accept=".zip,application/zip" hidden>
+      <p class="pref-note" id="backup-note"></p>
+    </div>
   </section>
 
   <section id="node-card" class="panel hidden">

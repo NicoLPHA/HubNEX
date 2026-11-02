@@ -1,0 +1,20 @@
+name: Un'idea
+description: Una funzione nuova o un miglioramento.
+labels: [idea]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Cosa ti serve
+      description: Il problema o il momento della giornata in cui ti manca qualcosa, più che la soluzione.
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: Come te lo immagini
+  - type: textarea
+    id: else
+    attributes:
+      label: Altro
+      description: Esempi, schermate, come lo risolvi oggi.

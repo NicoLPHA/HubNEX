@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.9
+- Backup di HubNEX dalle Preferenze: un file con memoria e mappa neurale, scadenze, chat,
+  impostazioni della Casa, piantina ed energia, `agents.yaml`. Senza chiavi API.
+- Ripristino dallo stesso pannello: applicato al riavvio, che parte da solo; i file sostituiti
+  restano come `.prima-del-ripristino`. Serve anche per passare dalla copia locale all'add-on
+  del repository (vedi la documentazione).
+- Il repository ha i controlli automatici (test, dashboard, manifesto), prepara le immagini
+  già pronte dell'add-on, moduli per le segnalazioni e la pagina sulla sicurezza.
+
 ## 1.8.8
 - Chi ha risposto nella chat è una piccola scritta nello stile di HubNEX (HOME ASSISTANT,
   RISPOSTA RAPIDA), senza emoji.

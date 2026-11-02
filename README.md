@@ -2,6 +2,8 @@
 
 **Il quartier generale AI per casa e lavoro**, come add-on per Home Assistant.
 
+[![Controlli](https://github.com/P1pp89/HubNEX/actions/workflows/ci.yaml/badge.svg)](https://github.com/P1pp89/HubNEX/actions/workflows/ci.yaml)
+
 **[Guarda la presentazione →](https://p1pp89.github.io/HubNEX/)**
 
 ![La vista Casa di HubNEX](docs/img/casa.jpg)

@@ -328,3 +328,26 @@ li fa Home Assistant; le routine e le ricerche web consumano, usale quando servo
 Memoria, scadenze, bozze, regole e cronologia sono in `/data/hubnex.db`; `agents.yaml` e
 `casa.yaml` nella cartella di configurazione dell'add-on. Finiscono tutti nei backup di Home
 Assistant.
+
+### Backup di HubNEX e trasferimento su un'altra installazione
+
+Da **⚙ Preferenze → Backup → Scarica** ottieni un unico file `.zip` con tutto ciò che HubNEX
+sa: memoria e mappa neurale, scadenze, chat, impostazioni della Casa (card, nomi, ordine,
+energia), piantina con le sue immagini e `agents.yaml`. Le opzioni dell'add-on (chiavi API,
+token) **non** sono incluse. Solo per gli amministratori.
+
+**Ripristina → Carica…** su un'altra installazione mette tutto al suo posto e riavvia HubNEX.
+I file che sostituisce restano accanto con il suffisso `.prima-del-ripristino`.
+
+Per passare da una copia locale (`/addons/local`) all'add-on del repository:
+
+1. Nella copia locale: **Preferenze → Backup → Scarica**.
+2. Nella pagina dell'add-on locale: **Configurazione → ⋮ → Modifica in YAML**, copia tutto
+   (sono le tue opzioni e chiavi) e **arresta** l'add-on locale.
+3. Installa HubNEX dal repository, apri **Configurazione → ⋮ → Modifica in YAML**, incolla,
+   salva e avvia.
+4. Apri HubNEX: **Preferenze → Ripristina → Carica…** e scegli il backup. HubNEX si riavvia
+   con i tuoi dati.
+5. Assist: in **Dispositivi e servizi** elimina la vecchia integrazione HubNEX e configura
+   quella "rilevata" del nuovo add-on.
+6. Quando tutto funziona, disinstalla l'add-on locale.

@@ -442,6 +442,37 @@ $("ha-prefs").addEventListener("click", () => {
 });
 $("prefs-close").addEventListener("click", () => { $("prefs").classList.add("hidden"); $("ha-prefs").setAttribute("aria-expanded", "false"); });
 
+// Backup and restore (administrators only; the add-on checks it too).
+$("backup-get").addEventListener("click", async () => {
+  const note = $("backup-note");
+  note.textContent = "Preparo il backup…";
+  try {
+    const res = await api("/api/backup");
+    const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") || "")?.[1] || "hubnex-backup.zip";
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement("a"), { href: url, download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    note.textContent = `Scaricato: ${name}. Conservalo in un posto sicuro.`;
+  } catch (err) { note.textContent = `⚠ ${errorText(err)}`; }
+});
+$("backup-put").addEventListener("click", () => $("backup-file").click());
+$("backup-file").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  const note = $("backup-note");
+  if (!confirm(`Ripristinare "${file.name}"? Memoria, scadenze, Casa e configurazione di questa installazione vengono sostituite (le versioni attuali restano come copia di sicurezza).`)) return;
+  note.textContent = "Carico il backup…";
+  try {
+    const res = await api("/api/backup/restore", { method: "POST", body: file, headers: { "Content-Type": "application/zip" } });
+    const { restarting, manifest } = await res.json();
+    note.textContent = restarting
+      ? `Backup del ${manifest.created?.slice(0, 10) || "?"} caricato: HubNEX si riavvia, ricarica la pagina tra un minuto.`
+      : "Backup caricato: riavvia HubNEX per applicarlo.";
+  } catch (err) { note.textContent = `⚠ ${errorText(err)}`; }
+});
+
 // ===================================================================== neural map
 const brain = new Brain(renderer, container);
 S.view = "hq";

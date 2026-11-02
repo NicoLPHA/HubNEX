@@ -1,0 +1,74 @@
+name: Qualcosa non funziona
+description: Un errore, un comportamento inatteso, qualcosa che si è rotto con un aggiornamento.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Grazie della segnalazione. Prima di inviarla togli **chiavi API, token, email, indirizzi e
+        nomi** da log e schermate. Per una falla di sicurezza non aprire una segnalazione
+        pubblica: leggi [SECURITY.md](../blob/main/SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: Cosa succede
+      description: Cosa hai fatto, cosa ti aspettavi, cosa è successo invece.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Come riprodurlo
+      placeholder: |
+        1. Apri la vista Casa
+        2. Tocca …
+        3. …
+  - type: input
+    id: version
+    attributes:
+      label: Versione di HubNEX
+      description: In alto a sinistra nella dashboard, o nella pagina dell'add-on.
+      placeholder: "1.9.0"
+    validations:
+      required: true
+  - type: input
+    id: ha
+    attributes:
+      label: Versione di Home Assistant
+      placeholder: "2026.11.0"
+  - type: dropdown
+    id: hardware
+    attributes:
+      label: Dove gira Home Assistant
+      options:
+        - Raspberry Pi
+        - Home Assistant Green / Yellow
+        - Mini PC o PC (x86)
+        - Macchina virtuale
+        - Altro
+  - type: dropdown
+    id: area
+    attributes:
+      label: Parte coinvolta
+      multiple: true
+      options:
+        - Vista Casa / piantina
+        - Energia
+        - Assistente e agenti
+        - Voce / Assist
+        - Telegram
+        - Posta
+        - Connettori MCP
+        - Installazione / aggiornamento
+        - Altro
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log dell'add-on
+      description: Impostazioni → Componenti aggiuntivi → HubNEX → Registro. Solo le righe utili, senza dati personali.
+      render: text
+  - type: textarea
+    id: screens
+    attributes:
+      label: Schermate
+      description: Trascina qui le immagini, se aiutano.
