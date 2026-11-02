@@ -8,6 +8,9 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { Brain, TYPES } from "./brain.js";
 import { Orb, describeTool } from "./orb.js";
 import { CasaView } from "./casa.js";
+import { t, LANG, LOCALE, setLang, translatePage } from "./i18n.js";
+
+translatePage();
 
 // ===================================================================== state
 const S = {
@@ -17,7 +20,7 @@ const S = {
   selected: null,          // agent id
   speak: safeGet("hq_speak") === "1",
 };
-const STATUS_IT = { sleeping: "dorme", thinking: "pensa", writing: "scrive", working: "lavora", searching: "cerca", error: "errore" };
+const STATUS_IT = { sleeping: t("dorme"), thinking: t("pensa"), writing: t("scrive"), working: t("lavora"), searching: t("cerca"), error: t("errore") };
 const KIND_ICON = { task: "→", result: "✓", chat: "💬", ha: "⌂", memory: "◆", deadline: "⏰", notify: "📣", error: "⚠", system: "●" };
 
 function safeGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
@@ -30,9 +33,9 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 async function api(path, opts = {}) {
   const res = await fetch(path.replace(/^\//, ""), {
     ...opts,
-    headers: { "Content-Type": "application/json", ...(S.token ? { Authorization: `Bearer ${S.token}` } : {}), ...(opts.headers || {}) },
+    headers: { "Content-Type": "application/json", "X-HubNEX-Lang": LANG, ...(S.token ? { Authorization: `Bearer ${S.token}` } : {}), ...(opts.headers || {}) },
   });
-  if (res.status === 401) { showLogin(); throw new Error("non autorizzato"); }
+  if (res.status === 401) { showLogin(); throw new Error(t("non autorizzato")); }
   if (!res.ok) throw new Error(await res.text());
   return res;
 }
@@ -363,7 +366,7 @@ function setKiosk(on) {
   window.parent.postMessage(on ? { type: "home-assistant/subscribe-properties", kioskMode: true } : { type: "home-assistant/unsubscribe-properties" }, "*");
   safeSet("hq_immersive", on ? "1" : "0");
   $("ha-menu").classList.toggle("on", !on);
-  $("ha-menu").title = on ? "Mostra il menu di Home Assistant" : "Nascondi il menu di Home Assistant";
+  $("ha-menu").title = on ? t("Mostra il menu di Home Assistant") : t("Nascondi il menu di Home Assistant");
 }
 
 if (inHA) {
@@ -400,10 +403,10 @@ async function loadStartPref() {
   }
   const mine = (await ha.hass.connection.sendMessagePromise({ type: "frontend/get_user_data", key: "hubnex" })).value;
   if (mine) setUI(mine);
-  $("pref-start-who").textContent = ha.hass.user?.name ? `per ${ha.hass.user.name}` : "";
+  $("pref-start-who").textContent = ha.hass.user?.name ? t("per {name}", { name: ha.hass.user.name }) : "";
   if (!ha.panel) {
     sw.disabled = true;
-    $("pref-start-note").textContent = "Per usarlo, attiva \"Mostra nella barra laterale\" nella pagina dell'add-on HubNEX e apri HubNEX da lì.";
+    $("pref-start-note").textContent = t("Per usarlo, attiva \"Mostra nella barra laterale\" nella pagina dell'add-on HubNEX e apri HubNEX da lì.");
     return;
   }
   const data = (await ha.hass.connection.sendMessagePromise({ type: "frontend/get_user_data", key: "core" })).value || {};
@@ -429,10 +432,10 @@ $("pref-start").addEventListener("click", async () => {
     await conn.sendMessagePromise({ type: "frontend/set_user_data", key: "core", value });
     setStartSwitch(on);
     $("pref-start-note").textContent = on
-      ? "Fatto: aprendo Home Assistant con il tuo account arrivi su HubNEX. Gli altri utenti non cambiano."
-      : "Spento: Home Assistant si apre di nuovo sulla tua plancia predefinita.";
+      ? t("Fatto: aprendo Home Assistant con il tuo account arrivi su HubNEX. Gli altri utenti non cambiano.")
+      : t("Spento: Home Assistant si apre di nuovo sulla tua plancia predefinita.");
   } catch (err) {
-    $("pref-start-note").textContent = `⚠ Home Assistant non ha accettato la modifica: ${err.message || err.code || err}`;
+    $("pref-start-note").textContent = `⚠ ${t("Home Assistant non ha accettato la modifica")}: ${err.message || err.code || err}`;
   }
 });
 $("ha-prefs").addEventListener("click", () => {
@@ -445,7 +448,7 @@ $("prefs-close").addEventListener("click", () => { $("prefs").classList.add("hid
 // Backup and restore (administrators only; the add-on checks it too).
 $("backup-get").addEventListener("click", async () => {
   const note = $("backup-note");
-  note.textContent = "Preparo il backup…";
+  note.textContent = t("Preparo il backup…");
   try {
     const res = await api("/api/backup");
     const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") || "")?.[1] || "hubnex-backup.zip";
@@ -453,7 +456,7 @@ $("backup-get").addEventListener("click", async () => {
     const a = Object.assign(document.createElement("a"), { href: url, download: name });
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-    note.textContent = `Scaricato: ${name}. Conservalo in un posto sicuro.`;
+    note.textContent = t("Scaricato: {name}. Conservalo in un posto sicuro.", { name });
   } catch (err) { note.textContent = `⚠ ${errorText(err)}`; }
 });
 $("backup-put").addEventListener("click", () => $("backup-file").click());
@@ -462,14 +465,14 @@ $("backup-file").addEventListener("change", async (e) => {
   e.target.value = "";
   if (!file) return;
   const note = $("backup-note");
-  if (!confirm(`Ripristinare "${file.name}"? Memoria, scadenze, Casa e configurazione di questa installazione vengono sostituite (le versioni attuali restano come copia di sicurezza).`)) return;
-  note.textContent = "Carico il backup…";
+  if (!confirm(t("Ripristinare \"{file}\"? Memoria, scadenze, Casa e configurazione di questa installazione vengono sostituite (le versioni attuali restano come copia di sicurezza).", { file: file.name }))) return;
+  note.textContent = t("Carico il backup…");
   try {
     const res = await api("/api/backup/restore", { method: "POST", body: file, headers: { "Content-Type": "application/zip" } });
     const { restarting, manifest } = await res.json();
     note.textContent = restarting
-      ? `Backup del ${manifest.created?.slice(0, 10) || "?"} caricato: HubNEX si riavvia, ricarica la pagina tra un minuto.`
-      : "Backup caricato: riavvia HubNEX per applicarlo.";
+      ? t("Backup del {date} caricato: HubNEX si riavvia, ricarica la pagina tra un minuto.", { date: manifest.created?.slice(0, 10) || "?" })
+      : t("Backup caricato: riavvia HubNEX per applicarlo.");
   } catch (err) { note.textContent = `⚠ ${errorText(err)}`; }
 });
 
@@ -542,8 +545,8 @@ function applyUI() {
   setSwitch("pref-hq", UI.hq);
   setSwitch("pref-ai", UI.ai);
   $("pref-ui-note").textContent = houseOnly
-    ? "Il tuo account di Home Assistant non è amministratore: HubNEX mostra solo la Casa."
-    : !UI.hq && !hasCasa ? "Senza Home Assistant collegato la Casa non c'è: HQ resta visibile." : "";
+    ? t("Il tuo account di Home Assistant non è amministratore: HubNEX mostra solo la Casa.")
+    : !UI.hq && !hasCasa ? t("Senza Home Assistant collegato la Casa non c'è: HQ resta visibile.") : "";
   if (!onlyCasa && S.view !== "casa") document.body.classList.remove("casa");
   if (!onlyCasa || S.view === "casa") return;
   if (S.data) setView("casa");
@@ -559,11 +562,14 @@ for (const k of ["hq", "ai"]) {
     try {
       await ha.hass.connection.sendMessagePromise({ type: "frontend/set_user_data", key: "hubnex", value: { ...UI } });
     } catch (err) {
-      $("pref-ui-note").textContent = `⚠ Salvata solo su questo dispositivo: ${err.message || err.code || err}`;
+      $("pref-ui-note").textContent = `⚠ ${t("Salvata solo su questo dispositivo")}: ${err.message || err.code || err}`;
     }
   });
 }
 $("ha-prefs").classList.remove("hidden");
+// Language: automatic (Home Assistant's) or chosen here; applied by reloading the page.
+try { $("pref-lang").value = localStorage.getItem("hq_lang") || ""; } catch { /* private mode */ }
+$("pref-lang").addEventListener("change", (e) => { setLang(e.target.value); location.reload(); });
 if (inHA) loadStartPref().catch(() => {});
 
 function renderMapPanel() {
@@ -588,14 +594,14 @@ function renderMapCounters() {
   if (!g) return;
   const active = (S.data?.agents || []).filter((a) => a.status !== "sleeping" && a.status !== "error").length;
   $("map-counters").innerHTML = [
-    [g.stats.nodes, "Nodi"], [g.stats.links, "Sinapsi"], [g.stats.memories, "Memorie"],
-    [g.stats.tasks, "Compiti"], [g.stats.keywords, "Concetti"], [active, "Attivi", active ? "hot" : ""],
-  ].map(([v, l, cls]) => `<div><div class="v ${cls || ""}">${v.toLocaleString("it-IT")}</div><div class="l">${l}</div></div>`).join("");
+    [g.stats.nodes, t("Nodi")], [g.stats.links, t("Sinapsi")], [g.stats.memories, t("Memorie")],
+    [g.stats.tasks, t("Compiti")], [g.stats.keywords, t("Concetti")], [active, t("Attivi"), active ? "hot" : ""],
+  ].map(([v, l, cls]) => `<div><div class="v ${cls || ""}">${v.toLocaleString(LOCALE)}</div><div class="l">${l}</div></div>`).join("");
 }
 
 $("map-search").addEventListener("input", (e) => {
   const n = brain.search(e.target.value);
-  $("map-search-info").textContent = e.target.value.trim() ? (n ? `${n} nodi trovati` : "Nessun risultato") : "";
+  $("map-search-info").textContent = e.target.value.trim() ? (n ? t("{n} nodi trovati", { n }) : t("Nessun risultato")) : "";
 });
 
 function pickNode(e) {
@@ -629,7 +635,7 @@ function renderCompanies() {
   $("companies").querySelectorAll(".company").forEach((b) =>
     b.addEventListener("click", () => { S.company = b.dataset.id; safeSet("hq_company", S.company); buildArena(); }));
   const i = S.data.integrations;
-  $("integrations").innerHTML = [["HA", i.home_assistant], ["TG", i.telegram], ["MAIL", i.mail], ["MCP", (i.connectors || []).length > 0], ["VOCE", i.voice]]
+  $("integrations").innerHTML = [["HA", i.home_assistant], ["TG", i.telegram], ["MAIL", i.mail], ["MCP", (i.connectors || []).length > 0], [t("VOCE"), i.voice]]
     .map(([n, on]) => `<span class="integration ${on ? "on" : ""}">${n}</span>`).join("");
 }
 
@@ -639,12 +645,12 @@ function renderStats() {
   // Remaining Anthropic credit (estimated: credit entered in the add-on minus the cost of each call).
   const left = s.credit_usd - s.spent_usd;
   const money = s.credit_usd
-    ? ["Credito Claude", `$${Math.max(left, 0).toFixed(2)}`, left < 1 ? "low" : ""]
-    : ["Spesa Claude", `$${s.spent_usd.toFixed(2)}`, ""];
+    ? [t("Credito Claude"), `$${Math.max(left, 0).toFixed(2)}`, left < 1 ? "low" : "", true]
+    : [t("Spesa Claude"), `$${s.spent_usd.toFixed(2)}`, "", true];
   $("stats").innerHTML = [
-    ["Agenti attivi", `${S.data.agents.filter((a) => a.status !== "sleeping" && a.status !== "error").length}/${S.data.agents.length}`, ""], ["Compiti fatti", s.tasks_done, ""],
-    ["Memorie", s.memories, ""], money,
-  ].map(([l, v, cls]) => `<div class="stat ${cls}" ${l.includes("Claude") ? `title="${fmt(s.tokens_in + s.tokens_out)} token dall'avvio"` : ""}><div class="v">${esc(v)}</div><div class="l">${l}</div></div>`).join("");
+    [t("Agenti attivi"), `${S.data.agents.filter((a) => a.status !== "sleeping" && a.status !== "error").length}/${S.data.agents.length}`, ""], [t("Compiti fatti"), s.tasks_done, ""],
+    [t("Memorie"), s.memories, ""], money,
+  ].map(([l, v, cls, claude]) => `<div class="stat ${cls}" ${claude ? `title="${esc(t("{n} token dall'avvio", { n: fmt(s.tokens_in + s.tokens_out) }))}"` : ""}><div class="v">${esc(v)}</div><div class="l">${l}</div></div>`).join("");
 }
 
 function renderDeadlines() {
@@ -652,9 +658,9 @@ function renderDeadlines() {
   $("deadlines").innerHTML = S.data.deadlines.map((d) => {
     const due = new Date(d.due.length <= 10 ? d.due + "T09:00" : d.due).getTime();
     const cls = due < now ? "late" : due - now < 3 * 864e5 ? "soon" : "";
-    const label = new Date(due).toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
-    return `<li class="${cls}"><span class="due">${label}</span><span class="t">${esc(d.title)}</span><button class="check" data-id="${d.id}" title="Fatto" aria-label="Segna come fatta"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></li>`;
-  }).join("") || `<li><span class="t" style="color:var(--muted)">Nessuna scadenza</span></li>`;
+    const label = new Date(due).toLocaleDateString(LOCALE, { day: "2-digit", month: "short" });
+    return `<li class="${cls}"><span class="due">${label}</span><span class="t">${esc(d.title)}</span><button class="check" data-id="${d.id}" title="${t("Fatto")}" aria-label="${t("Segna come fatta")}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></li>`;
+  }).join("") || `<li><span class="t" style="color:var(--muted)">${t("Nessuna scadenza")}</span></li>`;
   $("deadlines").querySelectorAll(".check").forEach((b) =>
     b.addEventListener("click", () => api(`/api/deadlines/${b.dataset.id}/done`, { method: "POST" })));
 }
@@ -672,25 +678,25 @@ function renderDrafts() {
   for (const box of [$("drafts"), $("drafts-mobile")]) {
     box.innerHTML = actions.map((a) => `
       <article class="draft action" data-action="${a.id}">
-        <div class="draft-head">Azione #${a.id}${a.agent_id && a.agent_id !== "jarvis" ? " · " + esc(agentName(a.agent_id)) : ""}</div>
+        <div class="draft-head">${t("Azione")} #${a.id}${a.agent_id && a.agent_id !== "jarvis" ? " · " + esc(agentName(a.agent_id)) : ""}</div>
         <div class="draft-body">${esc(a.summary)}</div>
         <div class="draft-actions">
-          <button class="send" data-decide="ok">✅ Conferma</button>
-          <button class="drop" data-decide="no">❌ Annulla</button>
+          <button class="send" data-decide="ok">✅ ${t("Conferma")}</button>
+          <button class="drop" data-decide="no">❌ ${t("Annulla")}</button>
         </div>
         <div class="draft-error hidden"></div>
       </article>`).join("") + drafts.map((d) => `
       <article class="draft" data-id="${d.id}">
-        <div class="draft-head">#${d.id} · A: ${esc(d.to_addr)}</div>
+        <div class="draft-head">#${d.id} · ${t("A")}: ${esc(d.to_addr)}</div>
         <div class="draft-subject">${esc(d.subject)}</div>
         <div class="draft-body">${esc(d.body)}</div>
         <div class="draft-actions">
-          <button class="send" data-act="send">📤 Invia</button>
-          <button data-act="save">💾 Salva</button>
-          <button data-act="edit">✏️ Modifica</button>
-          <button class="drop" data-act="drop">🗑 Scarta</button>
+          <button class="send" data-act="send">📤 ${t("Invia")}</button>
+          <button data-act="save">💾 ${t("Salva")}</button>
+          <button data-act="edit">✏️ ${t("Modifica")}</button>
+          <button class="drop" data-act="drop">🗑 ${t("Scarta")}</button>
         </div>
-        <form class="draft-edit hidden"><input placeholder="Cosa cambio? es. più formale" required><button>↻</button></form>
+        <form class="draft-edit hidden"><input placeholder="${t("Cosa cambio? es. più formale")}" required><button>↻</button></form>
         <div class="draft-error hidden"></div>
       </article>`).join("");
     box.querySelectorAll(".draft:not(.action)").forEach(bindDraft);
@@ -708,7 +714,7 @@ function bindDraft(card) {
     try {
       await api(`/api/drafts/${id}/${path}`, { method: "POST", body: body ? JSON.stringify(body) : undefined });
     } catch (err) {
-      fail(err.message.includes("non più attiva") ? "Bozza non più attiva" : err.message);
+      fail(/non più attiva|no longer/.test(err.message) ? t("Bozza non più attiva") : err.message);
     }
   };
   card.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => {
@@ -717,8 +723,8 @@ function bindDraft(card) {
     if (act === "send" && !b.classList.contains("confirm")) {
       const d = S.data.drafts.find((x) => String(x.id) === id);
       b.classList.add("confirm");
-      b.textContent = `✅ Conferma invio a ${(d?.to_addr || "").slice(0, 28)}`;
-      setTimeout(() => { b.classList.remove("confirm"); b.textContent = "📤 Invia"; }, 6000);
+      b.textContent = `✅ ${t("Conferma invio a {to}", { to: (d?.to_addr || "").slice(0, 28) })}`;
+      setTimeout(() => { b.classList.remove("confirm"); b.textContent = `📤 ${t("Invia")}`; }, 6000);
       return;
     }
     run(act);
@@ -752,7 +758,7 @@ function agentName(id) { return S.data?.agents.find((a) => a.id === id)?.name ||
 
 function feedItem(e) {
   const li = document.createElement("li");
-  const time = new Date(e.ts * 1000).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  const time = new Date(e.ts * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" });
   li.className = `kind-${e.kind}`;
   const text = e.text.length > 400 ? e.text.slice(0, 400) + "…" : e.text;
   li.innerHTML = `<span class="time">${time}</span><span class="who">${KIND_ICON[e.kind] || "·"}</span><span class="body">${esc(text)}</span>`;
@@ -796,7 +802,7 @@ function renderCard() {
   $("card-role").textContent = a.role;
   $("card-status").className = `badge ${a.status}`;
   $("card-status").textContent = STATUS_IT[a.status] || a.status;
-  $("card-detail").textContent = a.detail || (a.done ? `${a.done} compiti completati` : "");
+  $("card-detail").textContent = a.detail || (a.done ? t("{n} compiti completati", { n: a.done }) : "");
   const show = (id, v) => { $(id + "-wrap").classList.toggle("hidden", !v); if (v) $(id).textContent = v; };
   show("card-task", a.task);
   show("card-thought", a.status !== "sleeping" ? a.thought : null);
@@ -804,7 +810,7 @@ function renderCard() {
   const routines = S.data.routines[a.id] || [];
   $("card-routines-wrap").classList.toggle("hidden", !routines.length);
   $("card-routines").innerHTML = routines.map((r) =>
-    `<li class="${r.enabled ? "" : "off"}">${r.enabled ? "" : "[spenta] "}${r.at ? `ore ${esc(r.at)}${r.days ? " (" + r.days.join(", ") + ")" : ""}` : `ogni ${esc(r.every)}`}: ${esc(r.task.slice(0, 90))}…</li>`).join("");
+    `<li class="${r.enabled ? "" : "off"}">${r.enabled ? "" : `[${t("spenta")}] `}${r.at ? `${t("ore")} ${esc(r.at)}${r.days ? " (" + r.days.join(", ") + ")" : ""}` : `${t("ogni")} ${esc(r.every)}`}: ${esc(r.task.slice(0, 90))}…</li>`).join("");
   $("assign-form").classList.toggle("hidden", a.id === S.data.boss.id);
 }
 
@@ -832,7 +838,7 @@ $("deadline-form").addEventListener("submit", async (e) => {
 });
 
 setInterval(() => {
-  const time = new Date().toLocaleString("it-IT", { weekday: "short", hour: "2-digit", minute: "2-digit" }).toUpperCase();
+  const time = new Date().toLocaleString(LOCALE, { weekday: "short", hour: "2-digit", minute: "2-digit" }).toUpperCase();
   $("clock").textContent = S.data?.version ? `${time} · v${S.data.version}` : time;
 }, 1000);
 
@@ -880,7 +886,7 @@ function voiceNote(el, note) {
   div.textContent = note.error.charAt(0).toUpperCase() + note.error.slice(1);
   if (note.replay) {
     const b = document.createElement("button");
-    b.textContent = "▶ Ascolta";
+    b.textContent = `▶ ${t("Ascolta")}`;
     b.addEventListener("click", () => new Audio(note.replay).play());
     div.appendChild(b);
   }
@@ -965,13 +971,13 @@ async function reveal(el, text) {
 // Spoken answer: real loudness from the audio drives the orb, the text follows the voice.
 // Returns true when spoken, else { error, replay? } to show under the written answer.
 async function speak(text, el, written = text) {
-  orb.caption("Preparo la voce…");
+  orb.caption(t("Preparo la voce…"));
   let src;
   try {
     const res = await api("/api/tts", { method: "POST", body: JSON.stringify({ text: text.replace(/[*_`#]/g, "").slice(0, 2500) }) });
     src = URL.createObjectURL(await res.blob());
   } catch (err) {
-    return { error: `Voce non disponibile: ${errorText(err)}` };
+    return { error: `${t("Voce non disponibile")}: ${errorText(err)}` };
   }
   try {
     if (!talk.on) return true;
@@ -984,8 +990,8 @@ async function speak(text, el, written = text) {
     } catch (err) {
       talk.audio = null;
       return err.name === "NotAllowedError"
-        ? { error: "il telefono ha bloccato l'audio automatico.", replay: src }
-        : { error: `audio non riproducibile (${err.message})`, replay: src };
+        ? { error: t("il telefono ha bloccato l'audio automatico."), replay: src }
+        : { error: `${t("audio non riproducibile")} (${err.message})`, replay: src };
     }
     orb.show("speaking", "");
     const start = performance.now();
@@ -999,7 +1005,7 @@ async function speak(text, el, written = text) {
     return true;
   } catch (err) {
     console.warn("tts", err);
-    return { error: `voce non riprodotta (${err.message})`, replay: src };
+    return { error: `${t("voce non riprodotta")} (${err.message})`, replay: src };
   }
 }
 
@@ -1010,7 +1016,7 @@ async function sendChat(text) {
   talk.thought = S.data?.agents.find((a) => a.id === S.data.boss.id)?.thought ?? null;
   orb.show("thinking");
   addMsg(text, "me");
-  const wait = addMsg(`${S.data?.boss?.name || "L'assistente"} sta pensando…`, "jarvis", true);
+  const wait = addMsg(t("{name} sta pensando…", { name: S.data?.boss?.name || t("L'assistente") }), "jarvis", true);
   try {
     // In a room of the house view Jarvis knows where you are ("spegni qui").
     const context = S.view === "casa" ? casa.context() : "";
@@ -1039,11 +1045,11 @@ function orbFollow(a) {
   if (!talk.on || orb.state === "speaking" || orb.state === "listening" || !S.data) return;
   if (a.id === S.data.boss.id) {
     if (a.status === "thinking") orb.show("thinking");
-    else if (a.status === "writing") orb.show("thinking", "Formulo la risposta…");
+    else if (a.status === "writing") orb.show("thinking", t("Formulo la risposta…"));
     else if (a.status === "working" || a.status === "searching") orb.show("working", describeTool(a.detail, a.name));
     if (a.thought && a.thought !== talk.thought) orbThought.textContent = lastSentences(a.thought);
   } else if (a.status !== "sleeping" && a.status !== "error") {
-    orb.show("working", `${a.name} al lavoro…`);
+    orb.show("working", t("{name} al lavoro…", { name: a.name }));
   }
 }
 
@@ -1075,7 +1081,7 @@ function setSpeakerIcon() {
   $("speaker").innerHTML = S.speak ? SPEAKER_ON : SPEAKER_OFF;
   $("speaker").classList.toggle("on", S.speak);
   $("speaker").setAttribute("aria-pressed", String(S.speak));
-  $("speaker").title = S.speak ? "Risposte vocali attive" : "Risposte vocali spente";
+  $("speaker").title = S.speak ? t("Risposte vocali attive") : t("Risposte vocali spente");
 }
 setSpeakerIcon();
 
@@ -1084,7 +1090,7 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SR) $("mic").classList.add("hidden");
 else {
   const rec = new SR();
-  rec.lang = "it-IT";
+  rec.lang = LANG === "it" ? "it-IT" : (navigator.language || "en-GB");
   rec.interimResults = true; // your words appear under the orb while you speak
   let heard = "";
   const pulse = () => {
@@ -1147,7 +1153,7 @@ function handle(ev) {
     case "snapshot":
       if (S.token) safeSet("hq_token", S.token);
       S.data = ev.state;
-      $("chat-input").placeholder = `Parla con ${S.data.boss.name}…`;
+      $("chat-input").placeholder = t("Parla con {name}…", { name: S.data.boss.name });
       buildArena(); renderStats(); renderDeadlines(); renderFeed(); renderDrafts();
       $("view-casa").classList.toggle("hidden", !S.data.integrations.home_assistant);
       if ((!UI.hq || S.data.role === "casa") && S.data.integrations.home_assistant) { if (S.view !== "casa") setView("casa"); }

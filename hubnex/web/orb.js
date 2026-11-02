@@ -1,11 +1,12 @@
 // Jarvis' "arc reactor": the face of the conversation. Appears while you talk to Jarvis,
 // reacts to your voice while listening, spins while thinking and pulses with his voice while
 // he speaks (real audio levels from the Web Audio API).
+import { t } from "./i18n.js";
 
 const STATES = {
-  listening: { color: [79, 209, 255], caption: "In ascolto…", spin: 0.6 },
-  thinking: { color: [178, 107, 255], caption: "Sto pensando…", spin: 2.2 },
-  working: { color: [255, 181, 71], caption: "Al lavoro…", spin: 1.6 },
+  listening: { color: [79, 209, 255], caption: t("In ascolto…"), spin: 0.6 },
+  thinking: { color: [178, 107, 255], caption: t("Sto pensando…"), spin: 2.2 },
+  working: { color: [255, 181, 71], caption: t("Al lavoro…"), spin: 1.6 },
   speaking: { color: [120, 230, 255], caption: "", spin: 0.9 },
   idle: { color: [79, 209, 255], caption: "", spin: 0.3 },
 };
@@ -175,12 +176,13 @@ export class Orb {
 // Phrases for what Jarvis is doing, from the tool names the HQ reports.
 export function describeTool(name, agentName) {
   if (!name) return null;
-  if (name.startsWith("ha_")) return "Controllo la casa…";
-  if (name.includes("__")) return `Consulto ${name.split("__")[0].replace(/_/g, " ")}…`; // a connector  if (name.startsWith("mail_")) return "Leggo la posta…";
-  if (name === "delegate") return "Coinvolgo il team…";
-  if (name === "web_search" || name === "web_fetch") return "Cerco sul web…";
-  if (name.startsWith("memory_")) return "Consulto la memoria…";
-  if (name.startsWith("deadline_")) return "Controllo le scadenze…";
-  if (name === "notify_owner") return "Ti scrivo su Telegram…";
-  return agentName ? `${agentName} al lavoro…` : "Al lavoro…";
+  if (name.startsWith("ha_")) return t("Controllo la casa…");
+  if (name.includes("__")) return t("Consulto {name}…", { name: name.split("__")[0].replace(/_/g, " ") }); // a connector
+  if (name.startsWith("mail_")) return t("Leggo la posta…");
+  if (name === "delegate") return t("Coinvolgo il team…");
+  if (name === "web_search" || name === "web_fetch") return t("Cerco sul web…");
+  if (name.startsWith("memory_")) return t("Consulto la memoria…");
+  if (name.startsWith("deadline_")) return t("Controllo le scadenze…");
+  if (name === "notify_owner") return t("Ti scrivo su Telegram…");
+  return agentName ? t("{name} al lavoro…", { name: agentName }) : t("Al lavoro…");
 }

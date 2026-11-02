@@ -3,13 +3,14 @@
 // (F1/F2/F3), prices or cost, power now, any other reading. Mixed into CasaView.
 
 import { esc, num } from "./casa-cards.js";
+import { t } from "./i18n.js";
 
 const BANDS = ["F1", "F2", "F3"];
 const BAND_COLOR = { F1: "#ff9a3c", F2: "#4fa3ff", F3: "#3ddc97" }; // orange, blue, green: never confused
-const VIEWS = [["reactor", "Il reattore"], ["day", "La giornata"], ["bill", "La bolletta"]];
+const VIEWS = [["reactor", t("Il reattore")], ["day", t("La giornata")], ["bill", t("La bolletta")]];
 const BAND_HINT = {
-  F1: "Sono le ore diurne dei giorni feriali (8-19): gli elettrodomestici a orario si possono spostare la sera o nel weekend.",
-  F2: "Sono le sere e il sabato: se lavatrice o lavastoviglie partono dopo le 23, passano in F3.",
+  F1: t("Sono le ore diurne dei giorni feriali (8-19): gli elettrodomestici a orario si possono spostare la sera o nel weekend."),
+  F2: t("Sono le sere e il sabato: se lavatrice o lavastoviglie partono dopo le 23, passano in F3."),
 };
 
 // ARERA bands (also computed by the add-on): F1 working days 8-19, F2 7-8 / 19-23 and Saturday 7-23, F3 the rest.
@@ -56,7 +57,7 @@ export const Energy = {
     end.setMonth(end.getMonth() + months);
     const frac = Math.min(1, Math.max(0, (now - start) / (end - start)));
     const day = Math.max(1, Math.ceil((now - start) / 864e5)), days = Math.round((end - start) / 864e5);
-    return { start, end, frac, day, days, name: months === 2 ? "bimestre" : months === 1 ? "mese" : "periodo" };
+    return { start, end, frac, day, days, name: months === 2 ? t("bimestre") : months === 1 ? t("mese") : t("periodo") };
   },
 
   eData() {
@@ -95,23 +96,23 @@ export const Energy = {
     const views = (d.cfg.views || []).filter(() => configured);
     const body = this.energyEdit ? this.energyCfgHTML()
       : views.length ? views.map((v) => ({ reactor: () => this.reactorHTML(d), day: () => this.dayHTML(d), bill: () => this.billHTML(d) })[v]?.() || "").join("")
-      : `<p class="casa-muted">${configured ? "Nessuna vista scelta." : "Il pannello non è ancora configurato: scegli i sensori di consumo, fasce e potenza."} <button class="hc-link" data-act="energy-cfg">Configura</button></p>`;
+      : `<p class="casa-muted">${configured ? t("Nessuna vista scelta.") : t("Il pannello non è ancora configurato: scegli i sensori di consumo, fasce e potenza.")} <button class="hc-link" data-act="energy-cfg">${t("Configura")}</button></p>`;
     // A popup like the others in the top bar. It sits in the dialog layer: redrawn only when
     // its content changes, and it keeps its scroll position.
-    return `<div class="casa-modal casa-energy-modal" role="dialog" aria-label="Energia" data-act="energy-bg">
+    return `<div class="casa-modal casa-energy-modal" role="dialog" aria-label="${t("Energia")}" data-act="energy-bg">
       <section class="panel casa-panel hc-energy">
-        <h3>${this.energyEdit ? "Configura Energia" : "Energia"}
-          <span class="hc-energy-actions">${this.energyEdit ? "" : `<button class="hc-link" data-act="energy-cfg">Configura</button>`}
-          <button class="casa-x" data-act="energy-close" aria-label="Chiudi">×</button></span></h3>
+        <h3>${this.energyEdit ? t("Configura Energia") : t("Energia")}
+          <span class="hc-energy-actions">${this.energyEdit ? "" : `<button class="hc-link" data-act="energy-cfg">${t("Configura")}</button>`}
+          <button class="casa-x" data-act="energy-close" aria-label="${t("Chiudi")}">×</button></span></h3>
         <div class="hc-energy-body">${body}</div>
       </section>
     </div>`;
   },
 
-  trendHTML(t) {
-    if (t == null) return "";
-    const pct = `${t > 0 ? "+" : "−"}${num(Math.abs(t) * 100)}%`;
-    return `<span class="${t > 0 ? "e-up" : "e-down"}">${pct}</span>`;
+  trendHTML(tr) {
+    if (tr == null) return "";
+    const pct = `${tr > 0 ? "+" : "−"}${num(Math.abs(tr) * 100)}%`;
+    return `<span class="${tr > 0 ? "e-up" : "e-down"}">${pct}</span>`;
   },
 
   readoutsHTML(d, cls = "e-ro") {
@@ -142,19 +143,19 @@ export const Energy = {
     }
     const labels = d.bands.map((b, i) => `<span style="color:${BAND_COLOR[b.name]}">${b.name} · ${b.kwh != null ? num(b.kwh) : "—"} kWh</span>`).join("");
     return `<div class="e-view e-reactor">
-      <div class="e-rwrap"><svg viewBox="0 0 400 400" aria-label="Reattore dell'energia">
+      <div class="e-rwrap"><svg viewBox="0 0 400 400" aria-label="${t("Reattore dell'energia")}">
         <g class="e-ticks">${ticks}</g>
         <g fill="none" stroke-width="10" transform="rotate(-90 200 200)"><circle cx="200" cy="200" r="160" stroke="rgba(255,255,255,.05)"/>${segs}</g>
         <g fill="none" stroke-width="4" transform="rotate(-90 200 200)"><circle cx="200" cy="200" r="122" stroke="rgba(255,255,255,.06)"/>
           <circle cx="200" cy="200" r="122" stroke="${p > 0.9 ? "var(--danger)" : "var(--accent)"}" stroke-linecap="round" stroke-dasharray="${(p * ci).toFixed(1)} ${ci.toFixed(1)}"/></g>
         <circle cx="200" cy="200" r="96" fill="rgba(79,209,255,.04)" stroke="rgba(79,209,255,.2)"/>
-        <text x="200" y="184" text-anchor="middle" class="e-k">ADESSO</text>
+        <text x="200" y="184" text-anchor="middle" class="e-k">${t("ADESSO")}</text>
         <text x="200" y="226" text-anchor="middle" class="e-big">${d.watts != null ? num(d.watts, 0) : "—"}</text>
-        <text x="200" y="250" text-anchor="middle" class="e-s">watt${d.watts != null ? ` · ${num(p * 100, 0)}% del contatore` : ""}</text>
+        <text x="200" y="250" text-anchor="middle" class="e-s">watt${d.watts != null ? ` · ${t("{n}% del contatore", { n: num(p * 100, 0) })}` : ""}</text>
       </svg><div class="e-labels">${labels}</div></div>
       <div class="e-readouts">
-        ${d.now ? `<div class="e-ro now" style="--band:${BAND_COLOR[d.now] || "var(--warn)"}"><span class="hc-state">fascia adesso</span><span class="hc-num">${d.now}${d.until ? ` <small>fino alle ${d.until}</small>` : ""}</span></div>` : ""}
-        ${d.total != null ? `<div class="e-ro"><span class="hc-state">${d.period.name}</span><span class="hc-num">${num(d.total)}<small>kWh</small>${d.cost != null ? ` · ${num(d.cost, 2)}<small>€</small>` : ""}</span>${d.totalTrend != null ? `<span class="hc-state">${this.trendHTML(d.totalTrend)} sul ${d.period.name} scorso</span>` : ""}</div>` : ""}
+        ${d.now ? `<div class="e-ro now" style="--band:${BAND_COLOR[d.now] || "var(--warn)"}"><span class="hc-state">${t("fascia adesso")}</span><span class="hc-num">${d.now}${d.until ? ` <small>${t("fino alle {time}", { time: d.until })}</small>` : ""}</span></div>` : ""}
+        ${d.total != null ? `<div class="e-ro"><span class="hc-state">${d.period.name}</span><span class="hc-num">${num(d.total)}<small>kWh</small>${d.cost != null ? ` · ${num(d.cost, 2)}<small>€</small>` : ""}</span>${d.totalTrend != null ? `<span class="hc-state">${this.trendHTML(d.totalTrend)} ${t("sul {period} scorso", { period: d.period.name })}</span>` : ""}</div>` : ""}
         ${this.readoutsHTML(d)}
       </div>
     </div>`;
@@ -187,18 +188,18 @@ export const Energy = {
     const grid = [0.25, 0.5, 0.75].map((f) => `<line x1="${x0}" y1="${y(max * f).toFixed(1)}" x2="${x1}" y2="${y(max * f).toFixed(1)}"/><text x="0" y="${(y(max * f) + 4).toFixed(1)}" class="e-s">${num((max * f) / 1000)}${f === 0.75 ? " kW" : ""}</text>`).join("");
     const todayKwh = day?.kwh ? Object.values(day.kwh).reduce((s, v) => s + v, 0) : null;
     return `<div class="e-view e-day">
-      <svg viewBox="0 0 ${W} ${H}" aria-label="Potenza di oggi">${bg}
+      <svg viewBox="0 0 ${W} ${H}" aria-label="${t("Potenza di oggi")}">${bg}
         <g class="e-grid">${grid}</g>
         <g class="e-s">${[0, 6, 12, 18, 24].map((h) => `<text x="${x(h * 60).toFixed(1)}" y="${H - 28}" text-anchor="middle">${h}</text>`).join("")}</g>
         ${pts.length ? `<path d="${area}" class="e-area"/><path d="${line}" class="e-line"/>
           <line x1="${nowX.toFixed(1)}" y1="${y0}" x2="${nowX.toFixed(1)}" y2="${y1}" class="e-now"/>
-          ${d.watts != null ? `<text x="${Math.min(nowX + 6, W - 120).toFixed(1)}" y="${y0 + 36}" class="e-nowtxt">adesso ${num(d.watts, 0)} W</text>` : ""}`
-        : `<text x="${W / 2}" y="${(y0 + y1) / 2}" text-anchor="middle" class="e-s">${d.cfg.power ? "Carico la giornata…" : "Scegli il sensore della potenza in Configura."}</text>`}
+          ${d.watts != null ? `<text x="${Math.min(nowX + 6, W - 120).toFixed(1)}" y="${y0 + 36}" class="e-nowtxt">${t("adesso")} ${num(d.watts, 0)} W</text>` : ""}`
+        : `<text x="${W / 2}" y="${(y0 + y1) / 2}" text-anchor="middle" class="e-s">${d.cfg.power ? t("Carico la giornata…") : t("Scegli il sensore della potenza in Configura.")}</text>`}
       </svg>
       <div class="e-stats">
-        <div><span class="hc-state">oggi</span><span class="hc-num">${todayKwh != null ? num(todayKwh) : "—"} <small>kWh</small></span>${day?.kwh && d.cfg.band_mode === "arera" ? `<span class="hc-state">${BANDS.map((b) => `${b} ${num(day.kwh[b])}`).join(" · ")}</span>` : ""}</div>
-        ${d.total != null ? `<div><span class="hc-state">${d.period.name}</span><span class="hc-num">${num(d.total)} <small>kWh</small></span>${d.totalTrend != null ? `<span class="hc-state">${this.trendHTML(d.totalTrend)} sul precedente</span>` : ""}</div>` : ""}
-        ${d.cost != null ? `<div><span class="hc-state">spesa</span><span class="hc-num">${num(d.cost, 2)} <small>€</small></span>${d.projection != null ? `<span class="hc-state">fine ${d.period.name} ≈ ${num(d.projection, 0)} €</span>` : ""}</div>` : ""}
+        <div><span class="hc-state">${t("oggi")}</span><span class="hc-num">${todayKwh != null ? num(todayKwh) : "—"} <small>kWh</small></span>${day?.kwh && d.cfg.band_mode === "arera" ? `<span class="hc-state">${BANDS.map((b) => `${b} ${num(day.kwh[b])}`).join(" · ")}</span>` : ""}</div>
+        ${d.total != null ? `<div><span class="hc-state">${d.period.name}</span><span class="hc-num">${num(d.total)} <small>kWh</small></span>${d.totalTrend != null ? `<span class="hc-state">${this.trendHTML(d.totalTrend)} ${t("sul precedente")}</span>` : ""}</div>` : ""}
+        ${d.cost != null ? `<div><span class="hc-state">${t("spesa")}</span><span class="hc-num">${num(d.cost, 2)} <small>€</small></span>${d.projection != null ? `<span class="hc-state">${t("fine {period}", { period: d.period.name })} ≈ ${num(d.projection, 0)} €</span>` : ""}</div>` : ""}
         ${this.readoutsHTML(d, "e-stat")}
       </div>
     </div>`;
@@ -209,19 +210,19 @@ export const Energy = {
     const total = d.bands.reduce((s, b) => s + (b.kwh || 0), 0);
     const up = d.cfg.band_mode === "arera" ? d.bands.filter((b) => b.trend > 0.25 && BAND_HINT[b.name]).sort((a, b) => b.trend - a.trend)[0] : null;
     const head = d.cost != null
-      ? `<div><span class="hc-kick">${d.period.name} in corso · giorno ${d.period.day} di ${d.period.days}</span><div class="e-bill">${num(d.cost, 2)}<small> €</small></div></div>
-         ${d.projection != null ? `<div class="e-proj"><span class="hc-state">al ritmo di oggi</span><span class="hc-num">≈ ${num(d.projection, 0)} € a fine ${d.period.name}</span>${d.totalTrend != null ? `<span class="hc-state">${this.trendHTML(d.totalTrend)} rispetto al ${d.period.name} scorso</span>` : ""}</div>` : ""}`
-      : `<div><span class="hc-kick">${d.period.name} in corso · giorno ${d.period.day} di ${d.period.days}</span><div class="e-bill">${d.total != null ? num(d.total) : "—"}<small> kWh</small></div></div>
-         <div class="e-proj"><span class="hc-state">per la stima in euro scegli i prezzi o la spesa in Configura</span></div>`;
+      ? `<div><span class="hc-kick">${t("{period} in corso · giorno {day} di {days}", { period: d.period.name, day: d.period.day, days: d.period.days })}</span><div class="e-bill">${num(d.cost, 2)}<small> €</small></div></div>
+         ${d.projection != null ? `<div class="e-proj"><span class="hc-state">${t("al ritmo di oggi")}</span><span class="hc-num">≈ ${num(d.projection, 0)} € ${t("a fine {period}", { period: d.period.name })}</span>${d.totalTrend != null ? `<span class="hc-state">${this.trendHTML(d.totalTrend)} ${t("rispetto al {period} scorso", { period: d.period.name })}</span>` : ""}</div>` : ""}`
+      : `<div><span class="hc-kick">${t("{period} in corso · giorno {day} di {days}", { period: d.period.name, day: d.period.day, days: d.period.days })}</span><div class="e-bill">${d.total != null ? num(d.total) : "—"}<small> kWh</small></div></div>
+         <div class="e-proj"><span class="hc-state">${t("per la stima in euro scegli i prezzi o la spesa in Configura")}</span></div>`;
     return `<div class="e-view e-billview">
       <div class="e-billhead">${head}</div>
       <div class="e-track" aria-hidden="true"><i class="done" style="width:${(d.period.frac * 100).toFixed(1)}%"></i><i class="proj" style="left:${(d.period.frac * 100).toFixed(1)}%;width:${(100 - d.period.frac * 100).toFixed(1)}%"></i>
-        ${d.period.frac < 0.9 ? `<b style="left:${(d.period.frac * 100).toFixed(1)}%"><span>oggi</span></b>` : ""}<b style="left:100%"><span>fine</span></b></div>
-      ${d.bands.length ? `<div class="e-rows">${d.bands.map((b) => `<div class="e-row ${b.name === d.now ? "now" : ""}" style="--band:${BAND_COLOR[b.name]}"><span>${b.name}${b.name === d.now ? " · ora" : ""}</span>
+        ${d.period.frac < 0.9 ? `<b style="left:${(d.period.frac * 100).toFixed(1)}%"><span>${t("oggi")}</span></b>` : ""}<b style="left:100%"><span>${t("fine")}</span></b></div>
+      ${d.bands.length ? `<div class="e-rows">${d.bands.map((b) => `<div class="e-row ${b.name === d.now ? "now" : ""}" style="--band:${BAND_COLOR[b.name]}"><span>${b.name}${b.name === d.now ? ` · ${t("ora")}` : ""}</span>
           <span class="e-bar"><i style="width:${total ? ((b.kwh || 0) / total) * 100 : 0}%;background:${BAND_COLOR[b.name]}"></i></span>
           <span class="hc-num">${b.kwh != null ? num(b.kwh) : "—"} <small>kWh</small></span><span class="e-trend">${this.trendHTML(b.trend)}</span><span class="hc-state">${total ? num(((b.kwh || 0) / total) * 100, 0) : 0}%</span></div>`).join("")}</div>` : ""}
-      ${up ? `<div class="e-tip"><b>${up.name} è salita del ${num(up.trend * 100, 0)}%.</b> ${BAND_HINT[up.name]}</div>` : ""}
-      <div class="e-mini">${d.watts != null ? `<span>adesso <b>${num(d.watts, 0)} W</b></span>` : ""}${(d.cfg.readouts || []).filter((e) => this.st(e)).map((e) => `<span>${esc(this.st(e).n.toLowerCase())} <b>${esc(this.value(e))}</b></span>`).join("")}</div>
+      ${up ? `<div class="e-tip"><b>${t("{band} è salita del {n}%.", { band: up.name, n: num(up.trend * 100, 0) })}</b> ${BAND_HINT[up.name]}</div>` : ""}
+      <div class="e-mini">${d.watts != null ? `<span>${t("adesso")} <b>${num(d.watts, 0)} W</b></span>` : ""}${(d.cfg.readouts || []).filter((e) => this.st(e)).map((e) => `<span>${esc(this.st(e).n.toLowerCase())} <b>${esc(this.value(e))}</b></span>`).join("")}</div>
     </div>`;
   },
 
@@ -231,18 +232,18 @@ export const Energy = {
     const val = field.startsWith("bands.") ? c.bands[field.slice(6)] : field.startsWith("prices.") ? c.prices[field.slice(7)] : c[field];
     const picking = this.ePick === field;
     return `<div class="e-field"><span>${label}</span><span class="e-pickval">
-      <button class="e-ent" data-act="epick" data-f="${field}">${val ? `${esc(this.st(val)?.n || val)} <small>${esc(val)}</small>` : `<small>${hint || "scegli…"}</small>`}</button>
-      ${val ? `<button class="hc-link" data-act="epick-clear" data-f="${field}" aria-label="Togli">togli</button>` : ""}</span></div>
+      <button class="e-ent" data-act="epick" data-f="${field}">${val ? `${esc(this.st(val)?.n || val)} <small>${esc(val)}</small>` : `<small>${hint || t("scegli…")}</small>`}</button>
+      ${val ? `<button class="hc-link" data-act="epick-clear" data-f="${field}" aria-label="${t("Togli")}">${t("togli")}</button>` : ""}</span></div>
       ${picking ? this.ePickerHTML() : ""}`;
   },
 
   ePickerHTML() {
-    return `<div class="e-picker"><input id="epick-find" class="hc-input" placeholder="cerca per nome o entity_id…" value="${esc(this.ePickQ || "")}" autocomplete="off">
+    return `<div class="e-picker"><input id="epick-find" class="hc-input" placeholder="${t("cerca per nome o entity_id…")}" value="${esc(this.ePickQ || "")}" autocomplete="off">
       <div class="hc-cands" id="epick-cands">${this.ePickCandsHTML()}</div></div>`;
   },
 
   ePickCandsHTML() {
-    return (this.ePickCands || []).slice(0, 10).map((x) => `<button class="hc-cand" data-act="epick-set" data-e="${esc(x.entity_id)}"><span>${esc(x.name)}</span><span class="mono">${esc(x.entity_id)}</span></button>`).join("") || `<p class="casa-muted">Scrivi per cercare.</p>`;
+    return (this.ePickCands || []).slice(0, 10).map((x) => `<button class="hc-cand" data-act="epick-set" data-e="${esc(x.entity_id)}"><span>${esc(x.name)}</span><span class="mono">${esc(x.entity_id)}</span></button>`).join("") || `<p class="casa-muted">${t("Scrivi per cercare.")}</p>`;
   },
 
   async ePickSearch(q) {
@@ -264,30 +265,30 @@ export const Energy = {
     const c = this.energyEdit;
     const tab = (act, value, label, cur) => `<button class="hc-tab ${cur === value ? "sel" : ""}" data-act="${act}" data-v="${value}">${label}</button>`;
     return `<div class="e-cfg">
-      <section><span class="hc-kick">Viste da mostrare</span>
+      <section><span class="hc-kick">${t("Viste da mostrare")}</span>
         <div class="e-views">${VIEWS.map(([v, label]) => `<label class="e-vtog"><button class="casa-switch ${c.views.includes(v) ? "on" : ""}" data-act="eview" data-v="${v}" role="switch" aria-checked="${c.views.includes(v)}" aria-label="${label}"></button>${label}</label>`).join("")}</div></section>
-      <section><span class="hc-kick">Fascia oraria</span>
-        <div class="hc-tabs">${tab("eband", "arera", "Calendario ARERA (F1/F2/F3)", c.band_mode)}${tab("eband", "sensor", "Da un mio sensore", c.band_mode)}${tab("eband", "single", "Tariffa unica", c.band_mode)}</div>
-        ${c.band_mode === "sensor" ? this.ePickField("band_sensor", "Fascia", "entità con stato F1 / F2 / F3") : ""}
-        ${c.band_mode === "arera" ? `<p class="casa-muted">Calcolata da HubNEX, festivi nazionali compresi.</p>` : ""}</section>
+      <section><span class="hc-kick">${t("Fascia oraria")}</span>
+        <div class="hc-tabs">${tab("eband", "arera", t("Calendario ARERA (F1/F2/F3)"), c.band_mode)}${tab("eband", "sensor", t("Da un mio sensore"), c.band_mode)}${tab("eband", "single", t("Tariffa unica"), c.band_mode)}</div>
+        ${c.band_mode === "sensor" ? this.ePickField("band_sensor", t("Fascia"), t("entità con stato F1 / F2 / F3")) : ""}
+        ${c.band_mode === "arera" ? `<p class="casa-muted">${t("Calcolata da HubNEX, festivi nazionali compresi.")}</p>` : ""}</section>
       ${c.band_mode === "single"
-        ? `<section><span class="hc-kick">Consumo</span>${this.ePickField("total", "kWh del periodo", "es. un contatore di Home Assistant")}</section>`
-        : `<section><span class="hc-kick">Consumo per fascia (kWh del periodo)</span>
+        ? `<section><span class="hc-kick">${t("Consumo")}</span>${this.ePickField("total", t("kWh del periodo"), t("es. un contatore di Home Assistant"))}</section>`
+        : `<section><span class="hc-kick">${t("Consumo per fascia (kWh del periodo)")}</span>
             ${BANDS.map((b) => this.ePickField(`bands.${b}`, b)).join("")}
-            <span class="hc-kick" style="margin-top:8px">Prezzi €/kWh (facoltativi)</span>
-            ${BANDS.map((b) => this.ePickField(`prices.${b}`, b, "es. input_number")).join("")}</section>`}
-      <section><span class="hc-kick">Spesa e periodo</span>
-        ${this.ePickField("cost", "Spesa €", "facoltativo: se Home Assistant la calcola")}
-        <div class="e-field"><span>Periodo</span><span class="hc-tabs">${tab("ecycle", "monthly", "mese", c.cycle)}${tab("ecycle", "bimonthly", "bimestre", c.cycle)}</span></div>
-        <p class="casa-muted">Se i contatori sono "utility meter" di Home Assistant, inizio del periodo e confronto col precedente vengono da loro.</p></section>
-      <section><span class="hc-kick">Potenza</span>
-        ${this.ePickField("power", "Adesso (W)")}
-        <div class="e-field"><span>Contatore</span><span><input id="e-contract" class="hc-input e-kw" type="number" min="0.5" max="100" step="0.5" value="${c.contract_kw}"> kW</span></div></section>
-      <section><span class="hc-kick">Altri valori</span>
-        ${c.readouts.map((e) => `<div class="e-field"><span></span><span class="e-pickval"><span class="e-ent">${esc(this.st(e)?.n || e)} <small>${esc(e)}</small></span><button class="hc-link" data-act="eread-rm" data-e="${esc(e)}">togli</button></span></div>`).join("")}
-        <button class="hc-link" data-act="epick" data-f="readouts+">+ aggiungi (tensione, fattore di potenza, energia prelevata…)</button>
+            <span class="hc-kick" style="margin-top:8px">${t("Prezzi €/kWh (facoltativi)")}</span>
+            ${BANDS.map((b) => this.ePickField(`prices.${b}`, b, t("es. input_number"))).join("")}</section>`}
+      <section><span class="hc-kick">${t("Spesa e periodo")}</span>
+        ${this.ePickField("cost", t("Spesa €"), t("facoltativo: se Home Assistant la calcola"))}
+        <div class="e-field"><span>${t("Periodo")}</span><span class="hc-tabs">${tab("ecycle", "monthly", t("mese"), c.cycle)}${tab("ecycle", "bimonthly", t("bimestre"), c.cycle)}</span></div>
+        <p class="casa-muted">${t("Se i contatori sono \"utility meter\" di Home Assistant, inizio del periodo e confronto col precedente vengono da loro.")}</p></section>
+      <section><span class="hc-kick">${t("Potenza")}</span>
+        ${this.ePickField("power", t("Adesso (W)"))}
+        <div class="e-field"><span>${t("Contatore")}</span><span><input id="e-contract" class="hc-input e-kw" type="number" min="0.5" max="100" step="0.5" value="${c.contract_kw}"> kW</span></div></section>
+      <section><span class="hc-kick">${t("Altri valori")}</span>
+        ${c.readouts.map((e) => `<div class="e-field"><span></span><span class="e-pickval"><span class="e-ent">${esc(this.st(e)?.n || e)} <small>${esc(e)}</small></span><button class="hc-link" data-act="eread-rm" data-e="${esc(e)}">${t("togli")}</button></span></div>`).join("")}
+        <button class="hc-link" data-act="epick" data-f="readouts+">+ ${t("aggiungi (tensione, fattore di potenza, energia prelevata…)")}</button>
         ${this.ePick === "readouts+" ? this.ePickerHTML() : ""}</section>
-      <div class="casa-actions"><button class="hc-btn primary" data-act="ecfg-save">Salva</button><button class="hc-link" data-act="ecfg-cancel">Annulla</button></div>
+      <div class="casa-actions"><button class="hc-btn primary" data-act="ecfg-save">${t("Salva")}</button><button class="hc-link" data-act="ecfg-cancel">${t("Annulla")}</button></div>
     </div>`;
   },
 
@@ -330,7 +331,7 @@ export const Energy = {
         try {
           await this.api("/api/casa/energy/config", { method: "POST", body: JSON.stringify(c) });
           this.energyEdit = null; this.ePick = null;
-          this.toast("Pannello Energia salvato");
+          this.toast(t("Pannello Energia salvato"));
           await this.reload(true);
           this.loadEnergy();
         } catch (err) { this.toast(`⚠ ${err.message}`); }

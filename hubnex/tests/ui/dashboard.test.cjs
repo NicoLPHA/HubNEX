@@ -32,8 +32,9 @@ after(async () => {
 });
 
 // A page that fails the test on any JavaScript error.
-async function open(viewport = { width: 1440, height: 900 }) {
+async function open(viewport = { width: 1440, height: 900 }, lang = "it") {
   const page = await browser.newPage({ viewport });
+  await page.addInitScript((l) => localStorage.setItem("hq_lang", l), lang);
   page.errors = [];
   page.on("pageerror", (e) => page.errors.push(e.message));
   await page.goto(URL);
@@ -143,5 +144,26 @@ test("telefono: la scheda della stanza sale dal basso", { timeout: 30000 }, asyn
   assert.ok(await page.evaluate(() => document.body.classList.contains("casa-sheet")));
   const box = await page.locator(".casa-quick").boundingBox();
   assert.ok(box.y > 200 && box.x < 20, "la scheda è in basso e occupa la larghezza");
+  await done(page);
+});
+
+test("in inglese: Casa, stanza, Energia e preferenze senza testi italiani mancanti", { timeout: 30000 }, async () => {
+  const page = await open({ width: 1440, height: 900 }, "en");
+  await casa(page);
+  assert.match(await page.textContent("#casa"), /Room temperatures/);
+  await page.click(".plan-room[data-area='soggiorno']");
+  await page.click(".casa-quick [data-act='open']");
+  await page.click("[data-act='edit']");
+  assert.match(await page.textContent("#casa"), /Done editing/);
+  await page.click("[data-act='home']");
+  await page.click("[data-act='energy']");
+  await page.waitForSelector(".casa-energy-modal");
+  assert.match(await page.textContent(".casa-energy-modal"), /Energy/);
+  await page.keyboard.press("Escape");
+  await page.click("#ha-prefs");
+  assert.match(await page.textContent("#prefs"), /Preferences/);
+  assert.equal(await page.getAttribute("#chat-input", "placeholder"), "Talk to Jarvis…");
+  const missing = await page.evaluate(() => [...(window.__i18nMissing || [])]);
+  assert.deepEqual(missing, [], "testi senza inglese mostrati nella pagina");
   await done(page);
 });

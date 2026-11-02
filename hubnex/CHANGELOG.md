@@ -1,6 +1,12 @@
 # Changelog
 
-## Non ancora pubblicato
+## 1.9.0
+- La dashboard parla inglese: scelta da sola in base alla lingua di Home Assistant di chi la
+  apre, o a mano in ⚙ Preferenze → Lingua. Tutti i testi (Casa, card, Energia, piantina, HQ,
+  mappa, chat, preferenze) sono tradotti; un test controlla che il dizionario resti completo.
+- Numeri, date e ore nel formato della lingua scelta; il microfono ascolta nella stessa lingua.
+- Corretto: il fumetto "Leggo la posta…" dell'assistente non compariva mai.
+
 - Per chi sviluppa: `dev/demo.py` (HubNEX con una casa e un Claude finti), test della
   dashboard nel browser a ogni modifica, guida CONTRIBUTING.
 

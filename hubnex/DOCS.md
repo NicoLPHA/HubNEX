@@ -276,6 +276,10 @@ browser.
 **Aprire HubNEX all'avvio di Home Assistant**: dentro Home Assistant, in alto **⚙** →
 interruttore. Vale solo per il tuo account; gli altri utenti restano sulla loro plancia.
 
+**Lingua**: la dashboard è in italiano o in inglese, secondo la lingua di Home Assistant di chi
+la apre (non italiano = inglese). In alto **⚙ → Lingua** si sceglie a mano, solo per quel
+browser. Per ora le risposte di Jarvis e i messaggi dell'add-on restano in italiano.
+
 **Solo la Casa, per chi vuole solo accendere una luce**: in alto **⚙** → spegni **Schede HQ e
 Mappa** (HubNEX apre direttamente la Casa) e/o **Assistente AI** (spariscono chat, voce e
 approvazioni: nessun credito Claude). Dentro Home Assistant la scelta è salvata con l'account

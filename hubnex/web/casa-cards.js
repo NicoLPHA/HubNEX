@@ -3,12 +3,13 @@
 // CasaView (casa.js), so `this` is the view: st(), value(), call()…
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-export const num = (v, d = 1) => Number(v).toLocaleString("it-IT", { maximumFractionDigits: d });
+import { t, num } from "./i18n.js";
+export { num };
 const OPENING = new Set(["door", "window", "opening", "garage_door"]);
 const DANGER = new Set(["smoke", "moisture", "gas", "safety", "problem", "carbon_monoxide"]);
 const PRESENCE = new Set(["motion", "occupancy", "presence"]);
-const HVAC = { heat: "Caldo", cool: "Freddo", auto: "Auto", heat_cool: "Auto", off: "Spento", dry: "Deum.", fan_only: "Ventola" };
-const ACTION = { heating: "Scalda", cooling: "Raffredda", idle: "In attesa", off: "", drying: "Deumidifica", fan: "Ventola" };
+const HVAC = { heat: t("Caldo"), cool: t("Freddo"), auto: "Auto", heat_cool: "Auto", off: t("Spento"), dry: t("Deum."), fan_only: t("Ventola") };
+const ACTION = { heating: t("Scalda"), cooling: t("Raffredda"), idle: t("In attesa"), off: "", drying: t("Deumidifica"), fan: t("Ventola") };
 
 // Thin line icons (the colour comes from the text).
 const PATHS = {
@@ -42,25 +43,25 @@ export const icon = (name, cls = "hc-ico") => `<svg class="${cls}" viewBox="0 0 
 export function since(iso) {
   if (!iso) return "";
   const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
-  if (m < 1) return "ora";
-  if (m < 60) return `da ${m} min`;
+  if (m < 1) return t("ora");
+  if (m < 60) return t("da {n} min", { n: m });
   const h = Math.round(m / 60);
-  if (h < 24) return `da ${h} h`;
+  if (h < 24) return t("da {n} h", { n: h });
   const d = Math.round(h / 24);
-  return d === 1 ? "da ieri" : `da ${d} giorni`;
+  return d === 1 ? t("da ieri") : t("da {n} giorni", { n: d });
 }
 
 // A ring with tick marks, like Jarvis's instruments.
 export function ring({ size = 72, pct = 0, color = "var(--accent)", label = "", sub = "", ticks = 24 }) {
   const cx = size / 2, r = size / 2 - 11, c = 2 * Math.PI * r;
-  let t = "";
+  let marks = "";
   for (let i = 0; i < ticks; i++) {
     const a = (i / ticks) * 2 * Math.PI - Math.PI / 2, r1 = size / 2 - 2, r2 = size / 2 - (i % 6 === 0 ? 6 : 4);
-    t += `<line x1="${(cx + r1 * Math.cos(a)).toFixed(1)}" y1="${(cx + r1 * Math.sin(a)).toFixed(1)}" x2="${(cx + r2 * Math.cos(a)).toFixed(1)}" y2="${(cx + r2 * Math.sin(a)).toFixed(1)}"/>`;
+    marks += `<line x1="${(cx + r1 * Math.cos(a)).toFixed(1)}" y1="${(cx + r1 * Math.sin(a)).toFixed(1)}" x2="${(cx + r2 * Math.cos(a)).toFixed(1)}" y2="${(cx + r2 * Math.sin(a)).toFixed(1)}"/>`;
   }
   const p = Math.max(0, Math.min(1, pct || 0));
   return `<div class="hc-ring" style="width:${size}px;height:${size}px;--rc:${color}"><svg viewBox="0 0 ${size} ${size}" aria-hidden="true">
-      <g class="ticks">${t}</g><circle class="track" cx="${cx}" cy="${cx}" r="${r}"/>
+      <g class="ticks">${marks}</g><circle class="track" cx="${cx}" cy="${cx}" r="${r}"/>
       <circle class="arc" cx="${cx}" cy="${cx}" r="${r}" stroke-dasharray="${(p * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${cx} ${cx})"/></svg>
     <div class="hc-ring-val"><b style="font-size:${size >= 110 ? 30 : size >= 70 ? 18 : 14}px">${label}</b>${sub ? `<small>${sub}</small>` : ""}</div></div>`;
 }
@@ -101,32 +102,32 @@ export const Cards = {
       const home = people.filter((e) => this.st(e).s === "home").length;
       parts.push(`<div class="hud-item"><div class="hc-people">${people.map((e) => {
         const s = this.st(e), at = s.s === "home";
-        const where = at ? "a casa" : s.s === "not_home" ? "fuori" : s.s;
+        const where = at ? t("a casa") : s.s === "not_home" ? t("fuori") : s.s;
         return `<span class="hc-avatar ${at ? "home" : ""}" title="${esc(s.n)}: ${esc(where)} ${esc(since(s.lc))}">${esc((s.n || "?").trim()[0] || "?")}</span>`;
-      }).join("")}</div><span class="hud-sub">${home ? `${home} in casa` : "nessuno in casa"}</span></div>`);
+      }).join("")}</div><span class="hud-sub">${home ? t("{n} in casa", { n: home }) : t("nessuno in casa")}</span></div>`);
     }
     if (alarm) {
       const s = this.st(alarm), armed = s.s !== "disarmed", bad = s.s === "triggered";
-      parts.push(`<button class="hud-item" data-act="alarm-panel"><span class="hud-dot ${bad ? "bad" : armed ? "ok" : ""}"></span><span><span class="hud-lbl">Allarme</span><span class="hud-val">${esc(this.value(alarm).toLowerCase())}</span></span></button>`);
+      parts.push(`<button class="hud-item" data-act="alarm-panel"><span class="hud-dot ${bad ? "bad" : armed ? "ok" : ""}"></span><span><span class="hud-lbl">${t("Allarme")}</span><span class="hud-val">${esc(this.value(alarm).toLowerCase())}</span></span></button>`);
     }
     if (avg != null) {
-      parts.push(`<div class="hud-item">${ring({ size: 38, pct: (avg - 14) / 14 })}<span><span class="hud-big">${num(avg)}<small>°</small></span><span class="hud-sub">${outside != null ? `esterno ${num(outside)}°` : "media della casa"}</span></span></div>`);
+      parts.push(`<div class="hud-item">${ring({ size: 38, pct: (avg - 14) / 14 })}<span><span class="hud-big">${num(avg)}<small>°</small></span><span class="hud-sub">${outside != null ? t("esterno {t}°", { t: num(outside) }) : t("media della casa")}</span></span></div>`);
     }
     if (allLights.length) {
-      parts.push(`<div class="hud-item">${ring({ size: 38, pct: lightsOn.length / allLights.length, color: "var(--warn)" })}<span><span class="hud-big">${lightsOn.length}<small>/${allLights.length}</small></span><span class="hud-sub">luci accese</span></span></div>`);
+      parts.push(`<div class="hud-item">${ring({ size: 38, pct: lightsOn.length / allLights.length, color: "var(--warn)" })}<span><span class="hud-big">${lightsOn.length}<small>/${allLights.length}</small></span><span class="hud-sub">${t("luci accese")}</span></span></div>`);
     }
     if (energyOn) {
       // A tap opens the energy panel.
       const band = ecfg.band_mode === "arera" ? this.energyLive?.band?.name : null;
-      const sub = [band, d.energy.today ? `oggi ${this.value(d.energy.today)}` : this.energyLive?.day?.kwh ? `oggi ${num(Object.values(this.energyLive.day.kwh).reduce((s, v) => s + v, 0))} kWh` : "energia"].filter(Boolean).join(" · ");
+      const sub = [band, d.energy.today ? `${t("oggi")} ${this.value(d.energy.today)}` : this.energyLive?.day?.kwh ? `${t("oggi")} ${num(Object.values(this.energyLive.day.kwh).reduce((s, v) => s + v, 0))} kWh` : t("energia")].filter(Boolean).join(" · ");
       parts.push(`<button class="hud-item" data-act="energy"><span><span class="hud-big">${isNaN(watts) ? "—" : num(watts / 1000, 2)}<small>kW</small></span><span class="hud-sub">${esc(sub)}</span></span></button>`);
     }
     if (cams) {
-      parts.push(`<button class="hud-item" data-act="cams">${icon("cam")}<span><span class="hud-val">${cams} ${cams === 1 ? "telecamera" : "telecamere"}</span><span class="hud-sub">tocca per vederle</span></span></button>`);
+      parts.push(`<button class="hud-item" data-act="cams">${icon("cam")}<span><span class="hud-val">${cams} ${cams === 1 ? t("telecamera") : t("telecamere")}</span><span class="hud-sub">${t("tocca per vederle")}</span></span></button>`);
     }
     const scenes = d.scenes.map((e) => `<button class="hc-scene" data-act="scene" data-e="${e}">${esc(this.st(e)?.n || e)}</button>`).join("");
     return `<div class="hud-row">${parts.join("")}</div>
-      <div class="hud-actions"><div class="hc-scenes">${scenes}</div><button class="hc-link" data-act="layout" title="Modifica la piantina">Piantina</button></div>`;
+      <div class="hud-actions"><div class="hc-scenes">${scenes}</div><button class="hc-link" data-act="layout" title="${t("Modifica la piantina")}">${t("Piantina")}</button></div>`;
   },
 
   // ---------------------------------------------------------------- a card per kind of entity
@@ -171,11 +172,11 @@ export const Cards = {
     const dim = (s.a.supported_color_modes || []).some((m) => m !== "onoff") || s.a.brightness != null;
     const color = on && s.a.rgb_color ? `<span class="hc-swatch" style="background:rgb(${s.a.rgb_color.join(",")})"></span>` : "";
     const kelvin = on && s.a.color_temp_kelvin ? `<span class="hc-state">${s.a.color_temp_kelvin} K</span>` : "";
-    const state = s.s === "unavailable" ? "non disponibile" : on ? `accesa${dim ? ` · ${pct}%` : ""}` : "spenta";
+    const state = s.s === "unavailable" ? t("non disponibile") : on ? `${t("accesa")}${dim ? ` · ${pct}%` : ""}` : t("spenta");
     return `<article class="hc hc-light ${on ? "on" : ""}" data-act="toggle" data-e="${eid}" role="button" tabindex="0" aria-pressed="${on}" aria-label="${esc(s.n)}">
-      ${this.head(s.nk ? "Luce (relè)" : "Luce", s, icon("bulb"))}
+      ${this.head(s.nk ? t("Luce (relè)") : t("Luce"), s, icon("bulb"))}
       <div class="hc-line"><span class="hc-state">${state}</span>${color}${kelvin}</div>
-      ${dim ? `<input class="hc-range" type="range" min="1" max="100" value="${pct || 1}" data-act="bright" data-e="${eid}" aria-label="Luminosità ${esc(s.n)}" ${on ? "" : "disabled"}>` : `<div class="hc-bar"><i style="width:${on ? 100 : 0}%"></i></div>`}
+      ${dim ? `<input class="hc-range" type="range" min="1" max="100" value="${pct || 1}" data-act="bright" data-e="${eid}" aria-label="${t("Luminosità")} ${esc(s.n)}" ${on ? "" : "disabled"}>` : `<div class="hc-bar"><i style="width:${on ? 100 : 0}%"></i></div>`}
     </article>`;
   },
 
@@ -183,10 +184,10 @@ export const Cards = {
     const on = this.isOn(eid);
     const pw = this.data.power?.[eid] && this.st(this.data.power[eid]);
     const domain = eid.split(".")[0];
-    const kick = domain === "fan" ? "Ventilatore" : domain === "vacuum" ? "Aspirapolvere" : domain === "humidifier" ? "Umidificatore" : domain === "input_boolean" ? "Interruttore" : "Presa / interruttore";
+    const kick = domain === "fan" ? t("Ventilatore") : domain === "vacuum" ? t("Aspirapolvere") : domain === "humidifier" ? t("Umidificatore") : domain === "input_boolean" ? t("Interruttore") : t("Presa / interruttore");
     return `<article class="hc hc-switch ${on ? "on" : ""}">
       ${this.head(kick, s, this.switchHTML(eid))}
-      ${pw ? `<div class="hc-watt"><b>${esc(num(parseFloat(pw.s) || 0, 0))}</b><span class="hc-state">${esc(pw.a.unit_of_measurement || "W")} adesso</span></div>` : `<div class="hc-line"><span class="hc-state">${on ? "acceso" : s.s === "unavailable" ? "non disponibile" : "spento"}</span></div>`}
+      ${pw ? `<div class="hc-watt"><b>${esc(num(parseFloat(pw.s) || 0, 0))}</b><span class="hc-state">${esc(pw.a.unit_of_measurement || "W")} ${t("adesso")}</span></div>` : `<div class="hc-line"><span class="hc-state">${on ? t("acceso") : s.s === "unavailable" ? t("non disponibile") : t("spento")}</span></div>`}
     </article>`;
   },
 
@@ -194,29 +195,29 @@ export const Cards = {
     const f = Number(s.a.supported_features) || 0;
     const active = ["playing", "paused", "buffering"].includes(s.s);
     if (!active) {
-      const note = { idle: "inattivo", off: "spento", on: "acceso", standby: "in standby", unavailable: "non disponibile" }[s.s] || s.s;
+      const note = { idle: t("inattivo"), off: t("spento"), on: t("acceso"), standby: t("in standby"), unavailable: t("non disponibile") }[s.s] || s.s;
       return `<article class="hc hc-media ${s.s === "on" || s.s === "idle" ? "" : ""}">
-        ${this.head("Media", s, this.switchHTML(eid))}
-        <div class="hc-line"><span class="hc-state">${esc(note)}</span>${s.s !== "off" && (f & 16384 || f & 1) ? `<button class="hc-round" data-act="media" data-s="media_play_pause" data-e="${eid}" aria-label="Riproduci">${icon("play", "hc-ico sm")}</button>` : ""}</div>
+        ${this.head(t("Media"), s, this.switchHTML(eid))}
+        <div class="hc-line"><span class="hc-state">${esc(note)}</span>${s.s !== "off" && (f & 16384 || f & 1) ? `<button class="hc-round" data-act="media" data-s="media_play_pause" data-e="${eid}" aria-label="${t("Riproduci")}">${icon("play", "hc-ico sm")}</button>` : ""}</div>
       </article>`;
     }
-    const title = s.a.media_title || "In riproduzione";
+    const title = s.a.media_title || t("In riproduzione");
     const artist = s.a.media_artist || "";
     let pos = Number(s.a.media_position);
     const dur = Number(s.a.media_duration);
     if (s.s === "playing" && s.a.media_position_updated_at && !isNaN(pos)) pos += (Date.now() - Date.parse(s.a.media_position_updated_at)) / 1000;
     const pct = dur > 0 && !isNaN(pos) ? Math.min(100, (pos / dur) * 100) : null;
-    const t = (x) => { x = Math.max(0, Math.round(x)); const h = Math.floor(x / 3600), m = Math.floor((x % 3600) / 60), sec = x % 60; return `${h ? h + ":" + String(m).padStart(2, "0") : m}:${String(sec).padStart(2, "0")}`; };
+    const clock = (x) => { x = Math.max(0, Math.round(x)); const h = Math.floor(x / 3600), m = Math.floor((x % 3600) / 60), sec = x % 60; return `${h ? h + ":" + String(m).padStart(2, "0") : m}:${String(sec).padStart(2, "0")}`; };
     const art = s.a.entity_picture ? `<img src="${esc(s.a.entity_picture)}" alt="" onerror="this.remove()">` : "";
     const playing = s.s === "playing";
     return `<article class="hc hc-media wide on">
-      ${this.head("Media", s, `<span class="hc-eq ${playing ? "" : "still"}" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`)}
+      ${this.head(t("Media"), s, `<span class="hc-eq ${playing ? "" : "still"}" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`)}
       <div class="hc-now"><div class="hc-art">${art}</div>
-        <div class="hc-nowtxt"><b>${esc(title)}</b><span class="hc-state">${esc(artist)}${pct != null ? `${artist ? " · " : ""}${t(pos)} / ${t(dur)}` : ""}</span>${pct != null ? `<div class="hc-bar thin"><i style="width:${pct}%"></i></div>` : ""}</div></div>
+        <div class="hc-nowtxt"><b>${esc(title)}</b><span class="hc-state">${esc(artist)}${pct != null ? `${artist ? " · " : ""}${clock(pos)} / ${clock(dur)}` : ""}</span>${pct != null ? `<div class="hc-bar thin"><i style="width:${pct}%"></i></div>` : ""}</div></div>
       <div class="hc-transport">
-        ${f & 16 ? `<button class="hc-round" data-act="media" data-s="media_previous_track" data-e="${eid}" aria-label="Precedente">${icon("prev", "hc-ico sm")}</button>` : ""}
-        <button class="hc-round big" data-act="media" data-s="media_play_pause" data-e="${eid}" aria-label="${playing ? "Pausa" : "Riproduci"}">${icon(playing ? "pause" : "play", "hc-ico sm")}</button>
-        ${f & 32 ? `<button class="hc-round" data-act="media" data-s="media_next_track" data-e="${eid}" aria-label="Successivo">${icon("next", "hc-ico sm")}</button>` : ""}
+        ${f & 16 ? `<button class="hc-round" data-act="media" data-s="media_previous_track" data-e="${eid}" aria-label="${t("Precedente")}">${icon("prev", "hc-ico sm")}</button>` : ""}
+        <button class="hc-round big" data-act="media" data-s="media_play_pause" data-e="${eid}" aria-label="${playing ? t("Pausa") : t("Riproduci")}">${icon(playing ? "pause" : "play", "hc-ico sm")}</button>
+        ${f & 32 ? `<button class="hc-round" data-act="media" data-s="media_next_track" data-e="${eid}" aria-label="${t("Successivo")}">${icon("next", "hc-ico sm")}</button>` : ""}
         ${s.a.volume_level != null ? `<label class="hc-vol"><span>VOL</span><input class="hc-range" type="range" min="0" max="100" value="${Math.round(s.a.volume_level * 100)}" data-act="volume" data-e="${eid}" aria-label="Volume ${esc(s.n)}"></label>` : ""}
         ${this.switchHTML(eid)}
       </div>
@@ -228,24 +229,24 @@ export const Cards = {
     const action = ACTION[s.a.hvac_action] ?? "";
     const modes = (s.a.hvac_modes || []).map((m) => `<button class="hc-tab ${s.s === m ? "sel" : ""}" data-act="hvac" data-e="${eid}" data-m="${m}">${HVAC[m] || m}</button>`).join("");
     return `<article class="hc hc-climate ${s.s !== "off" ? "on" : ""}">
-      ${this.head("Clima", s, action ? `<span class="hc-state">${action.toLowerCase()}</span>` : "")}
+      ${this.head(t("Clima"), s, action ? `<span class="hc-state">${action.toLowerCase()}</span>` : "")}
       <div class="hc-dialrow"><span class="hc-temp">${cur != null ? num(cur) : "—"}<small>°</small></span>
-        ${target != null ? `<span class="hc-target"><span class="hc-state">obiettivo ${num(target)}°</span><span class="hc-steps row"><button class="hc-step" data-act="temp" data-e="${eid}" data-d="-1" aria-label="Abbassa">−</button><button class="hc-step" data-act="temp" data-e="${eid}" data-d="1" aria-label="Alza">+</button></span></span>` : ""}</div>
+        ${target != null ? `<span class="hc-target"><span class="hc-state">${t("obiettivo")} ${num(target)}°</span><span class="hc-steps row"><button class="hc-step" data-act="temp" data-e="${eid}" data-d="-1" aria-label="${t("Abbassa")}">−</button><button class="hc-step" data-act="temp" data-e="${eid}" data-d="1" aria-label="${t("Alza")}">+</button></span></span>` : ""}</div>
       <div class="hc-tabs">${modes}</div>
-      ${s.a.current_humidity != null ? `<span class="hc-state">umidità ${num(s.a.current_humidity, 0)}%</span>` : ""}
+      ${s.a.current_humidity != null ? `<span class="hc-state">${t("umidità")} ${num(s.a.current_humidity, 0)}%</span>` : ""}
     </article>`;
   },
 
   coverCard(eid, s) {
     const pos = s.a.current_position ?? (s.s === "open" ? 100 : s.s === "closed" ? 0 : 50);
-    const state = s.a.current_position != null ? `${pos}% aperta` : { open: "aperta", closed: "chiusa", opening: "si alza…", closing: "si abbassa…" }[s.s] || s.s;
+    const state = s.a.current_position != null ? t("{n}% aperta", { n: pos }) : { open: t("aperta"), closed: t("chiusa"), opening: t("si alza…"), closing: t("si abbassa…") }[s.s] || s.s;
     return `<article class="hc hc-cover">
-      ${this.head(this.dc(eid) === "awning" ? "Tenda" : this.dc(eid) === "garage" ? "Garage" : "Tapparella", s, `<span class="hc-state">${esc(state)}</span>`)}
+      ${this.head(this.dc(eid) === "awning" ? t("Tenda") : this.dc(eid) === "garage" ? "Garage" : t("Tapparella"), s, `<span class="hc-state">${esc(state)}</span>`)}
       <div class="hc-blind"><div class="hc-window"><div class="hc-slats" style="height:${100 - pos}%"></div></div>
         <div class="hc-blind-ctl">
-          <button class="hc-btn" data-act="cover" data-s="open_cover" data-e="${eid}">▲ Su</button>
+          <button class="hc-btn" data-act="cover" data-s="open_cover" data-e="${eid}">▲ ${t("Su")}</button>
           <button class="hc-btn" data-act="cover" data-s="stop_cover" data-e="${eid}">■ Stop</button>
-          <button class="hc-btn" data-act="cover" data-s="close_cover" data-e="${eid}">▼ Giù</button>
+          <button class="hc-btn" data-act="cover" data-s="close_cover" data-e="${eid}">▼ ${t("Giù")}</button>
         </div></div>
     </article>`;
   },
@@ -255,13 +256,13 @@ export const Cards = {
     const f = Number(s.a.supported_features) || 0;
     const pos = s.a.current_position;
     return `<article class="hc hc-valve ${open ? "on" : ""}">
-      ${this.head("Valvola", s, `<span class="hc-state ${open ? "warm" : ""}">${esc(this.value(eid).toLowerCase())}${open && s.lc ? ` ${since(s.lc)}` : ""}</span>`)}
+      ${this.head(t("Valvola"), s, `<span class="hc-state ${open ? "warm" : ""}">${esc(this.value(eid).toLowerCase())}${open && s.lc ? ` ${since(s.lc)}` : ""}</span>`)}
       <div class="hc-dialrow">
         <svg class="hc-pipe" viewBox="0 0 64 64" aria-hidden="true"><path class="tube" d="M6 34h52"/>${open ? '<path class="flow" d="M6 34h52"/>' : ""}<rect class="wheel" x="24" y="14" width="16" height="10" rx="2"/><path class="wheel" d="M32 24v6"/></svg>
         <div class="hc-tabs">
-          <button class="hc-tab ${open ? "sel" : ""}" data-act="valve" data-s="open_valve" data-e="${eid}">Apri</button>
-          ${f & 8 ? `<button class="hc-tab" data-act="valve" data-s="stop_valve" data-e="${eid}">Ferma</button>` : ""}
-          <button class="hc-tab ${open ? "" : "sel"}" data-act="valve" data-s="close_valve" data-e="${eid}">Chiudi</button>
+          <button class="hc-tab ${open ? "sel" : ""}" data-act="valve" data-s="open_valve" data-e="${eid}">${t("Apri")}</button>
+          ${f & 8 ? `<button class="hc-tab" data-act="valve" data-s="stop_valve" data-e="${eid}">${t("Ferma")}</button>` : ""}
+          <button class="hc-tab ${open ? "" : "sel"}" data-act="valve" data-s="close_valve" data-e="${eid}">${t("Chiudi")}</button>
         </div>
       </div>
       ${pos != null ? `<div class="hc-bar"><i style="width:${pos}%"></i></div>` : ""}
@@ -269,10 +270,10 @@ export const Cards = {
   },
 
   gateCard(eid, s) {
-    const state = { open: "aperto", opening: "apre…", closed: "chiuso", closing: "chiude…", locked: "bloccata", unlocked: "sbloccata" }[s.s] || "";
+    const state = { open: t("aperto"), opening: t("apre…"), closed: t("chiuso"), closing: t("chiude…"), locked: t("bloccata"), unlocked: t("sbloccata") }[s.s] || "";
     return `<article class="hc hc-gate">
-      ${this.head("Cancello / porta", s, icon("gate"))}
-      <div class="hc-line">${state ? `<span class="hc-state">${state}</span>` : ""}<button class="hc-btn primary" data-act="gate" data-e="${eid}">▶ Comanda</button></div>
+      ${this.head(t("Cancello / porta"), s, icon("gate"))}
+      <div class="hc-line">${state ? `<span class="hc-state">${state}</span>` : ""}<button class="hc-btn primary" data-act="gate" data-e="${eid}">▶ ${t("Comanda")}</button></div>
     </article>`;
   },
 
@@ -280,23 +281,23 @@ export const Cards = {
     const locked = s.s === "locked";
     const asking = this.lockAsk === eid;
     const body = asking
-      ? `<div class="hc-ask"><span>Sbloccare ${esc(s.n)}?</span><span class="hc-modes"><button class="hc-btn primary" data-act="lock-yes" data-e="${eid}">Sì, sblocca</button><button class="hc-btn" data-act="lock-no">No</button></span></div>`
-      : `<button class="hc-link" data-act="lock" data-e="${eid}">${locked ? "Sblocca" : "Blocca"}</button>`;
+      ? `<div class="hc-ask"><span>${t("Sbloccare {name}?", { name: esc(s.n) })}</span><span class="hc-modes"><button class="hc-btn primary" data-act="lock-yes" data-e="${eid}">${t("Sì, sblocca")}</button><button class="hc-btn" data-act="lock-no">${t("No")}</button></span></div>`
+      : `<button class="hc-link" data-act="lock" data-e="${eid}">${locked ? t("Sblocca") : t("Blocca")}</button>`;
     return `<article class="hc hc-lock ${locked ? "" : "warn"}">
-      ${this.head("Serratura", s, `<span class="hc-state ${locked ? "good" : "warm"}">${esc(this.value(eid).toLowerCase())}</span>`)}
+      ${this.head(t("Serratura"), s, `<span class="hc-state ${locked ? "good" : "warm"}">${esc(this.value(eid).toLowerCase())}</span>`)}
       ${body}
     </article>`;
   },
 
   alarmCard(eid, s) {
     const f = Number(s.a.supported_features) || 0;
-    const arm = [[1, "alarm_arm_home", "In casa"], [2, "alarm_arm_away", "Fuori"], [4, "alarm_arm_night", "Notte"], [32, "alarm_arm_vacation", "Vacanza"]].filter(([bit]) => f & bit);
+    const arm = [[1, "alarm_arm_home", t("In casa")], [2, "alarm_arm_away", t("Fuori")], [4, "alarm_arm_night", t("Notte")], [32, "alarm_arm_vacation", t("Vacanza")]].filter(([bit]) => f & bit);
     const armed = s.s !== "disarmed";
     const current = { armed_home: "alarm_arm_home", armed_away: "alarm_arm_away", armed_night: "alarm_arm_night", armed_vacation: "alarm_arm_vacation" }[s.s];
     return `<article class="hc hc-alarm ${s.s === "triggered" ? "alert" : ""}">
-      ${this.head("Allarme", s, `<span class="hc-state ${s.s === "triggered" ? "bad" : armed ? "good" : ""}">${esc(this.value(eid).toLowerCase())}</span>`)}
+      ${this.head(t("Allarme"), s, `<span class="hc-state ${s.s === "triggered" ? "bad" : armed ? "good" : ""}">${esc(this.value(eid).toLowerCase())}</span>`)}
       <div class="hc-tabs">${arm.map(([, svc, label]) => `<button class="hc-tab ${current === svc ? "sel ok" : ""}" data-act="alarm" data-s="${svc}" data-e="${eid}" ${armed ? "disabled" : ""}>${label}</button>`).join("")}</div>
-      ${armed ? `<button class="hc-btn primary" data-act="alarm" data-s="alarm_disarm" data-e="${eid}">Disinserisci</button>` : ""}
+      ${armed ? `<button class="hc-btn primary" data-act="alarm" data-s="alarm_disarm" data-e="${eid}">${t("Disinserisci")}</button>` : ""}
     </article>`;
   },
 
@@ -304,7 +305,7 @@ export const Cards = {
     const dc = s.a.device_class, on = s.s === "on";
     const opening = OPENING.has(dc), danger = DANGER.has(dc), presence = PRESENCE.has(dc);
     const alert = on && (opening || danger);
-    const kick = { door: "Porta", window: "Finestra", garage_door: "Basculante", opening: "Apertura", smoke: "Fumo", moisture: "Allagamento", gas: "Gas", carbon_monoxide: "Monossido", motion: "Movimento", occupancy: "Presenza", presence: "Presenza" }[dc] || "Sensore";
+    const kick = { door: t("Porta"), window: t("Finestra"), garage_door: t("Basculante"), opening: t("Apertura"), smoke: t("Fumo"), moisture: t("Allagamento"), gas: "Gas", carbon_monoxide: t("Monossido"), motion: t("Movimento"), occupancy: t("Presenza"), presence: t("Presenza") }[dc] || t("Sensore");
     return `<article class="hc hc-binary ${alert ? "alert" : presence && on ? "live" : ""}">
       ${this.head(kick, s, `<span class="hc-state ${alert ? "bad" : presence && on ? "warm" : ""}">${esc(this.value(eid).toLowerCase())} ${esc(since(s.lc))}</span>`)}
     </article>`;
@@ -313,31 +314,31 @@ export const Cards = {
   sensorCard(eid, s) {
     const n = parseFloat(s.s);
     const numeric = !isNaN(n) && !/[^\d.,\-e]/i.test(s.s);
-    const kick = { temperature: "Temperatura", humidity: "Umidità", power: "Potenza", energy: "Energia", battery: "Batteria", illuminance: "Luce", pressure: "Pressione", carbon_dioxide: "CO₂", pm25: "PM2.5" }[s.a.device_class] || "Sensore";
+    const kick = { temperature: t("Temperatura"), humidity: t("Umidità"), power: t("Potenza"), energy: t("Energia"), battery: t("Batteria"), illuminance: t("Luce"), pressure: t("Pressione"), carbon_dioxide: "CO₂", pm25: "PM2.5" }[s.a.device_class] || t("Sensore");
     const hist = (this.data.nochart || []).includes(eid) ? null : this.hist?.[eid];
     const vals = (hist || []).map((p) => p[1]);
     return `<article class="hc hc-sensor">
       ${this.head(kick, s, `<span class="hc-num">${numeric ? `${num(n)}<small>${esc(s.a.unit_of_measurement || "")}</small>` : esc(this.value(eid).toLowerCase())}</span>`)}
       ${numeric ? spark(hist) : ""}
-      ${vals.length > 1 ? `<span class="hc-state">24 ore · min ${num(Math.min(...vals))} · max ${num(Math.max(...vals))}</span>` : ""}
+      ${vals.length > 1 ? `<span class="hc-state">${t("24 ore")} · min ${num(Math.min(...vals))} · max ${num(Math.max(...vals))}</span>` : ""}
     </article>`;
   },
 
   personCard(eid, s) {
     const home = s.s === "home";
-    const where = home ? "A casa" : s.s === "not_home" ? "Fuori casa" : s.s;
+    const where = home ? t("A casa") : s.s === "not_home" ? t("Fuori casa") : s.s;
     return `<article class="hc hc-personcard">
-      ${this.head(eid.startsWith("person.") ? "Persona" : "Posizione", s)}
+      ${this.head(eid.startsWith("person.") ? t("Persona") : t("Posizione"), s)}
       <div class="hc-line"><span class="hc-person ${home ? "home" : ""}"><span class="hc-avatar big">${esc((s.n || "?").trim()[0] || "?")}</span></span>
-        <span class="hc-nowtxt"><span>${esc(where)}</span><span class="hc-state">${esc(since(s.lc))}${s.a.battery_level != null ? ` · batteria ${s.a.battery_level}%` : ""}</span></span></div>
+        <span class="hc-nowtxt"><span>${esc(where)}</span><span class="hc-state">${esc(since(s.lc))}${s.a.battery_level != null ? ` · ${t("batteria")} ${s.a.battery_level}%` : ""}</span></span></div>
     </article>`;
   },
 
   sirenCard(eid, s) {
     const on = s.s === "on";
     return `<article class="hc hc-siren ${on ? "alert" : ""}">
-      ${this.head("Sirena", s, this.switchHTML(eid))}
-      <div class="hc-line"><span class="hc-state ${on ? "bad" : ""}">${on ? "suona" : "spenta"}</span></div>
+      ${this.head(t("Sirena"), s, this.switchHTML(eid))}
+      <div class="hc-line"><span class="hc-state ${on ? "bad" : ""}">${on ? t("suona") : t("spenta")}</span></div>
     </article>`;
   },
 
@@ -364,23 +365,23 @@ export const Cards = {
     const type = hasDate && hasTime ? "datetime-local" : hasDate ? "date" : "time";
     const value = type === "datetime-local" ? `${date}T${time}` : type === "date" ? date : time;
     const shown = unknown ? "—" : [hasDate && date ? date.split("-").reverse().join("/") : "", hasTime ? time : ""].filter(Boolean).join(" ");
-    return `<span class="hc-dt"><button class="hc-timev ${big ? "" : "sm"}" data-act="pick" data-e="${eid}" aria-label="Cambia ${esc(s.n)}">${esc(shown)}</button>
+    return `<span class="hc-dt"><button class="hc-timev ${big ? "" : "sm"}" data-act="pick" data-e="${eid}" aria-label="${t("Cambia")} ${esc(s.n)}">${esc(shown)}</button>
       <input type="${type}" value="${esc(value)}" data-act="dt" data-e="${eid}" tabindex="-1" aria-hidden="true">
       ${hasTime && !hasDate ? `<span class="hc-nudge"><button data-act="nudge" data-d="-15" data-e="${eid}">−15</button><button data-act="nudge" data-d="15" data-e="${eid}">+15</button></span>` : ""}</span>`;
   },
 
   datetimeCard(eid, s) {
-    return `<article class="hc hc-datetime">${this.head("Orario", s)}${this.dtValueHTML(eid, s)}</article>`;
+    return `<article class="hc hc-datetime">${this.head(t("Orario"), s)}${this.dtValueHTML(eid, s)}</article>`;
   },
 
   numberCard(eid, s) {
     const v = parseFloat(s.s), min = Number(s.a.min ?? 0), max = Number(s.a.max ?? 100), step = Number(s.a.step ?? 1);
     const unit = s.a.unit_of_measurement || "";
     return `<article class="hc hc-number">
-      ${this.head("Numero", s, `<span class="hc-num">${isNaN(v) ? "—" : num(v, 2)}<small>${esc(unit)}</small></span>`)}
-      <div class="hc-line"><button class="hc-step" data-act="numstep" data-d="-1" data-e="${eid}" aria-label="Meno">−</button>
+      ${this.head(t("Numero"), s, `<span class="hc-num">${isNaN(v) ? "—" : num(v, 2)}<small>${esc(unit)}</small></span>`)}
+      <div class="hc-line"><button class="hc-step" data-act="numstep" data-d="-1" data-e="${eid}" aria-label="${t("Meno")}">−</button>
         <input class="hc-range" type="range" min="${min}" max="${max}" step="${step}" value="${isNaN(v) ? min : v}" data-act="numval" data-e="${eid}" aria-label="${esc(s.n)}" style="flex:1">
-        <button class="hc-step" data-act="numstep" data-d="1" data-e="${eid}" aria-label="Più">+</button></div>
+        <button class="hc-step" data-act="numstep" data-d="1" data-e="${eid}" aria-label="${t("Più")}">+</button></div>
     </article>`;
   },
 
@@ -390,16 +391,16 @@ export const Cards = {
     const body = short
       ? `<div class="hc-tabs">${opts.map((o) => `<button class="hc-tab ${o === s.s ? "sel" : ""}" data-act="selopt" data-v="${esc(o)}" data-e="${eid}">${esc(o)}</button>`).join("")}</div>`
       : `<select class="hc-select" data-act="selopt" data-e="${eid}" aria-label="${esc(s.n)}">${opts.map((o) => `<option ${o === s.s ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
-    return `<article class="hc hc-selectcard">${this.head("Scelta", s, short ? "" : `<span class="hc-state">${esc(s.s)}</span>`)}${body}</article>`;
+    return `<article class="hc hc-selectcard">${this.head(t("Scelta"), s, short ? "" : `<span class="hc-state">${esc(s.s)}</span>`)}${body}</article>`;
   },
 
   textCard(eid, s) {
-    return `<article class="hc hc-text">${this.head("Testo", s)}
+    return `<article class="hc hc-text">${this.head(t("Testo"), s)}
       <input class="hc-input" type="text" value="${esc(s.s)}" maxlength="${Number(s.a.max) || 255}" data-act="textval" data-e="${eid}" aria-label="${esc(s.n)}"></article>`;
   },
 
   actionCard(eid, s) {
-    return `<article class="hc hc-action">${this.head("Azione", s, `<button class="hc-link" data-act="scene" data-e="${eid}">Avvia</button>`)}</article>`;
+    return `<article class="hc hc-action">${this.head(t("Azione"), s, `<button class="hc-link" data-act="scene" data-e="${eid}">${t("Avvia")}</button>`)}</article>`;
   },
 
   // ---------------------------------------------------------------- a card composed in HubNEX
@@ -411,7 +412,7 @@ export const Cards = {
     };
     // Two times of day (start / stop): the day's band and whether we are inside it.
     const times = eids.filter((e) => this.st(e).k === "datetime" && this.dtParts(e, this.st(e)).hasTime && !this.dtParts(e, this.st(e)).hasDate);
-    let status = "", band = "";
+    let status = "", band = "", running = false;
     // What really powers the device (a switch, light or thermostat); an input_boolean such as
     // "automatica" is a setting, not the device being on.
     const power = eids.find((e) => ["switch", "light", "climate", "fan"].includes(e.split(".")[0]));
@@ -421,7 +422,8 @@ export const Cards = {
         const m = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
         const on = m(a), off = m(b), d = new Date(), now = d.getHours() * 60 + d.getMinutes();
         const inside = on <= off ? now >= on && now < off : now >= on || now < off;
-        status = inside ? `attiva fino alle ${b}` : `si attiva alle ${a}`;
+        running = inside;
+        status = inside ? t("attiva fino alle {time}", { time: b }) : t("si attiva alle {time}", { time: a });
         const width = ((off - on + 1440) % 1440) / 14.4;
         band = `<div class="hc-band" aria-hidden="true"><i style="left:${on / 14.4}%;width:${width}%"></i>${on + width * 14.4 > 1440 ? `<i style="left:0;width:${(on + width * 14.4 - 1440) / 14.4}%"></i>` : ""}<b style="left:${now / 14.4}%"></b>
           <span><em>0</em><em>6</em><em>12</em><em>18</em><em>24</em></span></div>`;
@@ -430,17 +432,18 @@ export const Cards = {
     // The switch that turns the times on ("automatica"): off, the times don't apply.
     const gate = this.cardEnable(card, eids);
     if (gate && band && !this.isOn(gate)) {
-      status = `${label(gate).toLowerCase()} spenta · orari non attivi`;
+      status = `${label(gate).toLowerCase()} ${t("spenta")} · ${t("orari non attivi")}`;
+      running = false;
       band = band.replace('class="hc-band"', 'class="hc-band off"');
     }
-    const lit = power ? this.isOn(power) : status.startsWith("attiva");
-    if (power) status = `${this.isOn(power) ? "accesa" : "spenta"}${status ? ` · ${status}` : ""}`;
+    const lit = power ? this.isOn(power) : running;
+    if (power) status = `${this.isOn(power) ? t("accesa") : t("spenta")}${status ? ` · ${status}` : ""}`;
     const slot = (e) => {
       const s = this.st(e);
       let body;
       if (s.k === "datetime") body = this.dtValueHTML(e, s, eids.length <= 3);
       else if (["switch", "light", "media", "siren"].includes(s.k)) body = this.switchHTML(e);
-      else if (s.k === "number") body = `<span class="hc-line"><button class="hc-step" data-act="numstep" data-d="-1" data-e="${e}" aria-label="Meno">−</button><span class="hc-num">${esc(s.s)}<small>${esc(s.a.unit_of_measurement || "")}</small></span><button class="hc-step" data-act="numstep" data-d="1" data-e="${e}" aria-label="Più">+</button></span>`;
+      else if (s.k === "number") body = `<span class="hc-line"><button class="hc-step" data-act="numstep" data-d="-1" data-e="${e}" aria-label="${t("Meno")}">−</button><span class="hc-num">${esc(s.s)}<small>${esc(s.a.unit_of_measurement || "")}</small></span><button class="hc-step" data-act="numstep" data-d="1" data-e="${e}" aria-label="${t("Più")}">+</button></span>`;
       else if (s.k === "select") body = `<select class="hc-select" data-act="selopt" data-e="${e}" aria-label="${esc(s.n)}">${(s.a.options || []).map((o) => `<option ${o === s.s ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
       else if (s.k === "climate") body = `<span class="hc-num">${s.a.current_temperature != null ? num(s.a.current_temperature) : "—"}<small>°</small></span>`;
       else if (s.k === "sensor") body = `<span class="hc-num">${esc(this.value(e))}</span>${(card.nochart || []).includes(e) ? "" : spark(this.hist?.[e])}`;
@@ -459,7 +462,7 @@ export const Cards = {
       : "";
     return `<article class="hc hc-composed ${card.size === "wide" ? "wide" : ""} ${lit ? "on" : ""}" data-card="${card.id}">
       <header class="hc-head"><b class="hc-name">${esc(card.name)}</b>${status ? `<span class="hc-state">${esc(status)}</span>` : ""}</header>
-      <div class="hc-slots">${eids.filter((e) => !isToggle(e)).map(slot).join("")}${toggleCol}${eids.length ? "" : `<span class="hc-state">entità non disponibili</span>`}</div>
+      <div class="hc-slots">${eids.filter((e) => !isToggle(e)).map(slot).join("")}${toggleCol}${eids.length ? "" : `<span class="hc-state">${t("entità non disponibili")}</span>`}</div>
       ${band}
     </article>`;
   },
@@ -475,7 +478,7 @@ export const Cards = {
   quickHTML(a) {
     const lights = this.lightsOf(a);
     const climate = a.entities.find((e) => this.st(e)?.k === "climate");
-    const t = this.temp(a);
+    const temp = this.temp(a);
     const hum = a.entities.map((e) => this.st(e)).find((s) => s?.k === "sensor" && s.a.device_class === "humidity");
     const watch = a.entities.filter((e) => {
       const s = this.st(e);
@@ -488,12 +491,12 @@ export const Cards = {
       return false;
     });
     const cam = a.entities.find((e) => this.st(e)?.k === "camera");
-    const figures = [t != null ? `${num(t)}°` : "", hum ? `${num(parseFloat(hum.s), 0)}%` : ""].filter(Boolean).join(" · ");
+    const figures = [temp != null ? `${num(temp)}°` : "", hum ? `${num(parseFloat(hum.s), 0)}%` : ""].filter(Boolean).join(" · ");
     const watchRow = (e) => {
       const s = this.st(e);
       const pw = this.data.power?.[e] && this.st(this.data.power[e]);
-      const right = s.k === "lock" ? `<button class="hc-btn" data-act="lock" data-e="${e}">Blocca</button>`
-        : s.k === "valve" ? `<button class="hc-btn" data-act="valve" data-s="close_valve" data-e="${e}">Chiudi</button>`
+      const right = s.k === "lock" ? `<button class="hc-btn" data-act="lock" data-e="${e}">${t("Blocca")}</button>`
+        : s.k === "valve" ? `<button class="hc-btn" data-act="valve" data-s="close_valve" data-e="${e}">${t("Chiudi")}</button>`
         : s.k === "switch" || s.k === "siren" ? this.switchHTML(e) : "";
       const what = s.k === "switch" && pw ? `${num(parseFloat(pw.s), 0)} ${pw.a.unit_of_measurement || "W"} · ${since(s.lc)}` : `${this.value(e).toLowerCase()} ${since(s.lc)}`;
       return `<div class="hc-watch"><span>${esc(s.n)} <span class="hc-state bad">${esc(what)}</span></span>${right}</div>`;
@@ -502,19 +505,19 @@ export const Cards = {
       <section class="hc casa-quick">
         <div class="hc-grab" data-act="unselect" aria-hidden="true"></div>
         <div class="hc-head"><div><h2>${esc(a.name)}</h2></div>
-          <span class="hc-num">${figures}</span><button class="casa-x" data-act="unselect" aria-label="Chiudi">×</button></div>
-        ${lights.length ? `<span class="hc-kick">Luci</span><div class="hc-tiles">${lights.slice(0, 8).map((e) => {
+          <span class="hc-num">${figures}</span><button class="casa-x" data-act="unselect" aria-label="${t("Chiudi")}">×</button></div>
+        ${lights.length ? `<span class="hc-kick">${t("Luci")}</span><div class="hc-tiles">${lights.slice(0, 8).map((e) => {
           const s = this.st(e), on = s.s === "on";
           const pct = on && s.a.brightness != null ? Math.round((s.a.brightness / 255) * 100) : on ? 100 : 0;
-          return `<button class="hc-tile ${on ? "on" : ""}" data-act="toggle" data-e="${e}" aria-pressed="${on}"><b>${esc(s.n)}</b><span class="hc-state">${on ? `accesa${pct < 100 ? ` · ${pct}%` : ""}` : "spenta"}</span><span class="hc-bar thin"><i style="width:${pct}%"></i></span></button>`;
-        }).join("")}</div>${lights.length > 8 ? `<p class="casa-muted">+ altre ${lights.length - 8}</p>` : ""}` : ""}
+          return `<button class="hc-tile ${on ? "on" : ""}" data-act="toggle" data-e="${e}" aria-pressed="${on}"><b>${esc(s.n)}</b><span class="hc-state">${on ? `${t("accesa")}${pct < 100 ? ` · ${pct}%` : ""}` : t("spenta")}</span><span class="hc-bar thin"><i style="width:${pct}%"></i></span></button>`;
+        }).join("")}</div>${lights.length > 8 ? `<p class="casa-muted">${t("+ altre {n}", { n: lights.length - 8 })}</p>` : ""}` : ""}
         ${climate ? this.climateMini(climate) : ""}
-        ${watch.length ? `<span class="hc-kick">Da tenere d'occhio</span>${watch.map(watchRow).join("")}` : ""}
+        ${watch.length ? `<span class="hc-kick">${t("Da tenere d'occhio")}</span>${watch.map(watchRow).join("")}` : ""}
         ${cam ? this.camHTML(cam) : ""}
-        ${!a.entities.length ? `<p class="casa-muted">Nessuna entità in quest'area. Aprila e aggiungine con "Modifica stanza".</p>` : ""}
+        ${!a.entities.length ? `<p class="casa-muted">${t("Nessuna entità in quest'area. Aprila e aggiungine con \"Modifica stanza\".")}</p>` : ""}
         <div class="casa-actions">
-          <button class="hc-open" data-act="open" data-area="${a.id}">Apri stanza →</button>
-          ${lights.some((e) => this.isOn(e)) ? `<button class="hc-link" data-act="all-off" data-area="${a.id}">Spegni luci</button>` : ""}
+          <button class="hc-open" data-act="open" data-area="${a.id}">${t("Apri stanza")} →</button>
+          ${lights.some((e) => this.isOn(e)) ? `<button class="hc-link" data-act="all-off" data-area="${a.id}">${t("Spegni luci")}</button>` : ""}
         </div>
       </section>`;
   },
@@ -522,7 +525,7 @@ export const Cards = {
   climateMini(eid) {
     const s = this.st(eid), target = s.a.temperature;
     return `<div class="hc-climini"><span>${esc(s.n)} <span class="hc-state">${esc((HVAC[s.s] || s.s).toLowerCase())}${s.a.current_temperature != null ? ` · ${num(s.a.current_temperature)}°` : ""}</span></span>
-      ${target != null ? `<span class="hc-steps row"><button class="hc-step" data-act="temp" data-e="${eid}" data-d="-1" aria-label="Abbassa">−</button><b>${num(target)}°</b><button class="hc-step" data-act="temp" data-e="${eid}" data-d="1" aria-label="Alza">+</button></span>` : ""}</div>`;
+      ${target != null ? `<span class="hc-steps row"><button class="hc-step" data-act="temp" data-e="${eid}" data-d="-1" aria-label="${t("Abbassa")}">−</button><b>${num(target)}°</b><button class="hc-step" data-act="temp" data-e="${eid}" data-d="1" aria-label="${t("Alza")}">+</button></span>` : ""}</div>`;
   },
 
   // Overview (no room chosen): lights on and what needs attention, as compact cards.
@@ -535,12 +538,12 @@ export const Cards = {
     const row = (e, a, right) => `<div class="hc-watch"><span>${esc(this.st(e).n)} <span class="hc-state">${esc(a.name)}</span></span>${right}</div>`;
     return `
       <section class="hc">
-        <span class="hc-kick">Luci accese</span>
-        ${lightsOn.map(([e, a]) => row(e, a, this.switchHTML(e))).join("") || `<p class="casa-muted">Tutte spente.</p>`}
+        <span class="hc-kick">${t("Luci accese")}</span>
+        ${lightsOn.map(([e, a]) => row(e, a, this.switchHTML(e))).join("") || `<p class="casa-muted">${t("Tutte spente.")}</p>`}
       </section>
       <section class="hc">
-        <span class="hc-kick">Porte, finestre, serrature</span>
-        ${sec.map(([e, a]) => row(e, a, this.st(e).k === "lock" ? `<button class="hc-link" data-act="lock" data-e="${e}">${this.st(e).s === "locked" ? "Sblocca" : "Blocca"}</button>` : `<span class="hc-state ${this.valueClass(e)}">${esc(this.value(e).toLowerCase())}</span>`)).join("") || `<p class="casa-muted">Porte e finestre chiuse.</p>`}
+        <span class="hc-kick">${t("Porte, finestre, serrature")}</span>
+        ${sec.map(([e, a]) => row(e, a, this.st(e).k === "lock" ? `<button class="hc-link" data-act="lock" data-e="${e}">${this.st(e).s === "locked" ? t("Sblocca") : t("Blocca")}</button>` : `<span class="hc-state ${this.valueClass(e)}">${esc(this.value(e).toLowerCase())}</span>`)).join("") || `<p class="casa-muted">${t("Porte e finestre chiuse.")}</p>`}
       </section>`;
   },
 };

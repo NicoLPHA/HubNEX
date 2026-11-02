@@ -7,19 +7,20 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { t, LOCALE } from "./i18n.js";
 
 export const TYPES = {
-  core: { label: "Assistente", color: "#4fd1ff", size: 7 },
-  company: { label: "Aziende", color: "#4fd1ff", size: 5 },
-  department: { label: "Reparti", color: null, size: 4 },
-  agent: { label: "Agenti", color: null, size: 5 },
-  memory: { label: "Memorie", color: "#e6f3ff", size: 2.2 },
-  task: { label: "Compiti", color: "#7fb8ff", size: 1.8 },
-  deadline: { label: "Scadenze", color: "#ffb547", size: 2.6 },
-  draft: { label: "Bozze", color: "#3ddc97", size: 2.6 },
-  keyword: { label: "Parole chiave", color: "#4fd1ff", size: 1.4 },
+  core: { label: t("Assistente"), color: "#4fd1ff", size: 7 },
+  company: { label: t("Aziende"), color: "#4fd1ff", size: 5 },
+  department: { label: t("Reparti"), color: null, size: 4 },
+  agent: { label: t("Agenti"), color: null, size: 5 },
+  memory: { label: t("Memorie"), color: "#e6f3ff", size: 2.2 },
+  task: { label: t("Compiti"), color: "#7fb8ff", size: 1.8 },
+  deadline: { label: t("Scadenze"), color: "#ffb547", size: 2.6 },
+  draft: { label: t("Bozze"), color: "#3ddc97", size: 2.6 },
+  keyword: { label: t("Parole chiave"), color: "#4fd1ff", size: 1.4 },
 };
-const SINGULAR = { core: "Assistente", company: "Azienda", department: "Reparto", agent: "Agente", memory: "Memoria", task: "Compito", deadline: "Scadenza", draft: "Bozza", keyword: "Parola chiave" };
+const SINGULAR = { core: t("Assistente"), company: t("Azienda"), department: t("Reparto"), agent: t("Agente"), memory: t("Memoria"), task: t("Compito"), deadline: t("Scadenza"), draft: t("Bozza"), keyword: t("Parola chiave") };
 const FIRE = new THREE.Color("#ff4d6d");
 const REST = { structure: 9, memory: 4, task: 3.5, deadline: 4, draft: 4, keyword: 5 };
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -388,7 +389,7 @@ export class Brain {
   }
 
   describe(n) {
-    const when = n.ts ? new Date(n.ts * 1000).toLocaleString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+    const when = n.ts ? new Date(n.ts * 1000).toLocaleString(LOCALE, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
     const neighbours = this.links.filter((l) => l.a === n || l.b === n).map((l) => (l.a === n ? l.b : l.a));
     return { type: SINGULAR[n.type] || n.type, label: n.label, detail: n.detail, when, neighbours: neighbours.slice(0, 12).map((x) => esc(x.label)) };
   }

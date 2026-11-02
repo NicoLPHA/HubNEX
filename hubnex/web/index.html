@@ -33,29 +33,29 @@
       <span class="brand-title">HUBNEX</span>
       <span class="brand-sub" id="clock">--:--</span>
     </div>
-    <button id="ha-menu" class="ha-menu hidden" title="Mostra/nascondi il menu di Home Assistant">☰</button>
-    <button id="ha-prefs" class="ha-menu hidden" title="Preferenze" aria-label="Preferenze" aria-expanded="false">⚙</button>
+    <button data-i18n-attr="title,aria-label" id="ha-menu" class="ha-menu hidden" title="Mostra/nascondi il menu di Home Assistant">☰</button>
+    <button data-i18n-attr="title,aria-label" id="ha-prefs" class="ha-menu hidden" title="Preferenze" aria-label="Preferenze" aria-expanded="false">⚙</button>
     <div class="view-switch" role="tablist">
       <button id="view-hq" class="active" role="tab">⬡ HQ</button>
-      <button id="view-map" role="tab">✺ Mappa</button>
-      <button id="view-casa" role="tab" class="hidden">⌂ Casa</button>
+      <button data-i18n id="view-map" role="tab">✺ Mappa</button>
+      <button data-i18n id="view-casa" role="tab" class="hidden">⌂ Casa</button>
     </div>
     <nav id="companies"></nav>
-    <button class="drafts-badge hidden" id="drafts-badge" title="Bozze da approvare">✉ <span id="drafts-count">0</span></button>
+    <button class="drafts-badge hidden" data-i18n-attr="title,aria-label" id="drafts-badge" title="Bozze da approvare">✉ <span id="drafts-count">0</span></button>
     <div class="integrations" id="integrations"></div>
   </header>
 
   <aside id="left" class="panel-col">
     <section class="panel" id="stats-panel">
-      <h3>Sistema</h3>
+      <h3 data-i18n>Sistema</h3>
       <div class="stats" id="stats"></div>
     </section>
     <section class="panel" id="deadlines-panel">
-      <h3>Scadenze <button class="mini" id="add-deadline" title="Aggiungi scadenza">+</button></h3>
+      <h3 data-i18n>Scadenze <button class="mini" data-i18n-attr="title,aria-label" id="add-deadline" title="Aggiungi scadenza">+</button></h3>
       <form id="deadline-form" class="hidden">
-        <input name="title" placeholder="Cosa scade?" required>
+        <input data-i18n-attr="placeholder" name="title" placeholder="Cosa scade?" required>
         <input name="due" type="date" required>
-        <button type="submit">Salva</button>
+        <button data-i18n type="submit">Salva</button>
       </form>
       <ul id="deadlines"></ul>
     </section>
@@ -63,41 +63,45 @@
 
   <aside id="map-panel" class="hidden">
     <section class="panel">
-      <h3>Mappa neurale</h3>
-      <input id="map-search" placeholder="Cerca nella memoria… (es. il nome di un cliente)" autocomplete="off">
+      <h3 data-i18n>Mappa neurale</h3>
+      <input data-i18n-attr="placeholder" id="map-search" placeholder="Cerca nella memoria… (es. il nome di un cliente)" autocomplete="off">
       <div id="map-search-info" class="map-info"></div>
       <ul id="map-legend"></ul>
-      <p class="map-hint">Trascina per ruotare, rotella per lo zoom, clic su un punto per i dettagli.</p>
+      <p data-i18n class="map-hint">Trascina per ruotare, rotella per lo zoom, clic su un punto per i dettagli.</p>
     </section>
     <div id="map-counters"></div>
   </aside>
 
-  <section id="casa" class="hidden" aria-label="Casa"></section>
+  <section data-i18n-attr="title,aria-label" id="casa" class="hidden" aria-label="Casa"></section>
 
-  <section id="prefs" class="panel hidden" aria-label="Preferenze">
-    <h3>Preferenze <button class="mini" id="prefs-close" aria-label="Chiudi">×</button></h3>
+  <section data-i18n-attr="title,aria-label" id="prefs" class="panel hidden" aria-label="Preferenze">
+    <h3 data-i18n>Preferenze <button data-i18n-attr="title,aria-label" class="mini" id="prefs-close" aria-label="Chiudi">×</button></h3>
     <label class="pref-row">
-      <span>Schede HQ e Mappa<small>Spente: HubNEX mostra solo la Casa</small></span>
-      <button type="button" id="pref-hq" class="casa-switch on" role="switch" aria-checked="true" aria-label="Schede HQ e Mappa"></button>
+      <span data-i18n>Schede HQ e Mappa<small data-i18n>Spente: HubNEX mostra solo la Casa</small></span>
+      <button data-i18n-attr="title,aria-label" type="button" id="pref-hq" class="casa-switch on" role="switch" aria-checked="true" aria-label="Schede HQ e Mappa"></button>
     </label>
     <label class="pref-row">
-      <span>Assistente AI<small>Chat e voce; spento non usa credito Claude</small></span>
-      <button type="button" id="pref-ai" class="casa-switch on" role="switch" aria-checked="true" aria-label="Assistente AI"></button>
+      <span data-i18n>Assistente AI<small data-i18n>Chat e voce; spento non usa credito Claude</small></span>
+      <button data-i18n-attr="title,aria-label" type="button" id="pref-ai" class="casa-switch on" role="switch" aria-checked="true" aria-label="Assistente AI"></button>
     </label>
     <p class="pref-note" id="pref-ui-note"></p>
     <label class="pref-row" id="pref-start-row">
-      <span>Apri HubNEX all'avvio di Home Assistant<small id="pref-start-who"></small></span>
-      <button type="button" id="pref-start" class="casa-switch" role="switch" aria-checked="false" aria-label="Apri HubNEX all'avvio di Home Assistant"></button>
+      <span data-i18n>Apri HubNEX all'avvio di Home Assistant<small id="pref-start-who"></small></span>
+      <button data-i18n-attr="title,aria-label" type="button" id="pref-start" class="casa-switch" role="switch" aria-checked="false" aria-label="Apri HubNEX all'avvio di Home Assistant"></button>
     </label>
-    <p class="pref-note" id="pref-start-note">Vale solo per il tuo account, su tutti i tuoi dispositivi. Gli altri utenti non cambiano.</p>
+    <label class="pref-row">
+      <span data-i18n>Lingua<small data-i18n>Automatica: quella del tuo Home Assistant</small></span>
+      <select data-i18n-attr="aria-label" id="pref-lang" aria-label="Lingua"><option value="" data-i18n>Automatica</option><option value="it">Italiano</option><option value="en">English</option></select>
+    </label>
+    <p data-i18n class="pref-note" id="pref-start-note">Vale solo per il tuo account, su tutti i tuoi dispositivi. Gli altri utenti non cambiano.</p>
     <div class="pref-backup">
       <div class="pref-row">
-        <span>Backup<small>Memoria e mappa neurale, scadenze, chat, Casa, piantina, energia e agents.yaml. Le opzioni dell'add-on (chiave Anthropic, Telegram, posta) non sono incluse; agents.yaml sì, con gli eventuali token dei connettori: custodisci il file.</small></span>
-        <button type="button" id="backup-get">Scarica</button>
+        <span data-i18n>Backup<small data-i18n>Memoria e mappa neurale, scadenze, chat, Casa, piantina, energia e agents.yaml. Le opzioni dell'add-on (chiave Anthropic, Telegram, posta) non sono incluse; agents.yaml sì, con gli eventuali token dei connettori: custodisci il file.</small></span>
+        <button data-i18n type="button" id="backup-get">Scarica</button>
       </div>
       <div class="pref-row">
-        <span>Ripristina<small>Da un backup di HubNEX: sostituisce i dati di questa installazione e riavvia HubNEX.</small></span>
-        <button type="button" id="backup-put">Carica…</button>
+        <span data-i18n>Ripristina<small data-i18n>Da un backup di HubNEX: sostituisce i dati di questa installazione e riavvia HubNEX.</small></span>
+        <button data-i18n type="button" id="backup-put">Carica…</button>
       </div>
       <input type="file" id="backup-file" accept=".zip,application/zip" hidden>
       <p class="pref-note" id="backup-note"></p>
@@ -105,28 +109,28 @@
   </section>
 
   <section id="node-card" class="panel hidden">
-    <button class="close" id="node-close" aria-label="Chiudi">×</button>
+    <button data-i18n-attr="title,aria-label" class="close" id="node-close" aria-label="Chiudi">×</button>
     <div class="card-company" id="node-type"></div>
     <div class="card-name" id="node-label"></div>
     <div class="card-role" id="node-when"></div>
     <div class="card-block"><p id="node-detail"></p></div>
-    <div class="card-block"><label>Collegato a</label><p id="node-links"></p></div>
+    <div class="card-block"><label data-i18n>Collegato a</label><p id="node-links"></p></div>
   </section>
 
   <aside id="right" class="panel-col">
     <section class="panel hidden" id="drafts-panel">
-      <h3>Da approvare</h3>
+      <h3 data-i18n>Da approvare</h3>
       <div class="drafts" id="drafts"></div>
     </section>
     <section class="panel grow" id="feed-panel">
-      <h3>Attività <span class="live-dot"></span></h3>
+      <h3 data-i18n>Attività <span class="live-dot"></span></h3>
       <ul id="feed"></ul>
-      <button class="feed-more hidden" id="feed-more">Mostra precedenti</button>
+      <button data-i18n class="feed-more hidden" id="feed-more">Mostra precedenti</button>
     </section>
   </aside>
 
   <section id="agent-card" class="panel hidden">
-    <button class="close" id="card-close" aria-label="Chiudi">×</button>
+    <button data-i18n-attr="title,aria-label" class="close" id="card-close" aria-label="Chiudi">×</button>
     <div class="card-head">
       <div class="card-avatar" id="card-avatar"></div>
       <div>
@@ -136,13 +140,13 @@
       </div>
     </div>
     <div class="card-status"><span class="badge" id="card-status"></span><span id="card-detail"></span></div>
-    <div class="card-block hidden" id="card-task-wrap"><label>In corso</label><p id="card-task"></p></div>
-    <div class="card-block hidden" id="card-thought-wrap"><label>Ragionamento</label><p id="card-thought"></p></div>
-    <div class="card-block hidden" id="card-result-wrap"><label>Ultimo risultato</label><p id="card-result"></p></div>
-    <div class="card-block hidden" id="card-routines-wrap"><label>Routine</label><ul id="card-routines"></ul></div>
+    <div class="card-block hidden" id="card-task-wrap"><label data-i18n>In corso</label><p id="card-task"></p></div>
+    <div class="card-block hidden" id="card-thought-wrap"><label data-i18n>Ragionamento</label><p id="card-thought"></p></div>
+    <div class="card-block hidden" id="card-result-wrap"><label data-i18n>Ultimo risultato</label><p id="card-result"></p></div>
+    <div class="card-block hidden" id="card-routines-wrap"><label data-i18n>Routine</label><ul id="card-routines"></ul></div>
     <form id="assign-form">
-      <input id="assign-input" placeholder="Assegna un compito…" autocomplete="off">
-      <button type="submit">Invia</button>
+      <input data-i18n-attr="placeholder" id="assign-input" placeholder="Assegna un compito…" autocomplete="off">
+      <button data-i18n type="submit">Invia</button>
     </form>
   </section>
 
@@ -153,28 +157,28 @@
   </div>
 
   <section id="chat" class="panel">
-    <button type="button" id="chat-close" class="chat-close hidden" title="Chiudi conversazione (Esc)" aria-label="Chiudi conversazione">×</button>
+    <button data-i18n-attr="title,aria-label" type="button" id="chat-close" class="chat-close hidden" title="Chiudi conversazione (Esc)" aria-label="Chiudi conversazione">×</button>
     <div id="chat-log"></div>
     <form id="chat-form">
-      <button type="button" id="mic" class="icon" title="Parla" aria-label="Parla"><svg class="ui-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg></button>
-      <input id="chat-input" placeholder="Scrivi all'assistente…" autocomplete="off">
-      <button type="button" id="speaker" class="icon" title="Risposte vocali" aria-label="Risposte vocali" aria-pressed="false"><svg class="ui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/></svg></button>
-      <button type="submit">Invia</button>
+      <button data-i18n-attr="title,aria-label" type="button" id="mic" class="icon" title="Parla" aria-label="Parla"><svg class="ui-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg></button>
+      <input data-i18n-attr="placeholder" id="chat-input" placeholder="Scrivi all'assistente…" autocomplete="off">
+      <button data-i18n-attr="title,aria-label" type="button" id="speaker" class="icon" title="Risposte vocali" aria-label="Risposte vocali" aria-pressed="false"><svg class="ui-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/></svg></button>
+      <button data-i18n type="submit">Invia</button>
     </form>
   </section>
 
   <div id="drafts-sheet" class="hidden">
     <section class="panel">
-      <h3>Da approvare <button class="mini" id="drafts-sheet-close" aria-label="Chiudi">×</button></h3>
+      <h3 data-i18n>Da approvare <button data-i18n-attr="title,aria-label" class="mini" id="drafts-sheet-close" aria-label="Chiudi">×</button></h3>
       <div class="drafts" id="drafts-mobile"></div>
     </section>
   </div>
 
   <div id="login" class="hidden">
     <form id="login-form" class="panel">
-      <h3>Accesso HQ</h3>
+      <h3 data-i18n>Accesso HQ</h3>
       <input id="login-token" type="password" placeholder="HQ_TOKEN" autocomplete="current-password">
-      <button type="submit">Entra</button>
+      <button data-i18n type="submit">Entra</button>
     </form>
   </div>
 

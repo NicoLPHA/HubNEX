@@ -1,6 +1,7 @@
 import { PlanEditor } from "./plan-editor.js";
 import { Cards } from "./casa-cards.js";
 import { Energy } from "./casa-energy.js";
+import { t, num } from "./i18n.js";
 
 // The house view: Home Assistant areas on the owner's floor plan, live.
 // Tap a room for its quick card, "Apri stanza" for all its entities; buttons call Home
@@ -8,16 +9,15 @@ import { Energy } from "./casa-energy.js";
 // areas (in HA) or just shown/hidden here.
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const num = (v, d = 1) => Number(v).toLocaleString("it-IT", { maximumFractionDigits: d });
 const ALERT = new Set(["door", "window", "opening", "garage_door", "smoke", "moisture", "gas", "safety", "problem", "carbon_monoxide"]);
 const OPENING = new Set(["door", "window", "opening", "garage_door"]);
 const PRESENCE = new Set(["motion", "occupancy", "presence"]);
 const SECURITY_CLASSES = new Set([...ALERT, ...PRESENCE, "lock", "tamper", "vibration", "sound"]);
 const APPLIANCE = /bollitor|kettle|boiler|caldai|scaldabagn|acqua|water|frigo|fridge|freezer|congelat|forno|oven|piastr|lavatric|lavastovigl|asciugatric|cpu|processor|chip|batter|intern|motor|esterna|outdoor|pompa|pump|vasca|piscina|pool/i;
-const SHOW_AS = [["", "Come in Home Assistant"], ["light", "Luce"], ["switch", "Presa / interruttore"], ["gate", "Cancello / porta (impulso)"], ["siren", "Sirena"], ["sensor", "Solo stato"]];
+const SHOW_AS = [["", t("Come in Home Assistant")], ["light", t("Luce")], ["switch", t("Presa / interruttore")], ["gate", t("Cancello / porta (impulso)")], ["siren", t("Sirena")], ["sensor", t("Solo stato")]];
 const SECTIONS = [
-  ["light", "Luci"], ["gate", "Cancelli e porte"], ["climate", "Clima"], ["cover", "Tapparelle e tende"], ["valve", "Valvole e irrigazione"], ["media", "Media"],
-  ["switch", "Prese e interruttori"], ["people", "Persone"], ["security", "Sicurezza"], ["camera", "Telecamere"], ["sensor", "Sensori"], ["settings", "Orari e impostazioni"], ["action", "Azioni"], ["other", "Altro"],
+  ["light", t("Luci")], ["gate", t("Cancelli e porte")], ["climate", t("Clima")], ["cover", t("Tapparelle e tende")], ["valve", t("Valvole e irrigazione")], ["media", t("Media")],
+  ["switch", t("Prese e interruttori")], ["people", t("Persone")], ["security", t("Sicurezza")], ["camera", t("Telecamere")], ["sensor", t("Sensori")], ["settings", t("Orari e impostazioni")], ["action", t("Azioni")], ["other", t("Altro")],
 ];
 
 // Home Assistant's own frontend, when Jarvis is open inside it (same origin): its connection
@@ -38,7 +38,7 @@ function loadScript(src) {
     const s = document.createElement("script");
     s.src = src;
     s.onload = ok;
-    s.onerror = () => fail(new Error(`non riesco a caricare ${src}`));
+    s.onerror = () => fail(new Error(t("non riesco a caricare {src}", { src })));
     document.head.appendChild(s);
   });
   return scripts[src];
@@ -53,9 +53,9 @@ export class CasaView {
     this.camSrc = {}; // last frame loaded, per camera
     this.editor = new PlanEditor({
       api, token: this.token,
-      onSaved: () => { this.toast("Piantina salvata"); this.reload(true); },
+      onSaved: () => { this.toast(t("Piantina salvata")); this.reload(true); },
       onText: () => this.openLayout(),
-      toast: (t) => this.toast(t),
+      toast: (msg) => this.toast(msg),
     });
     this.live = null; // the camera (or camera grid) open over the view
     setInterval(() => this.refreshCameras(), 1000);
@@ -138,7 +138,7 @@ export class CasaView {
   // What the chat should know: the room open on screen.
   context() {
     const a = this.page && this.area(this.page);
-    return a ? `[Sono nella stanza ${a.name} della vista Casa] ` : "";
+    return a ? `[${t("Sono nella stanza {room} della vista Casa", { room: a.name })}] ` : "";
   }
 
   renderSoon() {
@@ -192,19 +192,19 @@ export class CasaView {
   value(eid) {
     const s = this.st(eid);
     if (!s) return "—";
-    if (["unavailable", "unknown"].includes(s.s)) return s.s === "unknown" ? "—" : "N/D";
+    if (["unavailable", "unknown"].includes(s.s)) return s.s === "unknown" ? "—" : t("N/D");
     if (s.k === "binary") {
       const dc = s.a.device_class;
-      if (OPENING.has(dc)) return s.s === "on" ? "APERTA" : "CHIUSA";
-      if (PRESENCE.has(dc)) return s.s === "on" ? "RILEVATO" : "NESSUNO";
-      if (dc === "moisture") return s.s === "on" ? "ACQUA!" : "ASCIUTTO";
-      if (dc === "smoke" || dc === "gas" || dc === "carbon_monoxide") return s.s === "on" ? "ALLARME!" : "OK";
+      if (OPENING.has(dc)) return s.s === "on" ? t("APERTA") : t("CHIUSA");
+      if (PRESENCE.has(dc)) return s.s === "on" ? t("RILEVATO") : t("NESSUNO");
+      if (dc === "moisture") return s.s === "on" ? t("ACQUA!") : t("ASCIUTTO");
+      if (dc === "smoke" || dc === "gas" || dc === "carbon_monoxide") return s.s === "on" ? t("ALLARME!") : "OK";
       return s.s === "on" ? "ON" : "OFF";
     }
-    if (s.k === "valve") return { open: "APERTA", closed: "CHIUSA", opening: "APRE…", closing: "CHIUDE…" }[s.s] || s.s.toUpperCase();
-    if (s.k === "person") return s.s === "home" ? "A CASA" : s.s === "not_home" ? "FUORI CASA" : s.s.toUpperCase(); // or the zone's name
-    if (s.k === "lock") return { locked: "BLOCCATA", unlocked: "SBLOCCATA", locking: "BLOCCO…", unlocking: "SBLOCCO…", jammed: "INCEPPATA", open: "APERTA" }[s.s] || s.s.toUpperCase();
-    if (s.k === "alarm") return { disarmed: "DISINSERITO", armed_home: "IN CASA", armed_away: "INSERITO", armed_night: "NOTTE", triggered: "SCATTATO!", pending: "IN ATTESA", arming: "INSERIMENTO" }[s.s] || s.s;
+    if (s.k === "valve") return { open: t("APERTA"), closed: t("CHIUSA"), opening: t("APRE…"), closing: t("CHIUDE…") }[s.s] || s.s.toUpperCase();
+    if (s.k === "person") return s.s === "home" ? t("A CASA") : s.s === "not_home" ? t("FUORI CASA") : s.s.toUpperCase(); // or the zone's name
+    if (s.k === "lock") return { locked: t("BLOCCATA"), unlocked: t("SBLOCCATA"), locking: t("BLOCCO…"), unlocking: t("SBLOCCO…"), jammed: t("INCEPPATA"), open: t("APERTA") }[s.s] || s.s.toUpperCase();
+    if (s.k === "alarm") return { disarmed: t("DISINSERITO"), armed_home: t("IN CASA"), armed_away: t("INSERITO"), armed_night: t("NOTTE"), triggered: t("SCATTATO!"), pending: t("IN ATTESA"), arming: t("INSERIMENTO") }[s.s] || s.s;
     if (s.k === "sensor") {
       const n = parseFloat(s.s);
       return isNaN(n) || /[^\d.,\-e]/i.test(s.s) ? s.s : `${num(n, Math.abs(n) < 10 && n % 1 ? 2 : 1)}${s.a.unit_of_measurement ? " " + s.a.unit_of_measurement : ""}`;
@@ -256,16 +256,16 @@ export class CasaView {
   // Thumbnails are still frames through the add-on. A new frame replaces the old one only
   // once it has loaded, and redraws reuse the last loaded frame: they never go black.
   camURL(eid, tick = Date.now(), stream = false) {
-    const t = this.token();
-    const q = [stream ? "" : `t=${tick}`, t ? `token=${encodeURIComponent(t)}` : ""].filter(Boolean).join("&");
+    const tok = this.token();
+    const q = [stream ? "" : `t=${tick}`, tok ? `token=${encodeURIComponent(tok)}` : ""].filter(Boolean).join("&");
     return `api/casa/camera/${encodeURIComponent(eid)}${stream ? "/stream" : ""}${q ? "?" + q : ""}`;
   }
 
   camHTML(eid) {
     const s = this.st(eid);
-    const live = { streaming: "IN DIRETTA", recording: "REGISTRA" }[s?.s] || "";
+    const live = { streaming: t("IN DIRETTA"), recording: t("REGISTRA") }[s?.s] || "";
     this.camSrc[eid] ||= this.camURL(eid);
-    return `<button class="casa-cam" data-act="cam" data-e="${eid}" aria-label="Telecamera ${esc(s?.n || eid)}">
+    return `<button class="casa-cam" data-act="cam" data-e="${eid}" aria-label="${t("Telecamera")} ${esc(s?.n || eid)}">
       <img data-cam="${eid}" src="${this.camSrc[eid]}" alt="">
       <span class="casa-cam-label">${esc(s?.n || eid)}${live ? ` · ${live}` : ""}</span></button>`;
   }
@@ -288,7 +288,7 @@ export class CasaView {
   // All cameras at a glance (the chip at the top of the house view).
   openCameraGrid() {
     const cams = this.data.areas.flatMap((a) => a.entities.filter((e) => this.st(e)?.k === "camera"));
-    const box = this.overlay("Telecamere", `<div class="casa-cams">${cams.map((e) => this.camHTML(e)).join("")}</div>`);
+    const box = this.overlay(t("Telecamere"), `<div class="casa-cams">${cams.map((e) => this.camHTML(e)).join("")}</div>`);
     box.addEventListener("click", (e) => {
       const cam = e.target.closest("[data-act='cam']");
       if (cam) this.openCamera(cam.dataset.e);
@@ -303,14 +303,14 @@ export class CasaView {
   // if video failed, why.
   async openCamera(eid) {
     const s = this.st(eid);
-    const box = this.overlay(s?.n || eid, `<div class="cam-mode">Avvio video…</div><div class="cam-stage"><img class="cam-still" src="${this.camSrc[eid] || this.camURL(eid)}" alt=""></div>`, true);
+    const box = this.overlay(s?.n || eid, `<div class="cam-mode">${t("Avvio video…")}</div><div class="cam-stage"><img class="cam-still" src="${this.camSrc[eid] || this.camURL(eid)}" alt=""></div>`, true);
     const stage = box.querySelector(".cam-stage");
     const mode = (text, on = false) => { const m = box.querySelector(".cam-mode"); m.textContent = text; m.classList.toggle("on", on); };
     const live = this.live;
     const why = [];
     const hass = haParent();
-    if (!hass) why.push("HLS: HubNEX non è aperto dentro Home Assistant");
-    else if (!(Number(s?.a.supported_features) & 2)) why.push("HLS: la telecamera non offre un flusso video");
+    if (!hass) why.push(`HLS: ${t("HubNEX non è aperto dentro Home Assistant")}`);
+    else if (!(Number(s?.a.supported_features) & 2)) why.push(`HLS: ${t("la telecamera non offre un flusso video")}`);
     else {
       try {
         const { url } = await hass.connection.sendMessagePromise({ type: "camera/stream", entity_id: eid, format: "hls" });
@@ -333,7 +333,7 @@ export class CasaView {
       if (live.img) { live.img.src = ""; live.img.remove(); live.img = null; }
       if (this.live !== live) return;
     }
-    mode(`Istantanee ogni secondo — video non disponibile (${why.join("; ")})`);
+    mode(`${t("Istantanee ogni secondo — video non disponibile")} (${why.join("; ")})`);
     const still = stage.querySelector(".cam-still");
     live.timer = setInterval(() => {
       const url = this.camURL(eid);
@@ -354,9 +354,9 @@ export class CasaView {
     // (iPhone). Some Android WebViews say they play HLS natively but then don't.
     await loadScript("static/vendor/hls/hls.light.min.js").catch(() => {});
     const playing = new Promise((ok, fail) => {
-      const timer = setTimeout(() => fail(new Error("nessuna immagine dopo 12 secondi")), 12000);
+      const timer = setTimeout(() => fail(new Error(t("nessuna immagine dopo {n} secondi", { n: 12 }))), 12000);
       video.addEventListener("playing", () => { clearTimeout(timer); ok(); }, { once: true });
-      video.addEventListener("error", () => { clearTimeout(timer); fail(new Error(`errore del video (${video.error?.code})`)); }, { once: true });
+      video.addEventListener("error", () => { clearTimeout(timer); fail(new Error(`${t("errore del video")} (${video.error?.code})`)); }, { once: true });
       if (window.Hls?.isSupported()) {
         const hls = (live.hls = new window.Hls({ backBufferLength: 10, liveSyncDurationCount: 2 }));
         hls.on(window.Hls.Events.ERROR, (_, d) => { if (d.fatal) { clearTimeout(timer); fail(new Error(d.details || d.type)); } });
@@ -366,7 +366,7 @@ export class CasaView {
         video.src = url;
       } else {
         clearTimeout(timer);
-        fail(new Error("il browser non riproduce HLS"));
+        fail(new Error(t("il browser non riproduce HLS")));
       }
     });
     video.play().catch(() => {});
@@ -391,7 +391,7 @@ export class CasaView {
     const start = Date.now();
     while (!img.naturalWidth) {
       if (this.live !== live) return;
-      if (Date.now() - start > 10000) throw new Error("nessuna immagine dopo 10 secondi");
+      if (Date.now() - start > 10000) throw new Error(t("nessuna immagine dopo {n} secondi", { n: 10 }));
       await new Promise((r) => setTimeout(r, 250));
     }
   }
@@ -403,7 +403,7 @@ export class CasaView {
     box.setAttribute("role", "dialog");
     box.setAttribute("aria-label", title);
     box.innerHTML = `<section class="panel casa-panel ${isLive ? "casa-cam-modal" : "casa-cam-grid"}">
-      <h3>${esc(title)} <button class="casa-x" aria-label="Chiudi">×</button></h3>${body}</section>`;
+      <h3>${esc(title)} <button class="casa-x" aria-label="${t("Chiudi")}">×</button></h3>${body}</section>`;
     box.querySelector(".casa-x").addEventListener("click", () => this.closeCamera());
     box.addEventListener("click", (e) => { if (e.target === box) this.closeCamera(); });
     document.body.appendChild(box);
@@ -427,7 +427,7 @@ export class CasaView {
   lock(eid) {
     const s = this.st(eid);
     if (!s) return;
-    if (s.s !== "locked") { this.call("lock", "lock", { entity_id: eid }, eid); this.toast(`Blocco ${s.n}…`); return; }
+    if (s.s !== "locked") { this.call("lock", "lock", { entity_id: eid }, eid); this.toast(t("Blocco {name}…", { name: s.n })); return; }
     if (s.a.code_format) this.pad = { eid, domain: "lock", service: "unlock", code: "", error: "", busy: false };
     else this.lockAsk = eid;
     this.render(true);
@@ -442,9 +442,9 @@ export class CasaView {
       this.render(true);
       return;
     }
-    if (disarm && !confirm(`Disinserire ${s.n}?`)) return;
+    if (disarm && !confirm(t("Disinserire {name}?", { name: s.n }))) return;
     this.call("alarm_control_panel", service, { entity_id: eid }, eid);
-    this.toast(disarm ? "Disinserisco l'allarme…" : "Inserisco l'allarme…");
+    this.toast(disarm ? t("Disinserisco l'allarme…") : t("Inserisco l'allarme…"));
   }
 
   padKey(key) {
@@ -466,25 +466,25 @@ export class CasaView {
     try {
       await this.api("/api/casa/call", { method: "POST", body: JSON.stringify({ domain: p.domain, service: p.service, data: { entity_id: p.eid, code: p.code } }) });
       this.pad = null;
-      this.toast(p.domain === "lock" ? "Sblocco…" : disarm ? "Disinserisco l'allarme…" : "Inserisco l'allarme…");
+      this.toast(p.domain === "lock" ? t("Sblocco…") : disarm ? t("Disinserisco l'allarme…") : t("Inserisco l'allarme…"));
     } catch (err) {
       // Wrong code (or the alarm said no): stay on the keypad.
-      Object.assign(p, { busy: false, code: "", error: /code|codice/i.test(err.message) ? "Codice errato" : `⚠ ${err.message.replace(/^\{"detail":"|"\}$/g, "")}` });
+      Object.assign(p, { busy: false, code: "", error: /code|codice/i.test(err.message) ? t("Codice errato") : `⚠ ${err.message.replace(/^\{"detail":"|"\}$/g, "")}` });
     }
     this.render(true);
   }
 
   padHTML() {
     const p = this.pad, s = this.st(p.eid);
-    const label = { unlock: "Sblocca", alarm_disarm: "Disinserisci", alarm_arm_home: "Inserisci · In casa", alarm_arm_away: "Inserisci · Fuori", alarm_arm_night: "Inserisci · Notte", alarm_arm_vacation: "Inserisci · Vacanza" }[p.service] || p.service;
+    const label = { unlock: t("Sblocca"), alarm_disarm: t("Disinserisci"), alarm_arm_home: t("Inserisci · In casa"), alarm_arm_away: t("Inserisci · Fuori"), alarm_arm_night: t("Inserisci · Notte"), alarm_arm_vacation: t("Inserisci · Vacanza") }[p.service] || p.service;
     const numeric = s?.a.code_format !== "text";
     const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "back", "0", "ok"];
     const body = numeric
       ? `<div class="pad-dots" aria-live="polite">${"●".repeat(p.code.length) || "—"}</div>
-         <div class="pad-keys">${keys.map((k) => `<button data-act="pad" data-k="${k}" class="${k === "ok" ? "ok" : ""}" aria-label="${k === "back" ? "Cancella" : k === "ok" ? "Conferma" : k}">${k === "back" ? "⌫" : k === "ok" ? "✓" : k}</button>`).join("")}</div>`
-      : `<input type="password" id="pad-text" autocomplete="off" aria-label="Codice"><div class="casa-actions"><button class="casa-primary" data-act="pad-text">Conferma</button></div>`;
-    return `<div class="casa-modal" role="dialog" aria-label="Codice"><section class="panel casa-panel casa-pad ${p.service === "alarm_disarm" || p.service === "unlock" ? "disarm" : ""}">
-      <h3>${esc(label)} <button class="casa-x" data-act="pad-close" aria-label="Annulla">×</button></h3>
+         <div class="pad-keys">${keys.map((k) => `<button data-act="pad" data-k="${k}" class="${k === "ok" ? "ok" : ""}" aria-label="${k === "back" ? t("Cancella") : k === "ok" ? t("Conferma") : k}">${k === "back" ? "⌫" : k === "ok" ? "✓" : k}</button>`).join("")}</div>`
+      : `<input type="password" id="pad-text" autocomplete="off" aria-label="${t("Codice")}"><div class="casa-actions"><button class="casa-primary" data-act="pad-text">${t("Conferma")}</button></div>`;
+    return `<div class="casa-modal" role="dialog" aria-label="${t("Codice")}"><section class="panel casa-panel casa-pad ${p.service === "alarm_disarm" || p.service === "unlock" ? "disarm" : ""}">
+      <h3>${esc(label)} <button class="casa-x" data-act="pad-close" aria-label="${t("Annulla")}">×</button></h3>
       <div class="casa-sub">${esc(s?.n || p.eid)}</div>
       ${body}
       <div class="pad-error" role="alert">${esc(p.error || "")}</div>
@@ -502,12 +502,12 @@ export class CasaView {
 
   toast(text) {
     // Outside the view's own HTML, or the next live redraw would wipe it.
-    let t = document.querySelector(".casa-toast");
-    if (!t) { t = document.createElement("div"); t.className = "casa-toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
-    t.textContent = text;
-    t.classList.add("on");
+    let box = document.querySelector(".casa-toast");
+    if (!box) { box = document.createElement("div"); box.className = "casa-toast"; box.setAttribute("role", "status"); document.body.appendChild(box); }
+    box.textContent = text;
+    box.classList.add("on");
     clearTimeout(this._toast);
-    this._toast = setTimeout(() => t.classList.remove("on"), 4000);
+    this._toast = setTimeout(() => box.classList.remove("on"), 4000);
   }
 
   // ------------------------------------------------------------------ events
@@ -546,9 +546,9 @@ export class CasaView {
       case "temp": {
         const s = this.st(eid);
         const step = Number(s.a.target_temp_step) || 0.5;
-        const t = Math.round(((Number(s.a.temperature) || 20) + step * Number(el.dataset.d)) * 10) / 10;
-        s.a.temperature = t;
-        this.call("climate", "set_temperature", { entity_id: eid, temperature: t });
+        const temp = Math.round(((Number(s.a.temperature) || 20) + step * Number(el.dataset.d)) * 10) / 10;
+        s.a.temperature = temp;
+        this.call("climate", "set_temperature", { entity_id: eid, temperature: temp });
         break;
       }
       case "gate": this.gate(eid); return;
@@ -566,7 +566,7 @@ export class CasaView {
       case "valve": this.call("valve", el.dataset.s, { entity_id: eid }, eid); return;
       case "media": this.call("media_player", el.dataset.s, { entity_id: eid }, eid); return;
       case "lock": this.lock(eid); return;
-      case "lock-yes": this.lockAsk = null; this.call("lock", "unlock", { entity_id: eid }, eid); this.toast(`Sblocco ${this.st(eid)?.n || eid}…`); break;
+      case "lock-yes": this.lockAsk = null; this.call("lock", "unlock", { entity_id: eid }, eid); this.toast(t("Sblocco {name}…", { name: this.st(eid)?.n || eid })); break;
       case "lock-no": this.lockAsk = null; break;
       case "edit": this.editing = !this.editing; if (this.editing) this.search(""); break;
       // helpers (time of day, numbers, lists)
@@ -618,7 +618,7 @@ export class CasaView {
       }
       case "card-del": {
         const card = this.area(this.page).cards.find((c) => c.id === el.dataset.id);
-        if (!confirm(`Togliere la card "${card?.name}"? Le entità restano in Home Assistant.`)) return;
+        if (!confirm(t("Togliere la card \"{name}\"? Le entità restano in Home Assistant.", { name: card?.name }))) return;
         await this.api(`/api/casa/rooms/${encodeURIComponent(this.page)}/cards/${encodeURIComponent(el.dataset.id)}/remove`, { method: "POST" }).catch((err) => this.toast(`⚠ ${err.message}`));
         await this.reload(true);
         return;
@@ -654,11 +654,11 @@ export class CasaView {
       case "card-save": {
         this.cardKeep();
         const c = this.cardEdit;
-        if (!c.entities.length) { this.toast("Aggiungi almeno un'entità"); return; }
+        if (!c.entities.length) { this.toast(t("Aggiungi almeno un'entità")); return; }
         try {
-          await this.api(`/api/casa/rooms/${encodeURIComponent(c.area)}/cards`, { method: "POST", body: JSON.stringify({ id: c.id, name: c.name || "Card", entities: c.entities, size: c.size, group: c.group || null, enable: c.enable && !c.entities.includes(c.enable) ? null : c.enable, nochart: c.nochart.filter((e) => c.entities.includes(e)) }) });
+          await this.api(`/api/casa/rooms/${encodeURIComponent(c.area)}/cards`, { method: "POST", body: JSON.stringify({ id: c.id, name: c.name || t("Card"), entities: c.entities, size: c.size, group: c.group || null, enable: c.enable && !c.entities.includes(c.enable) ? null : c.enable, nochart: c.nochart.filter((e) => c.entities.includes(e)) }) });
           this.cardEdit = null;
-          this.toast("Card salvata");
+          this.toast(t("Card salvata"));
           await this.reload(true);
         } catch (err) { this.toast(`⚠ ${err.message.replace(/^\{"detail":"|"\}$/g, "")}`); }
         return;
@@ -667,7 +667,7 @@ export class CasaView {
       case "add": {
         try {
           await this.api(`/api/casa/rooms/${encodeURIComponent(area)}/entities`, { method: "POST", body: JSON.stringify({ entity_id: eid, mode: this.mode }) });
-          this.toast(this.mode === "ha" ? "Spostata anche in Home Assistant" : "Aggiunta solo alla plancia");
+          this.toast(this.mode === "ha" ? t("Spostata anche in Home Assistant") : t("Aggiunta solo alla plancia"));
           this.search(this.query || "");
         } catch (err) {
           this.toast(`⚠ ${err.message.replace(/^\{"detail":"|"\}$/g, "")}`);
@@ -707,7 +707,7 @@ export class CasaView {
     } else if (el.dataset.act === "kind") {
       const eid = el.dataset.e;
       this.api(`/api/casa/entities/${encodeURIComponent(eid)}/kind`, { method: "POST", body: JSON.stringify({ kind: el.value || null }) })
-        .then(() => this.toast(el.value ? `${this.st(eid)?.n}: ${SHOW_AS.find(([k]) => k === el.value)[1].toLowerCase()}` : "Tipo come in Home Assistant"))
+        .then(() => this.toast(el.value ? `${this.st(eid)?.n}: ${SHOW_AS.find(([k]) => k === el.value)[1].toLowerCase()}` : t("Tipo come in Home Assistant")))
         .catch((err) => this.toast(`⚠ ${err.message}`));
       if (this.st(eid)) this.st(eid).k = el.value || this.st(eid).nk || this.st(eid).k; // shown at once
       el.blur();
@@ -716,7 +716,7 @@ export class CasaView {
       const area = this.area(el.dataset.area);
       if (area) area.temp = el.value || null; // shown at once; the server confirms with casa_changed
       this.api(`/api/casa/rooms/${encodeURIComponent(el.dataset.area)}/temperature`, { method: "POST", body: JSON.stringify({ entity_id: el.value || null }) })
-        .then(() => this.toast(el.value ? "Temperatura della stanza impostata" : "Temperatura automatica"))
+        .then(() => this.toast(el.value ? t("Temperatura della stanza impostata") : t("Temperatura automatica")))
         .catch((err) => this.toast(`⚠ ${err.message}`));
       el.blur();
       this.render(true);
@@ -762,7 +762,7 @@ export class CasaView {
       await this.api("/api/casa/layout", { method: "POST", body: JSON.stringify({ text }) });
       this.layout = null;
       document.activeElement?.blur(); // a tap on Save can leave the keyboard on the text
-      this.toast("Piantina salvata");
+      this.toast(t("Piantina salvata"));
       await this.reload(true);
     } catch (err) {
       const box = this.root.querySelector(".layout-error");
@@ -785,8 +785,8 @@ export class CasaView {
     const panelScroll = this.root.querySelector(".casa-modal .panel")?.scrollTop || 0; // a dialog keeps its place too
     let html;
     if (this.error) html = `<div class="casa-empty panel">⚠ ${esc(this.error)}</div>`;
-    else if (!this.data) html = `<div class="casa-empty panel">Collegamento a Home Assistant…</div>`;
-    else if (!this.data.ready) html = `<div class="casa-empty panel">Home Assistant non è ancora collegato: riprovo…</div>`;
+    else if (!this.data) html = `<div class="casa-empty panel">${t("Collegamento a Home Assistant…")}</div>`;
+    else if (!this.data.ready) html = `<div class="casa-empty panel">${t("Home Assistant non è ancora collegato: riprovo…")}</div>`;
     else html = this.page && this.area(this.page) ? this.roomHTML(this.area(this.page)) : this.homeHTML();
     // Dialogs live in their own layer: a live update of the house underneath doesn't touch an
     // open popup, and the popup itself is redrawn only when what it shows has changed.
@@ -794,8 +794,8 @@ export class CasaView {
     if (this.energyOpen && this.data?.ready) layer += this.energyHTML();
     if (this.layout) layer += this.layoutHTML();
     if (this.alarmOpen && this.data?.alarms?.length) {
-      layer += `<div class="casa-modal" role="dialog" aria-label="Allarme"><section class="panel casa-panel casa-alarm-modal">
-        <h3>Allarme <button class="casa-x" data-act="alarm-close" aria-label="Chiudi">×</button></h3>
+      layer += `<div class="casa-modal" role="dialog" aria-label="${t("Allarme")}"><section class="panel casa-panel casa-alarm-modal">
+        <h3>${t("Allarme")} <button class="casa-x" data-act="alarm-close" aria-label="${t("Chiudi")}">×</button></h3>
         <div class="hc-grid">${this.data.alarms.filter((e) => this.st(e)).map((e) => this.cardHTML(e)).join("")}</div></section></div>`;
     }
     if (this.pad) layer += this.padHTML();
@@ -834,15 +834,15 @@ export class CasaView {
   }
 
   climateHTML() {
-    const rows = this.data.areas.filter((a) => !a.outside).map((a) => [a, this.temp(a)]).filter(([, t]) => t != null);
+    const rows = this.data.areas.filter((a) => !a.outside).map((a) => [a, this.temp(a)]).filter(([, v]) => v != null);
     const outside = this.data.weather && this.st(this.data.weather)?.a;
     if (!rows.length && !outside) return "";
-    const avg = rows.length ? rows.reduce((s, [, t]) => s + t, 0) / rows.length : null;
+    const avg = rows.length ? rows.reduce((s, [, v]) => s + v, 0) / rows.length : null;
     return `
       <section class="hc">
-        <span class="hc-kick">Temperatura delle stanze</span>
-        ${rows.map(([a, t]) => `<button class="hc-temprow" data-act="room" data-area="${a.id}"><span>${esc(a.name)}</span><span class="hc-tbar"><i style="width:${Math.max(4, Math.min(100, ((t - 14) / 14) * 100))}%"></i></span><span class="mono">${num(t)}°</span></button>`).join("")}
-        ${outside?.temperature != null ? `<div class="hc-temprow out"><span>Esterno</span><span></span><span class="mono">${num(outside.temperature)}°</span></div>` : ""}
+        <span class="hc-kick">${t("Temperatura delle stanze")}</span>
+        ${rows.map(([a, v]) => `<button class="hc-temprow" data-act="room" data-area="${a.id}"><span>${esc(a.name)}</span><span class="hc-tbar"><i style="width:${Math.max(4, Math.min(100, ((v - 14) / 14) * 100))}%"></i></span><span class="mono">${num(v)}°</span></button>`).join("")}
+        ${outside?.temperature != null ? `<div class="hc-temprow out"><span>${t("Esterno")}</span><span></span><span class="mono">${num(outside.temperature)}°</span></div>` : ""}
       </section>`;
   }
 
@@ -851,8 +851,8 @@ export class CasaView {
     const floors = d.floors;
     const tiles = (list) => list.map((a) => {
       const cls = [this.lit(a) ? "lit" : "", this.alerts(a).length ? "alert" : "", this.selected === a.id ? "sel" : ""].join(" ");
-      const t = this.temp(a);
-      return `<button class="casa-tile ${cls}" data-act="room" data-area="${a.id}"><b>${esc(a.name)}</b><span>${t != null ? num(t) + "°" : ""}${this.lit(a) ? " · luce" : ""}${this.alerts(a).length ? " · aperta" : ""}</span></button>`;
+      const temp = this.temp(a);
+      return `<button class="casa-tile ${cls}" data-act="room" data-area="${a.id}"><b>${esc(a.name)}</b><span>${temp != null ? num(temp) + "°" : ""}${this.lit(a) ? ` · ${t("luce")}` : ""}${this.alerts(a).length ? ` · ${t("aperta")}` : ""}</span></button>`;
     }).join("");
     const outside = d.areas.filter((a) => a.outside);
     const others = d.areas.filter((a) => !a.placed);
@@ -866,26 +866,26 @@ export class CasaView {
         const tall = r.w < 12 && r.h > 30; // a narrow strip: the name runs along it
         if (!a) return `<div class="plan-room ${r.outline ? "outline" : "ghost"}" style="${geo}"><b>${esc(r.name)}</b></div>`;
         const cls = [r.outline ? "outline" : "", this.lit(a) ? "lit" : "", this.alerts(a).length ? "alert" : "", this.selected === a.id ? "sel" : "", small ? "small" : "", tall ? "tall" : ""].join(" ");
-        const t = this.temp(a);
-        const tag = this.lit(a) ? "LUCE" : this.alerts(a).length ? "APERTA" : "";
+        const temp = this.temp(a);
+        const tag = this.lit(a) ? t("LUCE") : this.alerts(a).length ? t("APERTA") : "";
         return `<button class="plan-room ${cls}" style="${geo}" data-act="room" data-area="${a.id}" aria-label="${esc(a.name)}">
-          <b>${esc(a.name)}</b><span class="plan-meta"><span class="mono">${t != null && !small ? num(t) + "°" : ""}</span><span class="plan-tag">${small ? "" : tag}</span></span></button>`;
+          <b>${esc(a.name)}</b><span class="plan-meta"><span class="mono">${temp != null && !small ? num(temp) + "°" : ""}</span><span class="plan-tag">${small ? "" : tag}</span></span></button>`;
       }).join("");
-      const tabs = floors.length > 1 ? `<div class="casa-floors">${floors.map((x, i) => `<button class="${i === this.floor ? "on" : ""}" data-act="floor" data-i="${i}">${esc(x.name)}</button>`).join("")}</div>` : `<div class="casa-floor-name">${esc(f.name)} · tocca una stanza</div>`;
+      const tabs = floors.length > 1 ? `<div class="casa-floors">${floors.map((x, i) => `<button class="${i === this.floor ? "on" : ""}" data-act="floor" data-i="${i}">${esc(x.name)}</button>`).join("")}</div>` : `<div class="casa-floor-name">${esc(f.name)} · ${t("tocca una stanza")}</div>`;
       // The real drawing, faint under the hologram (light lines on the dark background).
-      const t = this.token();
-      const img = f.image ? ` has-image" style="aspect-ratio:${f.aspect};--plan-img:url('api/casa/plan-image/${f.image}${t ? "?token=" + encodeURIComponent(t) : ""}')` : `" style="aspect-ratio:${f.aspect}`;
+      const tok = this.token();
+      const img = f.image ? ` has-image" style="aspect-ratio:${f.aspect};--plan-img:url('api/casa/plan-image/${f.image}${tok ? "?token=" + encodeURIComponent(tok) : ""}')` : `" style="aspect-ratio:${f.aspect}`;
       plan = `${tabs}<div class="plan-wrap"><div class="plan${img}">${rooms}</div></div>`;
     } else if (!d.layout_error) {
-      plan = `<div class="casa-hint panel">Nessuna piantina ancora (<span class="mono">${esc(d.layout_file)}</span>): le stanze sono le aree di Home Assistant. <button data-act="layout">⚙ Disegna la piantina</button></div>`;
+      plan = `<div class="casa-hint panel">${t("Nessuna piantina ancora")} (<span class="mono">${esc(d.layout_file)}</span>): ${t("le stanze sono le aree di Home Assistant.")} <button data-act="layout">⚙ ${t("Disegna la piantina")}</button></div>`;
     }
     if (d.layout_error) {
-      plan = `<div class="casa-hint panel bad">La piantina in <span class="mono">${esc(d.layout_file)}</span> ha un errore: <b>${esc(d.layout_error)}</b> <button data-act="layout">⚙ Correggi</button></div>` + plan;
+      plan = `<div class="casa-hint panel bad">${t("La piantina ha un errore")} (<span class="mono">${esc(d.layout_file)}</span>): <b>${esc(d.layout_error)}</b> <button data-act="layout">⚙ ${t("Correggi")}</button></div>` + plan;
     }
     const alerts = d.areas.flatMap((a) => this.alerts(a).map((e) => `<button class="chip bad" data-act="room" data-area="${a.id}">${esc(this.st(e).n)} · ${esc(a.name)}</button>`)).join("");
     return `${plan}
-      ${outside.length ? `<div class="casa-group"><span class="casa-lbl">Fuori casa</span><div class="casa-tiles out">${tiles(outside)}</div></div>` : ""}
-      ${others.length ? `<div class="casa-group"><span class="casa-lbl">${floors.length ? "Altre aree" : "Aree"}</span><div class="casa-tiles">${tiles(others)}</div></div>` : ""}
+      ${outside.length ? `<div class="casa-group"><span class="casa-lbl">${t("Fuori casa")}</span><div class="casa-tiles out">${tiles(outside)}</div></div>` : ""}
+      ${others.length ? `<div class="casa-group"><span class="casa-lbl">${floors.length ? t("Altre aree") : t("Aree")}</span><div class="casa-tiles">${tiles(others)}</div></div>` : ""}
       ${alerts ? `<div class="casa-alerts">${alerts}</div>` : ""}`;
   }
 
@@ -930,12 +930,12 @@ export class CasaView {
     const card = id.startsWith("card:");
     const wide = card ? (a.cards.find((c) => `card:${c.id}` === id)?.size === "wide") : this.data.sizes?.[id] === "wide" || /class="hc wide/.test(html);
     const bar = `<div class="hc-editbar">
-        <button class="hc-handle" data-drag="${esc(id)}" aria-label="Trascina per spostare">⋮⋮</button>
-        <button data-act="move" data-d="-1" data-id="${esc(id)}" aria-label="Sposta prima">‹</button><button data-act="move" data-d="1" data-id="${esc(id)}" aria-label="Sposta dopo">›</button>
-        ${card ? `<button data-act="card-edit" data-id="${esc(id.slice(5))}">Modifica</button>` : `<button data-act="rename" data-e="${esc(id)}">Rinomina</button>`}
-        ${!card && this.st(id)?.k === "sensor" && !isNaN(parseFloat(this.st(id).s)) ? `<button data-act="chart" data-e="${esc(id)}">${(this.data.nochart || []).includes(id) ? "Mostra grafico" : "Togli grafico"}</button>` : ""}
-        <button data-act="size" data-id="${esc(id)}" data-w="${wide ? "small" : "wide"}">${wide ? "Piccola" : "Larga"}</button>
-        ${card ? `<button data-act="card-del" data-id="${esc(id.slice(5))}">Togli</button>` : `<button data-act="hide" data-area="${a.id}" data-e="${esc(id)}">Togli</button>`}
+        <button class="hc-handle" data-drag="${esc(id)}" aria-label="${t("Trascina per spostare")}">⋮⋮</button>
+        <button data-act="move" data-d="-1" data-id="${esc(id)}" aria-label="${t("Sposta prima")}">‹</button><button data-act="move" data-d="1" data-id="${esc(id)}" aria-label="${t("Sposta dopo")}">›</button>
+        ${card ? `<button data-act="card-edit" data-id="${esc(id.slice(5))}">${t("Modifica")}</button>` : `<button data-act="rename" data-e="${esc(id)}">${t("Rinomina")}</button>`}
+        ${!card && this.st(id)?.k === "sensor" && !isNaN(parseFloat(this.st(id).s)) ? `<button data-act="chart" data-e="${esc(id)}">${(this.data.nochart || []).includes(id) ? t("Mostra grafico") : t("Togli grafico")}</button>` : ""}
+        <button data-act="size" data-id="${esc(id)}" data-w="${wide ? "small" : "wide"}">${wide ? t("Piccola") : t("Larga")}</button>
+        ${card ? `<button data-act="card-del" data-id="${esc(id.slice(5))}">${t("Togli")}</button>` : `<button data-act="hide" data-area="${a.id}" data-e="${esc(id)}">${t("Togli")}</button>`}
       </div>`;
     return html.replace(/<\/(article|div)>\s*$/, `${bar}</$1>`).replace(/^(\s*<(?:article|div) class="hc )/, `$1hc-edit `).replace(/^(\s*<(?:article|div) )/, `$1data-item="${esc(id)}" `);
   }
@@ -944,43 +944,43 @@ export class CasaView {
     const groups = {};
     for (const e of a.entities) (groups[this.section(e)] ||= []).push(e);
     const lights = groups.light || [];
-    const t = this.temp(a);
+    const temp = this.temp(a);
     const presence = a.entities.find((e) => PRESENCE.has(this.dc(e)));
     const sources = this.tempSources(a);
     const chosen = this.tempSource(a);
     const tempLabel = sources.length > 1
-      ? `<label class="casa-temp-src"><span>temperatura da</span><select data-act="temp-src" data-area="${a.id}" aria-label="Sensore della temperatura della stanza">
-          <option value="" ${a.temp ? "" : "selected"}>Automatico</option>
+      ? `<label class="casa-temp-src"><span>${t("temperatura da")}</span><select data-act="temp-src" data-area="${a.id}" aria-label="${t("Sensore della temperatura della stanza")}">
+          <option value="" ${a.temp ? "" : "selected"}>${t("Automatico")}</option>
           ${sources.map((e) => `<option value="${e}" ${a.temp === e ? "selected" : ""}>${esc(this.st(e).n)} (${num(this.readTemp(e) ?? 0)}°)</option>`).join("")}
         </select></label>`
-      : `<span>temperatura</span>`;
+      : `<span>${t("temperatura")}</span>`;
     this.loadHistory(a);
     const watts = a.entities.map((e) => this.data.power?.[e]).filter(Boolean).reduce((sum, p) => sum + (parseFloat(this.st(p)?.s) || 0), 0);
     const stats = [
-      t != null || sources.length ? `<div><b>${t != null ? num(t) + "°" : "—"}</b>${tempLabel}</div>` : "",
-      lights.length ? `<div><b class="warm">${lights.filter((e) => this.isOn(e)).length} / ${lights.length}</b><span>luci accese</span></div>` : "",
-      presence ? `<div><b>${this.isOn(presence) ? "Sì" : "No"}</b><span>presenza</span></div>` : "",
-      watts ? `<div><b>${num(watts, 0)} W</b><span>consumo</span></div>` : "",
-      `<div><b>${a.entities.length}</b><span>entità</span></div>`,
+      temp != null || sources.length ? `<div><b>${temp != null ? num(temp) + "°" : "—"}</b>${tempLabel}</div>` : "",
+      lights.length ? `<div><b class="warm">${lights.filter((e) => this.isOn(e)).length} / ${lights.length}</b><span>${t("luci accese")}</span></div>` : "",
+      presence ? `<div><b>${this.isOn(presence) ? t("Sì") : t("No")}</b><span>${t("presenza")}</span></div>` : "",
+      watts ? `<div><b>${num(watts, 0)} W</b><span>${t("consumo")}</span></div>` : "",
+      `<div><b>${a.entities.length}</b><span>${t("entità")}</span></div>`,
     ].join("");
     const pills = this.data.areas.map((x) => `<button class="casa-pill ${x.id === a.id ? "on" : ""}" data-act="open" data-area="${x.id}">${esc(x.name)}</button>`).join("");
     const sections = this.roomGroups(a).map(([k, title, ids]) => this.sectionHTML(k, title, ids, a)).join("");
     return `
       <div class="casa-room">
         <header class="casa-room-head">
-          <button class="casa-back" data-act="home">← Casa</button>
-          <div><span class="casa-lbl">${a.outside ? "Fuori casa" : esc(a.floor || "Stanza")}</span><h1>${esc(a.name)}</h1></div>
+          <button class="casa-back" data-act="home">← ${t("Casa")}</button>
+          <div><span class="casa-lbl">${a.outside ? t("Fuori casa") : esc(a.floor || t("Stanza"))}</span><h1>${esc(a.name)}</h1></div>
           <div class="casa-stats">${stats}</div>
-          <button class="casa-edit ${this.editing ? "on" : ""}" data-act="edit" aria-pressed="${this.editing}">${this.editing ? "Fine modifica" : "Modifica stanza"}</button>
+          <button class="casa-edit ${this.editing ? "on" : ""}" data-act="edit" aria-pressed="${this.editing}">${this.editing ? t("Fine modifica") : t("Modifica stanza")}</button>
         </header>
-        <nav class="casa-pills" aria-label="Altre stanze">${pills}</nav>
+        <nav class="casa-pills" aria-label="${t("Altre stanze")}">${pills}</nav>
         ${this.editing ? this.editHTML(a) : ""}
-        <div class="casa-sections">${sections || `<p class="panel casa-panel casa-muted">Nessuna entità: premi "Modifica stanza" per aggiungerne.</p>`}</div>
+        <div class="casa-sections">${sections || `<p class="panel casa-panel casa-muted">${t("Nessuna entità: premi \"Modifica stanza\" per aggiungerne.")}</p>`}</div>
       </div>`;
   }
 
   sectionHTML(kind, title, ids, a) {
-    const extra = kind === "light" && ids.some((e) => !e.startsWith("card:") && this.isOn(e)) ? `<button class="hc-link" data-act="all-off" data-area="${a.id}">Spegni tutte</button>` : "";
+    const extra = kind === "light" && ids.some((e) => !e.startsWith("card:") && this.isOn(e)) ? `<button class="hc-link" data-act="all-off" data-area="${a.id}">${t("Spegni tutte")}</button>` : "";
     const body = kind === "action" && !this.editing && ids.every((e) => !e.startsWith("card:"))
       ? `<div class="hc-scenes">${ids.map((e) => `<button class="hc-scene" data-act="scene" data-e="${e}">${esc(this.st(e)?.n || e)}</button>`).join("")}</div>`
       : `<div class="hc-grid ${this.editing ? "editing" : ""}" data-group="${kind}">${ids.map((id) => this.itemHTML(id, a)).join("")}</div>`;
@@ -1007,29 +1007,29 @@ export class CasaView {
     return `
       <section class="panel casa-panel casa-editor">
         <div class="casa-edit-col">
-          <div class="hc-edit-actions"><button class="hc-btn primary" data-act="card-new">+ Nuova card</button>
-            ${(a.order || []).length ? `<button class="hc-link" data-act="order-reset">Ordine automatico</button>` : ""}</div>
-          <p class="casa-muted">Sotto, ogni card ha i suoi comandi: trascinala (⋮⋮) o spostala con ‹ › dentro il suo gruppo, rinominala, rendila larga o piccola. Una card nuova raccoglie più entità, ad esempio la stufa con i suoi orari, e va nel gruppo che scegli.</p>
-          <h3>Entità in ${esc(a.name)}</h3>
+          <div class="hc-edit-actions"><button class="hc-btn primary" data-act="card-new">+ ${t("Nuova card")}</button>
+            ${(a.order || []).length ? `<button class="hc-link" data-act="order-reset">${t("Ordine automatico")}</button>` : ""}</div>
+          <p class="casa-muted">${t("Sotto, ogni card ha i suoi comandi: trascinala (⋮⋮) o spostala con ‹ › dentro il suo gruppo, rinominala, rendila larga o piccola. Una card nuova raccoglie più entità, ad esempio la stufa con i suoi orari, e va nel gruppo che scegli.")}</p>
+          <h3>${t("Entità in {room}", { room: esc(a.name) })}</h3>
           ${a.entities.map((e) => {
             const s = this.st(e);
             const cur = s?.nk ? s.k : "";
             const opts = SHOW_AS.map(([k, label]) => `<option value="${k}" ${k === cur ? "selected" : ""}>${label}</option>`).join("");
             return `<div class="casa-row casa-entity"><span>${esc(s?.n || e)} <small class="mono">${e}</small></span>
-              <select data-act="kind" data-e="${e}" aria-label="Mostra ${esc(s?.n || e)} come">${opts}</select>
-              <button class="casa-mini" data-act="hide" data-area="${a.id}" data-e="${e}">Togli</button></div>`;
-          }).join("") || `<p class="casa-muted">Ancora nessuna.</p>`}
-          <p class="casa-muted">Il tipo cambia solo come la vedi qui (es. un relè che accende una luce conta tra le luci; un cancello ha il pulsante a impulso). "Togli" la nasconde da questa plancia. In Home Assistant non cambia nulla.</p>
+              <select data-act="kind" data-e="${e}" aria-label="${t("Mostra {name} come", { name: esc(s?.n || e) })}">${opts}</select>
+              <button class="casa-mini" data-act="hide" data-area="${a.id}" data-e="${e}">${t("Togli")}</button></div>`;
+          }).join("") || `<p class="casa-muted">${t("Ancora nessuna.")}</p>`}
+          <p class="casa-muted">${t("Il tipo cambia solo come la vedi qui (es. un relè che accende una luce conta tra le luci; un cancello ha il pulsante a impulso). \"Togli\" la nasconde da questa plancia. In Home Assistant non cambia nulla.")}</p>
         </div>
         <div class="casa-edit-col">
-          <h3>Aggiungi entità</h3>
-          <label class="casa-lbl" for="casa-find">Cerca tra le entità di Home Assistant</label>
-          <input id="casa-find" placeholder="es. lampada, presa, sensore…" autocomplete="off" value="${esc(this.query || "")}">
+          <h3>${t("Aggiungi entità")}</h3>
+          <label class="casa-lbl" for="casa-find">${t("Cerca tra le entità di Home Assistant")}</label>
+          <input id="casa-find" placeholder="${t("es. lampada, presa, sensore…")}" autocomplete="off" value="${esc(this.query || "")}">
           <div id="casa-cands"></div>
           <fieldset class="casa-mode">
-            <legend class="casa-lbl">Dove salvare</legend>
-            <label><input type="radio" name="casa-mode" value="ha" ${this.mode === "ha" ? "checked" : ""}> Sposta l'area anche in Home Assistant (consigliato)</label>
-            <label><input type="radio" name="casa-mode" value="local" ${this.mode === "local" ? "checked" : ""}> Solo nella plancia di HubNEX</label>
+            <legend class="casa-lbl">${t("Dove salvare")}</legend>
+            <label><input type="radio" name="casa-mode" value="ha" ${this.mode === "ha" ? "checked" : ""}> ${t("Sposta l'area anche in Home Assistant (consigliato)")}</label>
+            <label><input type="radio" name="casa-mode" value="local" ${this.mode === "local" ? "checked" : ""}> ${t("Solo nella plancia di HubNEX")}</label>
           </fieldset>
         </div>
       </section>`;
@@ -1124,11 +1124,11 @@ export class CasaView {
 
   renameHTML() {
     const r = this.renaming;
-    return `<div class="casa-modal" role="dialog" aria-label="Rinomina"><section class="panel casa-panel hc-dialog">
-      <h3>Rinomina <button class="casa-x" data-act="rename-close" aria-label="Chiudi">×</button></h3>
-      <p class="casa-muted">Il nome cambia solo in HubNEX; in Home Assistant resta com'è (<span class="mono">${esc(r.eid)}</span>).</p>
-      <input id="casa-rename" class="hc-input" value="${esc(r.name)}" maxlength="60" aria-label="Nuovo nome">
-      <div class="casa-actions"><button class="hc-btn primary" data-act="rename-save">Salva</button><button class="hc-link" data-act="rename-reset">Torna al nome di Home Assistant</button></div>
+    return `<div class="casa-modal" role="dialog" aria-label="${t("Rinomina")}"><section class="panel casa-panel hc-dialog">
+      <h3>${t("Rinomina")} <button class="casa-x" data-act="rename-close" aria-label="${t("Chiudi")}">×</button></h3>
+      <p class="casa-muted">${t("Il nome cambia solo in HubNEX; in Home Assistant resta com'è")} (<span class="mono">${esc(r.eid)}</span>).</p>
+      <input id="casa-rename" class="hc-input" value="${esc(r.name)}" maxlength="60" aria-label="${t("Nuovo nome")}">
+      <div class="casa-actions"><button class="hc-btn primary" data-act="rename-save">${t("Salva")}</button><button class="hc-link" data-act="rename-reset">${t("Torna al nome di Home Assistant")}</button></div>
     </section></div>`;
   }
 
@@ -1153,46 +1153,46 @@ export class CasaView {
 
   cardCandsHTML() {
     const c = this.cardEdit;
-    return c.cands.filter((x) => !c.entities.includes(x.entity_id)).slice(0, 12).map((x) => `<button class="hc-cand" data-act="card-add" data-e="${esc(x.entity_id)}"><span>${esc(x.name)}</span><span class="mono">${esc(x.entity_id)}</span></button>`).join("") || `<p class="casa-muted">Nessuna entità trovata.</p>`;
+    return c.cands.filter((x) => !c.entities.includes(x.entity_id)).slice(0, 12).map((x) => `<button class="hc-cand" data-act="card-add" data-e="${esc(x.entity_id)}"><span>${esc(x.name)}</span><span class="mono">${esc(x.entity_id)}</span></button>`).join("") || `<p class="casa-muted">${t("Nessuna entità trovata.")}</p>`;
   }
 
   cardEditHTML() {
     const c = this.cardEdit;
-    const preview = this.composedCard({ id: "preview", name: c.name || "Card", entities: c.entities, size: c.size, enable: c.enable, nochart: c.nochart }).replace(/data-act="[^"]*"/g, "");
+    const preview = this.composedCard({ id: "preview", name: c.name || t("Card"), entities: c.entities, size: c.size, enable: c.enable, nochart: c.nochart }).replace(/data-act="[^"]*"/g, "");
     const numeric = (e) => { const s = this.st(e); return s?.k === "sensor" && !isNaN(parseFloat(s.s)); };
     const toggles = c.entities.filter((e) => ["input_boolean", "switch"].includes(e.split(".")[0]));
     const hasTimes = c.entities.filter((e) => this.st(e)?.k === "datetime").length >= 2;
     const guessed = this.cardEnable({ entities: c.entities });
-    return `<div class="casa-modal" role="dialog" aria-label="Card"><section class="panel casa-panel hc-dialog hc-cardedit">
-      <h3>${c.id ? "Modifica card" : "Nuova card"} <button class="casa-x" data-act="card-close" aria-label="Chiudi">×</button></h3>
+    return `<div class="casa-modal" role="dialog" aria-label="${t("Card")}"><section class="panel casa-panel hc-dialog hc-cardedit">
+      <h3>${c.id ? t("Modifica card") : t("Nuova card")} <button class="casa-x" data-act="card-close" aria-label="${t("Chiudi")}">×</button></h3>
       <div class="hc-cardedit-cols">
         <div>
-          <label class="hc-kick" for="card-name">Nome</label>
-          <input id="card-name" class="hc-input" value="${esc(c.name)}" maxlength="60" placeholder="es. Stufa">
-          <span class="hc-kick" style="margin-top:12px">Entità nella card</span>
+          <label class="hc-kick" for="card-name">${t("Nome")}</label>
+          <input id="card-name" class="hc-input" value="${esc(c.name)}" maxlength="60" placeholder="${t("es. Stufa")}">
+          <span class="hc-kick" style="margin-top:12px">${t("Entità nella card")}</span>
           <div class="hc-chosen">${c.entities.map((e, i) => `<div class="hc-chosen-item"><span>${esc(this.st(e)?.n || e)}<small class="mono">${esc(e)}</small></span>
-            <span class="hc-chosen-ctl">${numeric(e) ? `<label class="hc-chart-tg">grafico<button class="casa-switch ${c.nochart.includes(e) ? "" : "on"}" data-act="card-chart" data-e="${esc(e)}" role="switch" aria-checked="${!c.nochart.includes(e)}" aria-label="Grafico di ${esc(this.st(e)?.n || e)}"></button></label>` : ""}<button data-act="card-up" data-e="${esc(e)}" aria-label="Su" ${i ? "" : "disabled"}>↑</button><button data-act="card-down" data-e="${esc(e)}" aria-label="Giù" ${i < c.entities.length - 1 ? "" : "disabled"}>↓</button><button data-act="card-rm" data-e="${esc(e)}" aria-label="Togli">×</button></span></div>`).join("") || `<p class="casa-muted">Ancora nessuna: cercale qui sotto.</p>`}</div>
-          <label class="hc-kick" for="card-find" style="margin-top:12px">Aggiungi entità</label>
-          <input id="card-find" class="hc-input" value="${esc(c.q)}" placeholder="cerca per nome o entity_id…" autocomplete="off">
+            <span class="hc-chosen-ctl">${numeric(e) ? `<label class="hc-chart-tg">${t("grafico")}<button class="casa-switch ${c.nochart.includes(e) ? "" : "on"}" data-act="card-chart" data-e="${esc(e)}" role="switch" aria-checked="${!c.nochart.includes(e)}" aria-label="${t("Grafico di {name}", { name: esc(this.st(e)?.n || e) })}"></button></label>` : ""}<button data-act="card-up" data-e="${esc(e)}" aria-label="${t("Su")}" ${i ? "" : "disabled"}>↑</button><button data-act="card-down" data-e="${esc(e)}" aria-label="${t("Giù")}" ${i < c.entities.length - 1 ? "" : "disabled"}>↓</button><button data-act="card-rm" data-e="${esc(e)}" aria-label="${t("Togli")}">×</button></span></div>`).join("") || `<p class="casa-muted">${t("Ancora nessuna: cercale qui sotto.")}</p>`}</div>
+          <label class="hc-kick" for="card-find" style="margin-top:12px">${t("Aggiungi entità")}</label>
+          <input id="card-find" class="hc-input" value="${esc(c.q)}" placeholder="${t("cerca per nome o entity_id…")}" autocomplete="off">
           <div id="card-cands" class="hc-cands">${this.cardCandsHTML()}</div>
         </div>
         <div>
-          <label class="hc-kick" for="card-group">Gruppo</label>
+          <label class="hc-kick" for="card-group">${t("Gruppo")}</label>
           <select id="card-group" class="hc-select" style="margin-bottom:14px">
-            <option value="">Automatico${c.entities.length ? ` (${esc((SECTIONS.find(([k]) => k === this.cardGroup({ entities: c.entities })) || ["", "Altro"])[1])})` : ""}</option>
+            <option value="">${t("Automatico")}${c.entities.length ? ` (${esc((SECTIONS.find(([k]) => k === this.cardGroup({ entities: c.entities })) || ["", t("Altro")])[1])})` : ""}</option>
             ${SECTIONS.map(([k, title]) => `<option value="${k}" ${c.group === k ? "selected" : ""}>${title}</option>`).join("")}
           </select>
-          ${hasTimes && toggles.length ? `<label class="hc-kick" for="card-enable">Gli orari valgono quando è acceso</label>
+          ${hasTimes && toggles.length ? `<label class="hc-kick" for="card-enable">${t("Gli orari valgono quando è acceso")}</label>
           <select id="card-enable" class="hc-select" style="margin-bottom:14px">
-            <option value="auto" ${c.enable == null ? "selected" : ""}>Automatico${guessed ? ` (${esc(this.st(guessed)?.n || guessed)})` : " (nessuno)"}</option>
+            <option value="auto" ${c.enable == null ? "selected" : ""}>${t("Automatico")}${guessed ? ` (${esc(this.st(guessed)?.n || guessed)})` : ` (${t("nessuno")})`}</option>
             ${toggles.map((e) => `<option value="${esc(e)}" ${c.enable === e ? "selected" : ""}>${esc(this.st(e)?.n || e)}</option>`).join("")}
-            <option value="" ${c.enable === "" ? "selected" : ""}>Nessuno: gli orari valgono sempre</option>
+            <option value="" ${c.enable === "" ? "selected" : ""}>${t("Nessuno: gli orari valgono sempre")}</option>
           </select>` : ""}
-          <span class="hc-kick">Dimensione</span>
-          <div class="hc-tabs" style="margin:6px 0 16px"><button class="hc-tab ${c.size === "small" ? "sel" : ""}" data-act="card-size" data-w="small">Piccola</button><button class="hc-tab ${c.size === "wide" ? "sel" : ""}" data-act="card-size" data-w="wide">Larga</button></div>
-          <span class="hc-kick">Anteprima</span>
-          <div class="hc-preview">${c.entities.length ? preview : `<p class="casa-muted">La card compare qui mentre la componi.</p>`}</div>
-          <div class="casa-actions"><button class="hc-btn primary" data-act="card-save">Salva card</button><button class="hc-link" data-act="card-close">Annulla</button></div>
+          <span class="hc-kick">${t("Dimensione")}</span>
+          <div class="hc-tabs" style="margin:6px 0 16px"><button class="hc-tab ${c.size === "small" ? "sel" : ""}" data-act="card-size" data-w="small">${t("Piccola")}</button><button class="hc-tab ${c.size === "wide" ? "sel" : ""}" data-act="card-size" data-w="wide">${t("Larga")}</button></div>
+          <span class="hc-kick">${t("Anteprima")}</span>
+          <div class="hc-preview">${c.entities.length ? preview : `<p class="casa-muted">${t("La card compare qui mentre la componi.")}</p>`}</div>
+          <div class="casa-actions"><button class="hc-btn primary" data-act="card-save">${t("Salva card")}</button><button class="hc-link" data-act="card-close">${t("Annulla")}</button></div>
         </div>
       </div>
     </section></div>`;
@@ -1201,21 +1201,21 @@ export class CasaView {
   candsHTML() {
     const area = this.page;
     return (this.cands || []).map((c) => `
-      <div class="casa-row"><span>${esc(c.name)}<small class="${c.area ? "warm" : ""}">${c.area ? "ora in: " + esc(c.area) : "senza area"}${c.hidden ? " · nascosta in HA" : ""}</small><small class="mono">${esc(c.entity_id)}</small></span>
-      <button class="casa-mini add" data-act="add" data-area="${area}" data-e="${c.entity_id}">+ Aggiungi</button></div>`).join("") || `<p class="casa-muted">Nessuna entità trovata.</p>`;
+      <div class="casa-row"><span>${esc(c.name)}<small class="${c.area ? "warm" : ""}">${c.area ? t("ora in: {area}", { area: esc(c.area) }) : t("senza area")}${c.hidden ? ` · ${t("nascosta in HA")}` : ""}</small><small class="mono">${esc(c.entity_id)}</small></span>
+      <button class="casa-mini add" data-act="add" data-area="${area}" data-e="${c.entity_id}">+ ${t("Aggiungi")}</button></div>`).join("") || `<p class="casa-muted">${t("Nessuna entità trovata.")}</p>`;
   }
 
   layoutHTML() {
     const l = this.layout;
     return `
-      <div class="casa-modal" role="dialog" aria-label="Piantina">
+      <div class="casa-modal" role="dialog" aria-label="${t("Piantina")}">
         <section class="panel casa-panel">
-          <h3>Piantina <button class="casa-x" data-act="layout-close" aria-label="Chiudi">×</button></h3>
-          <p class="casa-muted">Incolla qui la piantina (YAML) e premi Salva: viene scritta in <span class="mono">${esc(l.file)}</span>. Le stanze vanno chiamate come le aree di Home Assistant:</p>
+          <h3>${t("Piantina")} <button class="casa-x" data-act="layout-close" aria-label="${t("Chiudi")}">×</button></h3>
+          <p class="casa-muted">${t("Incolla qui la piantina (YAML) e premi Salva: viene scritta in {file}. Le stanze vanno chiamate come le aree di Home Assistant:", { file: `<span class="mono">${esc(l.file)}</span>` })}</p>
           <div class="casa-area-names">${l.areas.map((n) => `<span class="chip">${esc(n)}</span>`).join("")}</div>
           <textarea id="casa-layout-text" spellcheck="false">${esc(l.text)}</textarea>
           <div class="layout-error">${esc(l.error || "")}</div>
-          <div class="casa-actions"><button class="casa-primary" data-act="layout-save">Salva piantina</button><button data-act="layout-close">Annulla</button></div>
+          <div class="casa-actions"><button class="casa-primary" data-act="layout-save">${t("Salva piantina")}</button><button data-act="layout-close">${t("Annulla")}</button></div>
         </section>
       </div>`;
   }
