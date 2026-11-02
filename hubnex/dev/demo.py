@@ -1,0 +1,197 @@
+"""HubNEX with a pretend Home Assistant and a pretend Claude: for trying the dashboard,
+taking screenshots and the browser tests. No real house, no API key, nothing leaves the machine.
+
+    python dev/demo.py 8765            # then open http://127.0.0.1:8765
+    python dev/demo.py 8765 casa.yaml  # with your own floor plan file
+"""
+import io, math, re, sys, tempfile, time
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import uvicorn
+from PIL import Image, ImageDraw
+
+from hubnex.config import Settings, load_org
+from hubnex.hq import HQ
+from hubnex.main import create_app
+from hubnex.store import Store
+from tests import test_casa as T
+from tests.conftest import ROOT, FakeClient, _Stream, response, text_block
+
+now = datetime.now(timezone.utc)
+ago = lambda m: (now - timedelta(minutes=m)).isoformat()
+names = ["Soggiorno", "Cucina", "Camera da letto", "Studio", "Bagno", "Corridoio", "Lavanderia", "Giardino"]
+slug = lambda n: n.lower().replace(" ", "_")
+T.AREAS[:] = [{"area_id": slug(n), "name": n} for n in names]
+T.DEVICES[:] = []
+T.ENTITIES[:] = []
+T.STATES[:] = []
+
+
+def add(eid, area, state, lc=30, device=None, **a):
+    T.ENTITIES.append({"entity_id": eid, "area_id": area, "device_id": device})
+    T.STATES.append({"entity_id": eid, "state": state, "attributes": a, "last_changed": ago(lc)})
+
+
+add("light.faretti_tv", "soggiorno", "on", brightness=102, supported_color_modes=["brightness"], friendly_name="Faretti TV")
+add("light.lampada_terra", "soggiorno", "on", brightness=255, supported_color_modes=["color_temp"], color_temp_kelvin=2700, friendly_name="Lampada da terra")
+add("light.striscia", "soggiorno", "off", supported_color_modes=["hs"], friendly_name="Striscia LED")
+add("climate.soggiorno", "soggiorno", "heat", friendly_name="Clima soggiorno", current_temperature=21.8, temperature=22, hvac_modes=["off", "heat", "cool", "auto"], hvac_action="heating", target_temp_step=0.5, current_humidity=46)
+add("cover.salotto", "soggiorno", "open", friendly_name="Tapparella salotto", current_position=40)
+add("media_player.tv", "soggiorno", "playing", friendly_name="TV Soggiorno", media_title="Interstellar", media_artist="Netflix", volume_level=0.35, supported_features=16384 | 1 | 4 | 16 | 32, media_position=4300, media_duration=10140, media_position_updated_at=ago(1))
+add("switch.presa_tv", "soggiorno", "on", device="dev-tv", friendly_name="Presa TV")
+add("sensor.presa_tv_potenza", None, "120", device="dev-tv", device_class="power", unit_of_measurement="W", friendly_name="Potenza TV")
+add("binary_sensor.presenza_soggiorno", "soggiorno", "on", 3, device_class="occupancy", friendly_name="Presenza soggiorno")
+add("lock.ingresso", "corridoio", "locked", friendly_name="Porta ingresso", code_format="^\\d{4}$")
+add("lock.garage", "corridoio", "locked", friendly_name="Porta garage")
+add("light.cucina", "cucina", "on", brightness=204, supported_color_modes=["brightness"], friendly_name="Soffitto cucina")
+add("light.sottopensile", "cucina", "off", supported_color_modes=["onoff"], friendly_name="Sottopensile")
+add("sensor.temp_cucina", "cucina", "22.1", device_class="temperature", unit_of_measurement="°C", friendly_name="Temperatura cucina")
+add("sensor.umid_cucina", "cucina", "48", device_class="humidity", unit_of_measurement="%", friendly_name="Umidità cucina")
+add("switch.bollitore", "cucina", "on", 40, device="dev-kettle", friendly_name="Bollitore")
+add("sensor.bollitore_potenza", None, "1850", device="dev-kettle", device_class="power", unit_of_measurement="W", friendly_name="Potenza bollitore")
+add("camera.cucina", "cucina", "streaming", friendly_name="Cucina", supported_features=2)
+add("sensor.temp_camera", "camera_da_letto", "19.6", device_class="temperature", unit_of_measurement="°C", friendly_name="Temperatura camera")
+add("binary_sensor.finestra_camera", "camera_da_letto", "on", 35, device_class="window", friendly_name="Finestra camera")
+add("light.comodini", "camera_da_letto", "off", supported_color_modes=["brightness"], friendly_name="Comodini")
+add("sensor.temp_studio", "studio", "20.9", device_class="temperature", unit_of_measurement="°C", friendly_name="Temperatura studio")
+add("light.yeelight", "studio", "on", brightness=200, supported_color_modes=["hs"], rgb_color=[123, 92, 255], friendly_name="Yeelight")
+add("sensor.umid_bagno", "bagno", "71", device_class="humidity", unit_of_measurement="%", friendly_name="Umidità bagno")
+add("switch.lavatrice", "lavanderia", "on", device="dev-lav", friendly_name="Lavatrice")
+add("sensor.lavatrice_potenza", None, "1920", device="dev-lav", device_class="power", unit_of_measurement="W", friendly_name="Potenza lavatrice")
+add("binary_sensor.allagamento", "lavanderia", "off", 600, device_class="moisture", friendly_name="Allagamento")
+add("valve.irrigazione", "giardino", "open", 12, friendly_name="Irrigazione", supported_features=3)
+add("camera.ingresso", "giardino", "idle", friendly_name="Ingresso", supported_features=2)
+add("person.marco", None, "home", 300, friendly_name="Marco")
+add("person.sara", None, "home", 90, friendly_name="Sara")
+add("person.luca", None, "Scuola", 200, friendly_name="Luca", battery_level=64)
+add("alarm_control_panel.casa", None, "armed_night", friendly_name="Allarme casa", supported_features=1 | 2 | 4, code_format="number")
+add("scene.buonanotte", None, "scening", friendly_name="Buonanotte")
+add("scene.cinema", None, "scening", friendly_name="Cinema")
+add("scene.esco", None, "scening", friendly_name="Esco")
+add("scene.rientro", None, "scening", friendly_name="Rientro")
+add("sensor.potenza_casa", None, "1840", device_class="power", unit_of_measurement="W", friendly_name="Potenza casa")
+add("sensor.energia_oggi", None, "9.6", device_class="energy", unit_of_measurement="kWh", friendly_name="Energia oggi")
+add("weather.casa", None, "sunny", temperature=14, friendly_name="Meteo")
+add("input_datetime.stufa_accensione", None, "06:30:00", has_date=False, has_time=True, friendly_name="Stufa accensione")
+add("input_datetime.stufa_spegnimento", None, "22:00:00", has_date=False, has_time=True, friendly_name="Stufa spegnimento")
+add("input_number.stufa_potenza", "soggiorno", "3", min=1, max=5, step=1, mode="slider", friendly_name="Potenza stufa")
+add("binary_sensor.corridoio_movimento", "corridoio", "off", 25, device_class="motion", friendly_name="Corridoio")
+add("binary_sensor.corridoio_occupazione", "corridoio", "on", 2, device_class="occupancy", friendly_name="Corridoio Occupazione")
+add("sensor.corridoio_lux", "corridoio", "37", device_class="illuminance", unit_of_measurement="lx", friendly_name="Corridoio Illuminamento")
+add("sensor.energia_f1", None, "52.66", device_class="energy", unit_of_measurement="kWh", friendly_name="Fascia F1", last_period="102.4", last_reset="2026-09-01T00:00:00+02:00", meter_period="bimonthly")
+add("sensor.energia_f2", None, "89.44", device_class="energy", unit_of_measurement="kWh", friendly_name="Fascia F2", last_period="92.0", last_reset="2026-09-01T00:00:00+02:00", meter_period="bimonthly")
+add("sensor.energia_f3", None, "52.15", device_class="energy", unit_of_measurement="kWh", friendly_name="Fascia F3", last_period="133.0", last_reset="2026-09-01T00:00:00+02:00", meter_period="bimonthly")
+add("sensor.spesa_bimestre", None, "100.61", unit_of_measurement="€", friendly_name="Totale bimestrale")
+add("sensor.tensione", None, "242.9", device_class="voltage", unit_of_measurement="V", friendly_name="Tensione")
+add("sensor.fattore_potenza", None, "-0.75", device_class="power_factor", friendly_name="Fattore di potenza")
+add("sensor.energia_prelevata", None, "7426.14", device_class="energy", unit_of_measurement="kWh", friendly_name="Energia prelevata")
+add("input_boolean.stufa_automatica", None, "on", friendly_name="Stufa automatica")
+add("input_boolean.stufa_weekend", None, "off", friendly_name="Stufa weekend")
+add("input_boolean.stufa_notte", None, "on", friendly_name="Stufa notte")
+add("input_select.stufa_modo", "soggiorno", "Comfort", options=["Eco", "Comfort", "Notte"], friendly_name="Modalità stufa")
+
+d = tempfile.mkdtemp()
+layout = sys.argv[2] if len(sys.argv) > 2 else None
+open(d + "/casa.yaml", "w").write(open(layout).read() if layout else """floors:
+  - name: Piano terra
+    aspect: 1.3
+    rooms:
+      - { area: Soggiorno, x: 0, y: 0, w: 42, h: 50 }
+      - { area: Cucina, x: 42, y: 0, w: 30, h: 50 }
+      - { area: Studio, x: 72, y: 0, w: 28, h: 50 }
+      - { area: Camera da letto, x: 0, y: 50, w: 36, h: 50 }
+      - { area: Corridoio, x: 36, y: 50, w: 22, h: 50 }
+      - { area: Bagno, x: 58, y: 50, w: 20, h: 50 }
+      - { area: Lavanderia, x: 78, y: 50, w: 22, h: 50 }
+outside: [Giardino]
+energy: { power: sensor.potenza_casa, today: sensor.energia_oggi }
+""")
+s = Settings(db_path=d + "/t.db", agents_file=str(ROOT / "config" / "agents.yaml"), casa_file=d + "/casa.yaml", ha_url="http://supervisor/core", ha_token="tok")
+
+
+class DemoClaude(FakeClient):
+    """Claude stand-in: one polite sentence, whatever is asked."""
+
+    def _stream(self, **kwargs):
+        self.requests.append(kwargs)
+        return _Stream(response([text_block("Sono la demo di HubNEX: qui Claude non c'è, ma la casa risponde.")], "end_turn"))
+
+
+hq = HQ(s, load_org(s.agents_file), Store(s.db_path), client=DemoClaude([]))
+hq.watcher._connect = lambda url: T.FakeWS()
+
+
+class REST:
+    enabled = True
+    blocked = set()
+
+    async def close(self):
+        pass
+
+    async def call_service(self, domain, service, data, by_owner=False):
+        eid = data.get("entity_id")
+        if isinstance(eid, str) and eid in hq.watcher.states:
+            st = dict(hq.watcher.states[eid])
+            if service in ("set_datetime", "set_value", "select_option"):
+                st["state"] = data.get("time") or data.get("date") or data.get("datetime") or str(data.get("value", data.get("option")))
+                hq.watcher.states[eid] = st
+                await hq._ha_event("state", eid, st)
+                return []
+            flip = {"toggle": None, "turn_on": "on", "turn_off": "off", "open_valve": "open", "close_valve": "closed", "unlock": "unlocked", "lock": "locked"}
+            if service in flip:
+                st["state"] = flip[service] or ("off" if st["state"] == "on" else "on")
+                st["last_changed"] = datetime.now(timezone.utc).isoformat()
+                hq.watcher.states[eid] = st
+                await hq._ha_event("state", eid, st)
+        return []
+
+    async def history(self, eids, hours=24):
+        out = {}
+        if eids == ["sensor.potenza_casa"]:
+            import random
+            random.seed(3)
+            day = now.astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
+            pts = []
+            t = day - timedelta(hours=1)
+            while t < now:
+                h = t.astimezone().hour + t.astimezone().minute / 60
+                w = 180 + 60 * random.random()
+                if 6.8 < h < 8: w += 900
+                if 12 < h < 13.2: w += 1900
+                if 19 < h < 21.5: w += 1200 + 300 * random.random()
+                pts.append((t.isoformat(), str(round(w))))
+                t += timedelta(minutes=10)
+            return {"sensor.potenza_casa": pts}
+        for i, e in enumerate(eids):
+            base = float(hq.watcher.states[e]["state"])
+            out[e] = [((now - timedelta(minutes=30 * k)).isoformat(), str(round(base + math.sin(k / 4 + i) * base * 0.06, 2))) for k in range(48, -1, -1)]
+        return out
+
+    async def conversation(self, text, agent_id=None):
+        """Home Assistant's own sentences, in short: "accendi/spegni <nome>"."""
+        m = re.match(r"\s*(accendi|spegni)\s+(?:la |il |lo |l'|le |i )?(.+?)\s*$", text, re.I)
+        if m:
+            want = m.group(2).lower()
+            for eid, st in hq.watcher.states.items():
+                name = (st.get("attributes") or {}).get("friendly_name", "")
+                if eid.split(".")[0] in ("light", "switch") and name and want in name.lower():
+                    on = m.group(1).lower() == "accendi"
+                    await self.call_service(eid.split(".")[0], "turn_on" if on else "turn_off", {"entity_id": eid})
+                    return {"response": {"response_type": "action_done", "speech": {"plain": {"speech": f"{name}: {'accesa' if on else 'spenta'}"}}}}
+        return {"response": {"response_type": "error", "data": {"code": "no_intent_match"}}}
+
+    async def camera_image(self, eid):
+        im = Image.new("RGB", (640, 360), (24, 44, 38))
+        dr = ImageDraw.Draw(im)
+        for y in range(0, 360, 6):
+            dr.line([(0, y), (640, y)], fill=(30, 52, 46))
+        dr.text((20, 20), f"{eid} {time.strftime('%H:%M:%S')}", fill=(220, 255, 230))
+        b = io.BytesIO()
+        im.save(b, "JPEG")
+        return b.getvalue(), "image/jpeg"
+
+
+hq.ha = REST()
+uvicorn.run(create_app(s, hq=hq, start_workers=True), host="127.0.0.1", port=int(sys.argv[1]), log_level="warning")

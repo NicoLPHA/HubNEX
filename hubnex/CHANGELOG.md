@@ -1,5 +1,9 @@
 # Changelog
 
+## Non ancora pubblicato
+- Per chi sviluppa: `dev/demo.py` (HubNEX con una casa e un Claude finti), test della
+  dashboard nel browser a ogni modifica, guida CONTRIBUTING.
+
 ## 1.8.11
 - L'integrazione Assist ha la sua icona in Dispositivi e servizi (Home Assistant 2026.3 o
   successivo).

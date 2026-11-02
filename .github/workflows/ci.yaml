@@ -40,6 +40,28 @@ jobs:
       - name: Sintassi dei moduli
         run: for f in hubnex/web/*.js; do node --check "$f" || exit 1; done
 
+  ui:
+    name: Dashboard nel browser
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hubnex
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: hubnex/requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --prefix tests/ui --no-audit --no-fund
+      - run: npx --prefix tests/ui playwright install --with-deps chromium
+      - name: Test nel browser (demo con casa e Claude finti)
+        run: node --test --test-reporter=spec tests/ui/*.test.cjs
+
   addon:
     name: Manifesto dell'add-on
     runs-on: ubuntu-latest

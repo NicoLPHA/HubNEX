@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "Browser tests of the HubNEX dashboard (run from the add-on folder: node --test tests/ui/)",
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}
