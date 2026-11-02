@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.11
+- L'integrazione Assist ha la sua icona in Dispositivi e servizi (Home Assistant 2026.3 o
+  successivo).
+
 ## 1.8.10
 - Integrazione Assist aggiunta a mano: niente più indirizzo predefinito della copia locale
   (`local-hubnex`), che con l'add-on del repository è sbagliato; la finestra spiega che di
