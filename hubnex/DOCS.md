@@ -1,5 +1,7 @@
 # HubNEX
 
+*Italiano · [English](https://github.com/P1pp89/HubNEX/blob/main/hubnex/DOCS.en.md)*
+
 Il quartier generale AI per casa e lavoro: un assistente (di serie si chiama **Jarvis**) con il
 suo team di agenti Claude, una dashboard 3D nella barra laterale di Home Assistant, la plancia
 della casa, il gruppo Telegram, la voce e i connettori per i programmi del tuo lavoro.
@@ -91,6 +93,10 @@ preferisci: Piper (locale e gratuito), Home Assistant Cloud, ElevenLabs, Google�
    comandi semplici ("accendi la luce della cucina") li esegue Home Assistant, subito e senza
    consumare credito; tutto il resto va all'assistente.
 
+Se l'integrazione non viene rilevata: Dispositivi e servizi → Aggiungi → "HubNEX", con
+l'indirizzo dell'add-on (`http://<hostname dell'add-on>:8765`, l'hostname è nella pagina
+dell'add-on) e il **Token HQ**. Di solito basta riavviare l'add-on HubNEX.
+
 Le risposte a voce sono brevi (al massimo due frasi). Ogni richiesta, da Assist o dalla
 dashboard, segue la strada più veloce possibile:
 
@@ -101,9 +107,7 @@ dashboard, segue la strada più veloce possibile:
    serie Haiku) con l'elenco delle entità e del loro stato già in mano. Nella chat, sotto la
    risposta, compare la scritta RISPOSTA RAPIDA (o HOME ASSISTANT per il punto 1).
 3. **Jarvis** con il suo modello e tutte le istruzioni per tutto il resto: domande complesse,
-   lavoro, agenti, serrature e allarme (con la conferma). Se l'integrazione non viene rilevata:
-Dispositivi e servizi → Aggiungi → "HubNEX", con l'indirizzo dell'add-on (`http://<hostname
-dell'add-on>:8765`, l'hostname è nella pagina dell'add-on) e il **Token HQ**.
+   lavoro, agenti, serrature e allarme (con la conferma).
 
 **2. Dashboard** (microfono e altoparlante nella barra in basso)
 

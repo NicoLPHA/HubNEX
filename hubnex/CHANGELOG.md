@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.1
+- Guida completa in inglese (DOCS.en.md) e team di esempio in inglese: con la lingua
+  inglese, al primo avvio l'add-on crea agents.yaml già tradotto.
+- README del progetto in inglese (quello italiano resta in README.it.md) e presentazione
+  in inglese con screenshot della dashboard in inglese.
+- Corretto: l'etichetta "Risposta rapida" sotto i messaggi ora segue la lingua della dashboard.
+- Guida italiana: spostato al posto giusto il paragrafo "Se l'integrazione non viene rilevata".
+
 ## 1.10.0
 - L'add-on parla inglese: nuova opzione "Lingua" (auto = quella di Home Assistant, it, en).
   - Jarvis e gli agenti rispondono in inglese (le istruzioni in agents.yaml possono restare

@@ -63,6 +63,15 @@ ADDON_OPTIONS = {
 # The Supervisor's ingress proxy: requests from here were already authenticated by HA.
 INGRESS_PROXY_IP = "172.30.32.2"
 DEFAULT_AGENTS = Path(__file__).resolve().parent.parent / "config" / "agents.yaml"
+DEFAULT_AGENTS_EN = DEFAULT_AGENTS.with_name("agents.en.yaml")
+
+
+def ha_language(storage: str = "/homeassistant/.storage/core.config") -> str | None:
+    """Home Assistant's language, read from its configuration (the add-on maps it)."""
+    try:
+        return json.loads(Path(storage).read_text())["data"].get("language")
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
 DEFAULT_MODEL = "claude-sonnet-5-5"
 DEFAULT_MAIL_MODEL = "claude-haiku-5-5"
 DEFAULT_VOICE_MODEL = "claude-haiku-5-5"  # Assist: speed first
@@ -97,7 +106,11 @@ def _load_addon_options(options_file: str = "/data/options.json", config_dir: st
     os.environ.setdefault("HUBNEX_INTERNAL_TOKEN", token_file.read_text().strip())
     agents = Path(config_dir) / "agents.yaml"
     if Path(config_dir).is_dir() and not agents.exists():
-        shutil.copy(DEFAULT_AGENTS, agents)
+        # The example team in the owner's language: the option, else Home Assistant's.
+        lang = os.environ.get("HUBNEX_LANGUAGE", "auto")
+        if lang not in ("it", "en"):
+            lang = ha_language() or "it"
+        shutil.copy(DEFAULT_AGENTS if lang.startswith("it") else DEFAULT_AGENTS_EN, agents)
     os.environ.setdefault("HUBNEX_AGENTS_FILE", str(agents if agents.exists() else DEFAULT_AGENTS))
     if Path(config_dir).is_dir():  # the floor plan must survive updates: keep it in /config
         os.environ.setdefault("HUBNEX_CASA_FILE", str(Path(config_dir) / "casa.yaml"))

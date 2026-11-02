@@ -76,10 +76,14 @@ footer { padding: 40px 0 70px; border-top: 1px solid var(--line); color: var(--m
   .phone .shot { max-width: 300px; margin: 0 auto; }
   .split.rev .shot { order: -1; }
 }
+.lang { position: absolute; top: 20px; right: clamp(16px, 4vw, 40px); font-size: 14px; color: var(--muted); }
+.lang a { color: var(--muted); }
+.lang b { color: var(--text); font-weight: 500; }
 </style>
 </head>
 <body>
 <main class="wrap">
+  <nav class="lang" aria-label="Lingua"><b>Italiano</b> · <a href="en/" hreflang="en">English</a></nav>
 
   <section class="hero">
     <div class="kick">Add-on per Home Assistant</div>

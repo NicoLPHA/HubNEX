@@ -3,8 +3,9 @@ taking screenshots and the browser tests. No real house, no API key, nothing lea
 
     python dev/demo.py 8765            # then open http://127.0.0.1:8765
     python dev/demo.py 8765 casa.yaml  # with your own floor plan file
+    DEMO_LANG=en python dev/demo.py 8765   # an English house and an English-speaking add-on
 """
-import io, math, re, sys, tempfile, time
+import io, math, os, re, sys, tempfile, time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -92,9 +93,41 @@ add("input_boolean.stufa_weekend", None, "off", friendly_name="Stufa weekend")
 add("input_boolean.stufa_notte", None, "on", friendly_name="Stufa notte")
 add("input_select.stufa_modo", "soggiorno", "Comfort", options=["Eco", "Comfort", "Notte"], friendly_name="Modalità stufa")
 
+EN = os.environ.get("DEMO_LANG") == "en"
+NAMES_EN = {
+    "Soggiorno": "Living room", "Cucina": "Kitchen", "Camera da letto": "Bedroom", "Studio": "Study",
+    "Bagno": "Bathroom", "Corridoio": "Hallway", "Lavanderia": "Laundry", "Giardino": "Garden",
+    "Piano terra": "Ground floor", "Allagamento": "Flood", "Allarme casa": "House alarm",
+    "Bollitore": "Kettle", "Buonanotte": "Good night", "Cinema": "Movie", "Clima soggiorno": "Living room climate",
+    "Comodini": "Bedside lamps", "Corridoio Illuminamento": "Hallway illuminance",
+    "Corridoio Occupazione": "Hallway occupancy", "Energia oggi": "Energy today",
+    "Energia prelevata": "Energy drawn", "Esco": "Going out", "Faretti TV": "TV spotlights",
+    "Fascia F1": "Band F1", "Fascia F2": "Band F2", "Fascia F3": "Band F3", "Fattore di potenza": "Power factor",
+    "Finestra camera": "Bedroom window", "Ingresso": "Entrance", "Irrigazione": "Irrigation",
+    "Lampada da terra": "Floor lamp", "Lavatrice": "Washing machine", "Meteo": "Weather",
+    "Modalità stufa": "Stove mode", "Porta garage": "Garage door", "Porta ingresso": "Front door",
+    "Potenza TV": "TV power", "Potenza bollitore": "Kettle power", "Potenza casa": "House power",
+    "Potenza lavatrice": "Washing machine power", "Potenza stufa": "Stove power", "Presa TV": "TV plug",
+    "Presenza soggiorno": "Living room presence", "Rientro": "Coming home", "Soffitto cucina": "Kitchen ceiling",
+    "Sottopensile": "Under-cabinet", "Striscia LED": "LED strip", "Stufa accensione": "Stove on",
+    "Stufa automatica": "Stove automatic", "Stufa notte": "Stove night", "Stufa spegnimento": "Stove off",
+    "Stufa weekend": "Stove weekend", "TV Soggiorno": "Living room TV", "Tapparella salotto": "Living room blind",
+    "Temperatura camera": "Bedroom temperature", "Temperatura cucina": "Kitchen temperature",
+    "Temperatura studio": "Study temperature", "Tensione": "Voltage", "Totale bimestrale": "Period total",
+    "Umidità bagno": "Bathroom humidity", "Umidità cucina": "Kitchen humidity", "Notte": "Night",
+}
+if EN:  # the same house, in English
+    for a in T.AREAS:
+        a["name"] = NAMES_EN.get(a["name"], a["name"])
+    for st in T.STATES:
+        at = st["attributes"]
+        at["friendly_name"] = NAMES_EN.get(at.get("friendly_name"), at.get("friendly_name"))
+        if "options" in at:
+            at["options"] = [NAMES_EN.get(o, o) for o in at["options"]]
+
 d = tempfile.mkdtemp()
 layout = sys.argv[2] if len(sys.argv) > 2 else None
-open(d + "/casa.yaml", "w").write(open(layout).read() if layout else """floors:
+LAYOUT = """floors:
   - name: Piano terra
     aspect: 1.3
     rooms:
@@ -107,8 +140,12 @@ open(d + "/casa.yaml", "w").write(open(layout).read() if layout else """floors:
       - { area: Lavanderia, x: 78, y: 50, w: 22, h: 50 }
 outside: [Giardino]
 energy: { power: sensor.potenza_casa, today: sensor.energia_oggi }
-""")
-s = Settings(db_path=d + "/t.db", agents_file=str(ROOT / "config" / "agents.yaml"), casa_file=d + "/casa.yaml", ha_url="http://supervisor/core", ha_token="tok")
+"""
+if EN:
+    for it, en in sorted(NAMES_EN.items(), key=lambda x: -len(x[0])):
+        LAYOUT = LAYOUT.replace(it, en)
+open(d + "/casa.yaml", "w").write(open(layout).read() if layout else LAYOUT)
+s = Settings(db_path=d + "/t.db", agents_file=str(ROOT / "config" / ("agents.en.yaml" if EN else "agents.yaml")), language="en" if EN else "it", casa_file=d + "/casa.yaml", ha_url="http://supervisor/core", ha_token="tok")
 
 
 class DemoClaude(FakeClient):

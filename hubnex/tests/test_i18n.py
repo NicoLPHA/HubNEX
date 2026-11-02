@@ -66,3 +66,31 @@ def test_energy_bands_are_italian_only_by_default(english):
     assert clean_config({"band_mode": "arera"})["band_mode"] == "arera"  # chosen on purpose
     i18n.set_system_lang("it")
     assert clean_config({})["band_mode"] == "arera"
+
+
+def test_english_example_team(tmp_path, monkeypatch):
+    from hubnex import config
+    from hubnex.config import load_org
+    org = load_org(str(config.DEFAULT_AGENTS_EN))
+    assert org.boss_name == "Jarvis" and {c.name for c in org.companies} == {"Work", "Home"}
+    assert {a.id for a in org.agents} == {a.id for a in load_org(str(config.DEFAULT_AGENTS)).agents} - {
+        "contabile", "commerciale", "tecnico", "maggiordomo", "sentinella"} | {"accountant", "sales", "technical", "butler", "sentinel"}
+    # first start of the add-on: the example in Home Assistant's language
+    storage = tmp_path / "core.config"
+    storage.write_text(json.dumps({"data": {"language": "en-GB"}}))
+    assert config.ha_language(str(storage)) == "en-GB"
+    opts, cfg = tmp_path / "options.json", tmp_path / "cfg"
+    opts.write_text("{}")
+    cfg.mkdir()
+    monkeypatch.setattr(config, "ha_language", lambda storage=None: "en")
+    monkeypatch.delenv("HUBNEX_LANGUAGE", raising=False)
+    import os
+    saved = dict(os.environ)
+    for k in ("HUBNEX_AGENTS_FILE", "HUBNEX_CASA_FILE", "HUBNEX_DB", "HUBNEX_INTERNAL_TOKEN"):
+        os.environ.pop(k, None)
+    try:
+        assert config._load_addon_options(str(opts), str(cfg))
+        assert "Jarvis Butler" in (cfg / "agents.yaml").read_text()
+    finally:  # the add-on sets its environment: give the other tests theirs back
+        os.environ.clear()
+        os.environ.update(saved)

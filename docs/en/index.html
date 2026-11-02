@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HubNEX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@300;400;500&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Il mondo visivo di HubNEX: notte, ciano olografico, ambra per ciò che è acceso. Layout: un racconto verticale, testo e schermate alternati. */
+  --bg: #03070e;
+  --panel: rgba(9, 20, 34, 0.62);
+  --line: rgba(79, 209, 255, 0.16);
+  --cyan: #4fd1ff;
+  --amber: #ffb547;
+  --text: #cfe3f7;
+  --muted: #7d93ad;
+  --ok: #3ddc97;
+  --display: "Rajdhani", "Saira Semi Condensed", system-ui, sans-serif;
+  --body: "Saira Semi Condensed", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: radial-gradient(ellipse at 50% -10%, #0b2340 0%, var(--bg) 50%) fixed, var(--bg); color: var(--text); font-family: var(--body); font-size: 17px; line-height: 1.55; }
+a { color: var(--cyan); }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+img { max-width: 100%; height: auto; display: block; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
+.kick { font-size: 12px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--cyan); }
+
+/* apertura */
+.hero { padding: 72px 0 40px; display: grid; gap: 18px; }
+.brand { font-family: var(--display); font-weight: 700; font-size: clamp(54px, 9vw, 104px); letter-spacing: 0.22em; line-height: 1; color: var(--cyan); text-shadow: 0 0 40px rgba(79, 209, 255, 0.35); }
+.hero p.lead { font-size: clamp(20px, 2.4vw, 26px); font-weight: 300; max-width: 30ch; margin: 0; }
+.hero p.sub { color: var(--muted); max-width: 62ch; margin: 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.tags span { border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 14px; color: var(--muted); }
+.shot { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #050b16; box-shadow: 0 30px 80px -40px rgba(79, 209, 255, 0.35); }
+.shot.hero-shot { margin-top: 18px; }
+
+/* capitoli */
+.chapter { padding: 64px 0; border-top: 1px solid var(--line); display: grid; gap: 28px; }
+.chapter header { display: grid; gap: 10px; max-width: 70ch; }
+.chapter h2 { font-family: var(--display); font-weight: 600; font-size: clamp(30px, 4vw, 42px); letter-spacing: 0.04em; line-height: 1.1; }
+.chapter header p { color: var(--muted); margin: 0; }
+.split { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.split.rev { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+.points { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.points li { display: grid; gap: 2px; padding-left: 16px; border-left: 1px solid var(--line); }
+.points li b { font-weight: 500; color: var(--text); }
+.points li span { color: var(--muted); font-size: 15px; }
+.points li.on { border-left-color: var(--amber); }
+
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 6px; align-content: start; position: relative; }
+.card::before { content: ""; position: absolute; left: 16px; right: 16px; top: -1px; height: 1px; background: var(--amber); box-shadow: 0 0 10px var(--amber); opacity: 0; }
+.card.lit::before { opacity: 1; }
+.card h3 { font-weight: 500; font-size: 19px; }
+.card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+.phone { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 36px; align-items: center; }
+.phone .shot { border-radius: 28px; }
+
+.principles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.steps { counter-reset: s; display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; max-width: 70ch; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: baseline; }
+.steps li::before { content: counter(s, decimal-leading-zero); font-family: var(--display); font-size: 26px; color: var(--cyan); }
+code { background: rgba(79, 209, 255, 0.08); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 15px; }
+footer { padding: 40px 0 70px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+
+@media (max-width: 860px) {
+  .split, .split.rev, .phone, .principles { grid-template-columns: 1fr; }
+  .grid3 { grid-template-columns: 1fr; }
+  .phone .shot { max-width: 300px; margin: 0 auto; }
+  .split.rev .shot { order: -1; }
+}
+.lang { position: absolute; top: 20px; right: clamp(16px, 4vw, 40px); font-size: 14px; color: var(--muted); }
+.lang a { color: var(--muted); }
+.lang b { color: var(--text); font-weight: 500; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <nav class="lang" aria-label="Language"><b>English</b> · <a href="../" hreflang="it">Italiano</a></nav>
+
+  <section class="hero">
+    <div class="kick">Home Assistant add-on</div>
+    <div class="brand">HUBNEX</div>
+    <p class="lead">The headquarters of your home and your work, with an assistant that does only what you ask.</p>
+    <p class="sub">A Jarvis-style assistant coordinates a small team of AI agents, keeps an eye on mail and deadlines, connects to the programs you use at work. Next to it, a Home Assistant dashboard designed from scratch: the house on its holographic floor plan, a card for every device, energy read like a bill.</p>
+    <div class="tags"><span>Home Assistant</span><span>Claude</span><span>Telegram</span><span>Assist and voice</span><span>MCP</span><span>Italian and English</span><span>Open source · MIT</span></div>
+    <div class="shot hero-shot"><img src="../img/en/casa.jpg" alt="The Home view: HUD at the top, holographic floor plan in the middle, the living room's card on the right" width="1440" height="900"></div>
+  </section>
+
+  <section class="chapter">
+    <header>
+      <div class="kick">The home</div>
+      <h2>The dashboard Home Assistant deserved</h2>
+      <p>The rooms are Home Assistant's areas, drawn on your floor plan: upload it as a photo or PDF and the AI suggests the rooms, you refine them with your finger. Tap a room and its card opens; commands go straight to Home Assistant, with no AI and no cost.</p>
+    </header>
+    <div class="split rev">
+      <ul class="points">
+        <li class="on"><b>Upload the floor plan</b><span>A photo, a scan or a PDF of your home, several floors too. It becomes the background you draw on.</span></li>
+        <li><b>The AI suggests the rooms</b><span>With "Suggest rooms" the AI recognises the spaces and matches them to Home Assistant's areas. You move the corners with your finger and fix them.</span></li>
+        <li><b>Indoors and outdoors</b><span>Balconies and gardens become outlines or go under the plan, in "Outdoors".</span></li>
+        <li><b>It becomes a hologram</b><span>Save and the plan turns into the 3D map of the Home view: lights on, temperatures and open windows at a glance.</span></li>
+      </ul>
+      <div class="shot"><img src="../img/en/piantina.jpg" alt="The floor plan editor: plan uploaded, rooms drawn over it and matched to Home Assistant's areas" width="1440" height="900"></div>
+    </div>
+    <div class="split" style="margin-top:20px">
+      <div class="shot"><img src="../img/en/stanza.jpg" alt="The living room's page with cards for lights, stove, climate, blind, media and plugs" width="1440" height="900"></div>
+      <ul class="points">
+        <li class="on"><b>A card for everything</b><span>Lights with brightness, climate with its dial, blinds drawn, media with cover art and volume, plugs with their consumption, sensors with the 24-hour chart.</span></li>
+        <li><b>Your own cards</b><span>Build a card from several entities: the stove with its on and off times and "automatic", which says by itself "on until 22:00".</span></li>
+        <li><b>Times and settings</b><span>Home Assistant's helpers (times, numbers, lists) are changed from here: your automations stay where they are.</span></li>
+        <li><b>All from HubNEX</b><span>Order, rename, choose groups and sizes without touching Home Assistant.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="chapter">
+    <header>
+      <div class="kick">Energy</div>
+      <h2>The bill, before the bill</h2>
+      <p>Three ways to read consumption, one or all of them. A single rate, your own time bands from a sensor, or the Italian F1, F2 and F3 bands computed by HubNEX, holidays included.</p>
+    </header>
+    <div class="split rev">
+      <ul class="points">
+        <li class="on"><b>The reactor</b><span>The period's consumption around the power right now, as a share of your meter.</span></li>
+        <li><b>The day</b><span>Today's power hour by hour: you see when you use energy, and how much.</span></li>
+        <li><b>The bill</b><span>What you have spent, what you will spend at today's pace, what changed since the last period.</span></li>
+      </ul>
+      <div class="shot"><img src="../img/en/energia.jpg" alt="The Energy popup: the reactor with the period's consumption around the power right now" width="1440" height="900"></div>
+    </div>
+  </section>
+
+  <section class="chapter">
+    <header>
+      <div class="kick">The team</div>
+      <h2>One assistant, many specialists</h2>
+      <p>In <code>agents.yaml</code> you describe your businesses, departments and agents. The assistant delegates: mail to the mail agent, technical research to the technician, quotes to whoever handles them. The 3D headquarters shows who is working, the neural map what the team has learnt.</p>
+    </header>
+    <div class="shot"><img src="../img/en/hq.jpg" alt="The 3D headquarters with the assistant in the middle and the agents in their departments" width="1440" height="900"></div>
+    <div class="grid3">
+      <div class="card lit"><h3>Telegram</h3><p>A group with the assistant and the mail agent. Write or send a voice note, they answer by voice too.</p></div>
+      <div class="card"><h3>Mail with drafts</h3><p>Emails are sorted by priority; every reply is a draft you approve. Nothing goes out by itself.</p></div>
+      <div class="card"><h3>The programs of your work</h3><p>Management software, calendars, CRM: anything that offers an MCP server. Agents read freely, every change waits for your ✅.</p></div>
+      <div class="card"><h3>Voice</h3><p>A conversation agent for Assist, Home Assistant's text-to-speech (Piper too, local and free) or ElevenLabs. Simple commands are instant.</p></div>
+      <div class="card"><h3>Deadlines and memory</h3><p>Deadlines in emails become reminders; the team remembers customers, prices and decisions.</p></div>
+      <div class="card"><h3>Costs under control</h3><p>The estimated Claude spend is always in sight; house commands and Assist's simple commands cost nothing.</p></div>
+    </div>
+  </section>
+
+  <section class="chapter">
+    <div class="phone">
+      <div class="shot"><img src="../img/en/telefono.jpg" alt="HubNEX on the phone: the kitchen's card rises from the bottom over the floor plan" width="780" height="1688"></div>
+      <header>
+        <div class="kick">Everywhere</div>
+        <h2>In your pocket, and for the whole family</h2>
+        <p>On the phone a room's card rises from the bottom: drag it down to close it, up to open the room. Everyone chooses what to see, in their own language.</p>
+        <ul class="points" style="margin-top:12px">
+          <li><b>Non-admin users</b><span>They see only the Home view: lights, climate, cameras, alarm with the code. No assistant, mail or costs. The add-on enforces it.</span></li>
+          <li><b>Home only</b><span>Whoever just wants to turn on a light switches off HQ, Map and the assistant in the preferences.</span></li>
+          <li><b>Italian or English</b><span>The dashboard follows each user's Home Assistant language, or the one they pick.</span></li>
+        </ul>
+      </header>
+    </div>
+  </section>
+
+  <section class="chapter">
+    <header>
+      <div class="kick">The rules</div>
+      <h2>An assistant that takes no initiative</h2>
+    </header>
+    <div class="principles">
+      <div class="card"><h3>Nothing without your order</h3><p>Routines are off until you turn them on. No action in the house without your request; locks and the alarm ask for confirmation or the code.</p></div>
+      <div class="card"><h3>Every change goes through you</h3><p>Emails, data in your work programs, sensitive actions: first a proposal with ✅ / ❌, then it runs, once.</p></div>
+      <div class="card"><h3>Your data stays at home</h3><p>Configuration, floor plan and memory live in your Home Assistant and go into its backups. The repository holds nothing of yours.</p></div>
+      <div class="card"><h3>Open</h3><p>Open source under the MIT licence. Every part switches on when you need it: you start with just the Anthropic key.</p></div>
+    </div>
+  </section>
+
+  <section class="chapter">
+    <header>
+      <div class="kick">Getting started</div>
+      <h2>Three minutes to turn it on</h2>
+    </header>
+    <ol class="steps">
+      <li><span>Home Assistant → Settings → Add-ons → Add-on store → ⋮ → Repositories: add <code>https://github.com/P1pp89/HubNEX</code>.</span></li>
+      <li><span>Install HubNEX, enter the Anthropic API key, start it and turn on "Show in sidebar".</span></li>
+      <li><span>Open HubNEX, draw your floor plan and tell the assistant who you are. Telegram, mail, voice, energy and connectors can be added whenever you like.</span></li>
+    </ol>
+  </section>
+
+  <footer>
+    <span>HubNEX · Home Assistant add-on · MIT licence · <a href="https://github.com/P1pp89/HubNEX">GitHub</a></span>
+    <span>The screenshots show an example house.</span>
+  </footer>
+</main>
+</body>
+</html>

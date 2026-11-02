@@ -924,6 +924,4 @@ body.casa-modal-open #chat, body.casa-modal-open #orb { display: none !important
 @media (max-width: 1100px) { .plan-wrap { margin-bottom: 4px; } .casa-group { margin-top: 10px; } }
 
 /* Who answered a chat message: Home Assistant by itself, or Jarvis' quick route for the house. */
-.msg[data-by]::after { display: block; margin-top: 6px; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
-.msg[data-by="ha"]::after { content: "Home Assistant"; }
-.msg[data-by="quick"]::after { content: "Risposta rapida"; }
+.msg[data-by]::after { content: attr(data-by-label); display: block; margin-top: 6px; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }

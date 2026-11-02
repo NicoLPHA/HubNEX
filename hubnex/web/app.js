@@ -1023,7 +1023,10 @@ async function sendChat(text) {
     const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ text: context + text, speak: !!voice }) });
     const { reply, spoken: said, by } = await res.json();
     wait.classList.remove("pending");
-    if (by === "ha" || by === "quick") wait.dataset.by = by; // a small note: who answered
+    if (by === "ha" || by === "quick") { // a small note: who answered
+      wait.dataset.by = by;
+      wait.dataset.byLabel = by === "ha" ? "Home Assistant" : t("Risposta rapida");
+    }
     if (!talk.on) { wait.textContent = reply; return; } // conversation closed meanwhile
     wait.textContent = "";
     orbThought.textContent = "";
