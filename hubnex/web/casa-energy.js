@@ -3,7 +3,7 @@
 // (F1/F2/F3), prices or cost, power now, any other reading. Mixed into CasaView.
 
 import { esc, num } from "./casa-cards.js";
-import { t } from "./i18n.js";
+import { t, LANG } from "./i18n.js";
 
 const BANDS = ["F1", "F2", "F3"];
 const BAND_COLOR = { F1: "#ff9a3c", F2: "#4fa3ff", F3: "#3ddc97" }; // orange, blue, green: never confused
@@ -307,7 +307,7 @@ export const Energy = {
       case "energy-close": this.energyOpen = false; this.energyEdit = null; clearInterval(this._energyTimer); break;
       case "energy-cfg": {
         const cur = this.ecfg();
-        this.energyEdit = JSON.parse(JSON.stringify({ views: [], bands: {}, prices: {}, readouts: [], band_mode: "arera", cycle: "bimonthly", contract_kw: 3, ...cur }));
+        this.energyEdit = JSON.parse(JSON.stringify({ views: [], bands: {}, prices: {}, readouts: [], band_mode: LANG === "it" ? "arera" : "single", cycle: "bimonthly", contract_kw: 3, ...cur }));
         this.ePick = null;
         break;
       }

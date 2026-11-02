@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 from hubnex.config import ConnectorSpec
 from hubnex.integrations.mcp import MCPClient, MCPError
+from hubnex.i18n import tr
 
 if TYPE_CHECKING:
     from hubnex.hq import HQ
@@ -151,7 +152,7 @@ class Connectors:
     async def _run_confirmed(self, payload: dict) -> str:
         c = self.items.get(payload["connector"])
         if c is None:
-            raise RuntimeError("connettore non più configurato")
+            raise RuntimeError(tr("connettore non più configurato"))
         text, failed = await c.client.call_tool(payload["tool"], payload["args"])
         if failed:
             raise RuntimeError(text[:300])

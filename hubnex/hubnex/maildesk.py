@@ -13,6 +13,7 @@ import json
 import logging
 from typing import TYPE_CHECKING, Awaitable, Callable
 
+from hubnex.i18n import system_lang, tr, tr_sys
 from hubnex.context import CURRENT_CHAT
 from hubnex.integrations.mail import MailClient
 from hubnex.llm import complete
@@ -56,13 +57,13 @@ class DraftClosed(Exception):
     """The draft was already sent, saved, dropped or is being handled."""
 
     def __str__(self) -> str:
-        return "Bozza non più attiva"
+        return tr("Bozza non più attiva")
 
 
 def draft_buttons(did: int) -> Buttons:
     return [
-        [("📤 Invia", f"d:{did}:ask"), ("💾 Salva in Bozze", f"d:{did}:save")],
-        [("✏️ Modifica", f"d:{did}:edit"), ("🗑 Scarta", f"d:{did}:drop")],
+        [("📤 " + tr_sys("Invia"), f"d:{did}:ask"), ("💾 " + tr_sys("Salva in Bozze"), f"d:{did}:save")],
+        [("✏️ " + tr_sys("Modifica"), f"d:{did}:edit"), ("🗑 " + tr_sys("Scarta"), f"d:{did}:drop")],
     ]
 
 
@@ -87,15 +88,15 @@ class MailDesk:
         did = await self.hq.store.draft_add(uid, body, reply_all, msg["To"], msg["Subject"])
         if chat and self.team and self.team.enabled:
             text = (
-                f"✉️ BOZZA #{did}\nA: {msg['To']}"
+                f"✉️ {tr_sys('BOZZA')} #{did}\n{tr_sys('A')}: {msg['To']}"
                 + (f"\nCc: {msg['Cc']}" if msg["Cc"] else "")
-                + f"\nOggetto: {msg['Subject']}\n\n{body.strip()}\n\n"
-                "— Rispondi a questo messaggio per chiedere modifiche."
+                + f"\n{tr_sys('Oggetto')}: {msg['Subject']}\n\n{body.strip()}\n\n"
+                + "— " + tr_sys("Rispondi a questo messaggio per chiedere modifiche.")
             )
             posted = await self.team.post(MAIL_AGENT_ID, text, chat, draft_buttons(did))
             if posted:
                 await self.hq.store.draft_set_message(did, *posted)
-        await self.hq.log("mail", f"Bozza #{did} per {msg['To']}: {msg['Subject']}", MAIL_AGENT_ID)
+        await self.hq.log("mail", f"{tr_sys('Bozza')} #{did} {tr_sys('per')} {msg['To']}: {msg['Subject']}", MAIL_AGENT_ID)
         await self.hq.emit_drafts()
         return (
             f"Bozza #{did} mostrata al proprietario (Telegram e dashboard) con i pulsanti di "
@@ -107,7 +108,7 @@ class MailDesk:
         await self.hq.emit_drafts()
         if self.team and self.team.enabled and draft["chat_id"]:
             await self.team.set_buttons(MAIL_AGENT_ID, draft["chat_id"], draft["msg_id"], None)
-            await self.team.post(MAIL_AGENT_ID, f"Bozza #{draft['id']}: {note}", draft["chat_id"], reply_to=draft["msg_id"])
+            await self.team.post(MAIL_AGENT_ID, f"{tr_sys('Bozza')} #{draft['id']}: {note}", draft["chat_id"], reply_to=draft["msg_id"])
 
     async def revise(self, draft: dict, instructions: str) -> None:
         if not await self.hq.store.draft_claim(draft["id"]):
@@ -123,7 +124,7 @@ class MailDesk:
                     "Restituisci SOLO il corpo della risposta, senza oggetto, senza firma, senza commenti.",
                 ]
             )
-            await self.hq.set_status(MAIL_AGENT_ID, "writing", f"riscrive la bozza #{draft['id']}")
+            await self.hq.set_status(MAIL_AGENT_ID, "writing", tr_sys("riscrive la bozza #{n}", n=draft["id"]))
             body = await complete(
                 self.hq.client,
                 model=self.hq.model_for(spec),
@@ -137,7 +138,7 @@ class MailDesk:
             raise
         finally:
             await self.hq.set_status(MAIL_AGENT_ID, "sleeping")
-        await self._close(draft, "↻ sostituita da una nuova versione", "replaced")
+        await self._close(draft, "↻ " + tr_sys("sostituita da una nuova versione"), "replaced")
         await self.propose_draft(draft["uid"], body, bool(draft["reply_all"]), chat=draft["chat_id"])
 
     async def finish(self, draft_id: int, action: str) -> str:
@@ -148,8 +149,8 @@ class MailDesk:
         if not d or not await self.hq.store.draft_claim(draft_id):
             raise DraftClosed()
         if action == "drop":
-            await self._close(d, "🗑 scartata", "dropped")
-            return "Scartata"
+            await self._close(d, "🗑 " + tr_sys("scartata"), "dropped")
+            return tr("Scartata")
         try:
             original = await asyncio.to_thread(self.client.get_email, d["uid"])
             msg = self.client.build_reply(original, d["body"], bool(d["reply_all"]))
@@ -162,12 +163,12 @@ class MailDesk:
             await self.hq.emit_drafts()
             raise
         if action == "send":
-            note = f"✅ inviata alle {self.hq.now():%H:%M}"
-            await self.hq.log("mail", f"Inviata a {d['to_addr']}: {msg['Subject']}", MAIL_AGENT_ID)
+            note = "✅ " + tr_sys("inviata alle {time}", time=f"{self.hq.now():%H:%M}")
+            await self.hq.log("mail", f"{tr_sys('Inviata a')} {d['to_addr']}: {msg['Subject']}", MAIL_AGENT_ID)
             await self.hq.note(f"Il proprietario ha inviato la risposta a {d['to_addr']} (oggetto {msg['Subject']}).")
             await self._close(d, note, "sent")
         else:
-            note = f"💾 salvata nella cartella {folder}"
+            note = "💾 " + tr_sys("salvata nella cartella {folder}", folder=folder)
             await self._close(d, note, "saved")
         return note
 
@@ -175,25 +176,25 @@ class MailDesk:
         """Telegram buttons: sending asks for a second confirmation in the same message."""
         d = await self.hq.store.draft(draft_id)
         if not d or d["status"] != "open":
-            return await answer("Bozza non più attiva", False)
+            return await answer(tr_sys("Bozza non più attiva"), False)
         if action == "edit":
-            return await answer("Rispondi al messaggio della bozza scrivendo cosa cambiare.", True)
+            return await answer(tr_sys("Rispondi al messaggio della bozza scrivendo cosa cambiare."), True)
         if action == "ask":
             await answer(None, False)
-            return await edit([[(f"✅ Sì, invia a {d['to_addr'][:30]}", f"d:{draft_id}:send"), ("↩️ Annulla", f"d:{draft_id}:back")]])
+            return await edit([[("✅ " + tr_sys("Sì, invia a {to}", to=d["to_addr"][:30]), f"d:{draft_id}:send"), ("↩️ " + tr_sys("Annulla"), f"d:{draft_id}:back")]])
         if action == "back":
             await answer(None, False)
             return await edit(draft_buttons(draft_id))
         if action not in ("send", "save", "drop"):
             return await answer(None, False)
-        await answer("Scartata" if action == "drop" else "Un attimo…", False)
+        await answer(tr_sys("Scartata") if action == "drop" else tr_sys("Un attimo…"), False)
         try:
             await self.finish(draft_id, action)
         except DraftClosed:
-            await answer("Bozza non più attiva", False)
+            await answer(tr_sys("Bozza non più attiva"), False)
         except Exception as exc:
             log.exception("draft action failed")
-            await self.team.post(MAIL_AGENT_ID, f"Bozza #{draft_id}: errore — {exc}", d["chat_id"])
+            await self.team.post(MAIL_AGENT_ID, f"{tr_sys('Bozza')} #{draft_id}: {tr_sys('errore')} — {exc}", d["chat_id"])
 
     # ------------------------------------------------------------------ inbox
     async def triage(self, emails: list[dict]) -> list[dict]:
@@ -202,7 +203,8 @@ class MailDesk:
         prompt = (
             "Classifica queste nuove email per il proprietario. Priorità: alta = richiede azione o "
             "risposta rapida, o viene da un cliente importante; media = da vedere; bassa = newsletter, "
-            "pubblicità, notifiche automatiche. Riassunto di massimo 15 parole.\n\n"
+            "pubblicità, notifiche automatiche. Riassunto di massimo 15 parole"
+            + ("" if system_lang() == "it" else ", scritto in inglese (English)") + ".\n\n"
             f"Contesto sul proprietario e sui clienti importanti:\n{context}\n\n"
             f"Email:\n{json.dumps(emails, ensure_ascii=False)}"
         )
@@ -239,16 +241,16 @@ class MailDesk:
             await self.hq.store.put("mail_uidvalidity", validity)
             await self.hq.store.put("mail_last_uid", max_uid)
             if manual_chat:
-                await self.team.post(MAIL_AGENT_ID, "Casella collegata. Da ora ti avviso delle nuove email.", chat)
+                await self.team.post(MAIL_AGENT_ID, tr_sys("Casella collegata. Da ora ti avviso delle nuove email."), chat)
             return
         new = await asyncio.to_thread(self.client.new_since, int(last_uid))
         if new:
             await self.hq.store.put("mail_last_uid", max(e["uid"] for e in new))
         if not new:
             if manual_chat:
-                await self.team.post(MAIL_AGENT_ID, "Nessuna nuova email dall'ultimo controllo.", chat)
+                await self.team.post(MAIL_AGENT_ID, tr_sys("Nessuna nuova email dall'ultimo controllo."), chat)
             return
-        await self.hq.set_status(MAIL_AGENT_ID, "working", "smista la posta")
+        await self.hq.set_status(MAIL_AGENT_ID, "working", tr_sys("smista la posta"))
         try:
             triaged = await self.triage(new)
         finally:
@@ -261,14 +263,14 @@ class MailDesk:
         skipped = len(triaged) - len(shown)
         if not shown:
             return
-        lines = [f"📬 {len(shown)} nuov{'a' if len(shown) == 1 else 'e'} email"]
+        lines = ["📬 " + (tr_sys("1 nuova email") if len(shown) == 1 else tr_sys("{n} nuove email", n=len(shown)))]
         rows: Buttons = []
         for n, e in enumerate(shown[:8], 1):
             sender = e["da"].split("<")[0].strip().strip('"') or e["da"]
             lines.append(f"\n{n}. {PRIO_ICON.get(e['priorita'], '🟡')} {sender} — {e['oggetto']}\n   {e['riassunto']}")
-            rows.append([(f"📖 Leggi {n}", f"n:{e['uid']}:read"), (f"✍️ Rispondi {n}", f"n:{e['uid']}:reply")])
+            rows.append([(f"📖 {tr_sys('Leggi')} {n}", f"n:{e['uid']}:read"), (f"✍️ {tr_sys('Rispondi')} {n}", f"n:{e['uid']}:reply")])
         if skipped:
-            lines.append(f"\n(+{skipped} a bassa priorità non mostrate)")
+            lines.append("\n(" + tr_sys("+{n} a bassa priorità non mostrate", n=skipped) + ")")
         text = "\n".join(lines)
         await self.hq.log("mail", text, MAIL_AGENT_ID)
         if chat and self.team and self.team.enabled:
@@ -299,7 +301,7 @@ class MailDesk:
         try:
             login = await asyncio.to_thread(self.client.test_login)
         except Exception as exc:
-            login = f"ERRORE {exc}"
-        last = await self.hq.store.get("mail_last_check", "mai")
-        return f"Posta: {login}\nUltimo controllo: {last}"
+            login = f"{tr_sys('ERRORE')} {exc}"
+        last = await self.hq.store.get("mail_last_check", tr_sys("mai"))
+        return f"{tr_sys('Posta')}: {login}\n{tr_sys('Ultimo controllo')}: {last}"
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
 from typing import Any
+from hubnex.i18n import system_lang
 
 PANEL_VIEWS = ("reactor", "day", "bill")
 DEFAULT_CONFIG: dict[str, Any] = {
@@ -124,6 +125,8 @@ def day_profile(points: list[tuple[str, str]], now: datetime, unit: str = "W", b
 
 def clean_config(raw: dict) -> dict:
     cfg = dict(DEFAULT_CONFIG)
+    # The ARERA calendar is Italian: elsewhere the default is a single rate (or one's own sensor).
+    cfg["band_mode"] = "arera" if system_lang() == "it" else "single"
     for key in DEFAULT_CONFIG:
         if key in raw and raw[key] is not None:
             cfg[key] = raw[key]

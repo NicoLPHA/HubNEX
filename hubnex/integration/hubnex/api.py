@@ -26,13 +26,13 @@ class HubNEXClient:
         self._url = url.rstrip("/")
         self._headers = {"Authorization": f"Bearer {token}"}
 
-    async def _post(self, path: str, payload: dict | None = None, timeout: int = 15) -> dict:
+    async def _post(self, path: str, payload: dict | None = None, timeout: int = 15, lang: str | None = None) -> dict:
         try:
             async with self._session.request(
                 "POST" if payload is not None else "GET",
                 f"{self._url}{path}",
                 json=payload,
-                headers=self._headers,
+                headers={**self._headers, **({"X-HubNEX-Lang": lang} if lang else {})},
                 timeout=aiohttp.ClientTimeout(total=timeout),
             ) as resp:
                 if resp.status == 401:
@@ -46,10 +46,12 @@ class HubNEXClient:
     async def ping(self) -> dict:
         return await self._post("/api/ping")
 
-    async def ask(self, text: str) -> str:
+    async def ask(self, text: str, language: str | None = None) -> str:
+        """Jarvis' answer, in the language Assist is speaking."""
         data = await self._post(
             "/api/chat",
             {"text": text, "channel": "assist", "voice": True},
             timeout=REQUEST_TIMEOUT,
+            lang=language,
         )
         return data.get("reply", "")

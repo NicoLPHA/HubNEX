@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 
 from hubnex import __version__
+from hubnex.i18n import tr
 
 PROTOCOL_VERSION = "2025-06-18"
 
@@ -43,7 +44,7 @@ class MCPClient:
         try:
             return await self._client.post(self.url, json=message, headers=headers)
         except httpx.HTTPError as exc:
-            raise MCPError(f"server non raggiungibile: {exc}") from exc
+            raise MCPError(tr("server non raggiungibile: {a}", a=exc)) from exc
 
     async def _request(self, method: str, params: dict | None = None) -> Any:
         mid = next(self._ids)
@@ -52,7 +53,7 @@ class MCPClient:
             self._session, self._ready = None, False
             raise _SessionExpired()
         if r.status_code in (401, 403):
-            raise MCPError(f"accesso negato ({r.status_code}): controlla il token del connettore")
+            raise MCPError(tr("accesso negato ({a}): controlla il token del connettore", a=r.status_code))
         if r.status_code >= 400:
             raise MCPError(f"errore {r.status_code}: {r.text[:200]}")
         if sid := r.headers.get("mcp-session-id"):
@@ -76,11 +77,11 @@ class MCPClient:
                     continue
                 if isinstance(msg, dict) and msg.get("id") == mid:
                     return msg
-            raise MCPError("risposta del server senza esito")
+            raise MCPError(tr("risposta del server senza esito"))
         try:
             msg = r.json()
         except ValueError as exc:
-            raise MCPError("risposta del server non valida") from exc
+            raise MCPError(tr("risposta del server non valida")) from exc
         if isinstance(msg, list):  # a batch: pick ours
             msg = next((m for m in msg if m.get("id") == mid), {})
         return msg
@@ -103,7 +104,7 @@ class MCPClient:
                 return await self._request(method, params)
             except _SessionExpired:
                 if attempt == 2:
-                    raise MCPError("sessione scaduta")
+                    raise MCPError(tr("sessione scaduta"))
         return None
 
     # ------------------------------------------------------------------ tools

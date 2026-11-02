@@ -69,6 +69,9 @@ configuration:
   voice_tts_voice:
     name: Voce del motore di Home Assistant
     description: Il nome della voce da usare con il motore qui sopra, per esempio Rinaldo o Diego per Home Assistant Cloud. Vuoto = la voce predefinita. La lingua è quella di Home Assistant.
+  language:
+    name: Lingua
+    description: auto = quella di Home Assistant; it = italiano; en = inglese. Vale per l'assistente, gli agenti, Telegram e i messaggi dell'add-on; la dashboard segue la lingua di chi la apre.
   voice_answers:
     name: Risposte a voce
     description: completa = la voce legge tutta la risposta; riassunto = per le risposte lunghe la voce dice solo il succo in una o due frasi, il testo scritto resta completo (dashboard e vocali Telegram).

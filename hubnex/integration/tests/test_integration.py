@@ -65,6 +65,7 @@ async def test_assist_asks_jarvis(hass: HomeAssistant, aioclient_mock) -> None:
     method, url, payload, headers = aioclient_mock.mock_calls[-1]
     assert payload == {"text": "accendi la cucina", "channel": "assist", "voice": True}
     assert headers["Authorization"] == "Bearer interno"
+    assert headers["X-HubNEX-Lang"] == "it"  # Jarvis answers in the language Assist speaks
 
 
 async def test_assist_survives_jarvis_being_down(hass: HomeAssistant, aioclient_mock) -> None:

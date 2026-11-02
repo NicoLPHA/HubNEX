@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import filecmp
 import logging
 import os
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import httpx
+from hubnex.i18n import tr_sys
 
 if TYPE_CHECKING:
     from hubnex.hq import HQ
@@ -64,7 +66,11 @@ async def setup_assist(hq: "HQ") -> None:
     s = hq.settings
     try:
         if s.install_assist_integration and install_integration():
-            msg = (
+            for _ in range(20):  # Home Assistant's language, to write the notice in it
+                if hq.watcher.language or s.language in ("it", "en"):
+                    break
+                await asyncio.sleep(0.5)
+            msg = tr_sys(
                 "L'integrazione **HubNEX** per Assist è stata installata o aggiornata. "
                 "Riavvia Home Assistant, poi in Impostazioni → Dispositivi e servizi conferma "
                 "*HubNEX* e sceglilo come agente di conversazione del tuo assistente vocale."

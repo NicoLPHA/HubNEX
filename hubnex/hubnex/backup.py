@@ -15,6 +15,7 @@ import tempfile
 import time
 import zipfile
 from pathlib import Path
+from hubnex.i18n import tr
 
 PENDING = "restore-pending"
 OLD = ".prima-del-ripristino"
@@ -72,18 +73,18 @@ def make_backup(db_path: str, config_dir: Path, version: str) -> bytes:
 def stage_restore(data: bytes, db_path: str) -> dict:
     """Check a backup and set it aside for the next start. Returns its manifest."""
     if len(data) > MAX_BACKUP:
-        raise BackupError("file troppo grande")
+        raise BackupError(tr("file troppo grande"))
     try:
         z = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile as exc:
-        raise BackupError("non è un backup di HubNEX (zip non valido)") from exc
+        raise BackupError(tr("non è un backup di HubNEX (zip non valido)")) from exc
     with z:
         try:
             manifest = json.loads(z.read("manifest.json"))
         except (KeyError, ValueError) as exc:
-            raise BackupError("non è un backup di HubNEX (manca il manifesto)") from exc
+            raise BackupError(tr("non è un backup di HubNEX (manca il manifesto)")) from exc
         if manifest.get("app") != "hubnex":
-            raise BackupError("non è un backup di HubNEX")
+            raise BackupError(tr("non è un backup di HubNEX"))
         entries = []
         for info in z.infolist():
             if info.is_dir() or info.filename == "manifest.json":
@@ -93,7 +94,7 @@ def stage_restore(data: bytes, db_path: str) -> dict:
                 continue
             folder, _, name = info.filename.partition("/")
             if folder != "config" or not _safe_name(name) or info.file_size > MAX_FILE:
-                raise BackupError(f"file inatteso nel backup: {info.filename}")
+                raise BackupError(tr("file inatteso nel backup: {a}", a=info.filename))
             entries.append(info)
         pending = Path(db_path).parent / PENDING
         shutil.rmtree(pending, ignore_errors=True)
@@ -111,7 +112,7 @@ def stage_restore(data: bytes, db_path: str) -> dict:
                 ok = False
             if not ok:
                 shutil.rmtree(pending, ignore_errors=True)
-                raise BackupError("il database nel backup è danneggiato")
+                raise BackupError(tr("il database nel backup è danneggiato"))
         (pending / "manifest.json").write_text(json.dumps(manifest))
     return manifest
 

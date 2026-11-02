@@ -15,6 +15,7 @@ import time
 from typing import Any, Awaitable, Callable
 
 import websockets
+from hubnex.i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +43,8 @@ class HAWatcher:
         self.on_event = on_event
         self._connect = connect or (lambda url: websockets.connect(url, max_size=None, ping_interval=30))
         self.areas: dict[str, dict] = {}
+        self.language: str | None = None
+        self.on_language = None  # called with Home Assistant's language once it is known
         self.floors: dict[str, dict] = {}
         self.devices: dict[str, dict] = {}
         self.entities: dict[str, dict] = {}  # entity registry, by entity_id
@@ -77,11 +80,11 @@ class HAWatcher:
         async with self._connect(self.url) as ws:
             msg = json.loads(await ws.recv())
             if msg.get("type") != "auth_required":
-                raise HAWatcherError(f"risposta inattesa: {msg}")
+                raise HAWatcherError(tr("risposta inattesa: {a}", a=msg))
             await ws.send(json.dumps({"type": "auth", "access_token": self.token}))
             msg = json.loads(await ws.recv())
             if msg.get("type") != "auth_ok":
-                raise HAWatcherError("autenticazione rifiutata")
+                raise HAWatcherError(tr("autenticazione rifiutata"))
             self._ws = ws
             reader = asyncio.create_task(self._read(ws))
             try:
@@ -97,7 +100,7 @@ class HAWatcher:
                 self._ws = None
                 for fut in self._pending.values():
                     if not fut.done():
-                        fut.set_exception(HAWatcherError("connessione chiusa"))
+                        fut.set_exception(HAWatcherError(tr("connessione chiusa")))
                 self._pending.clear()
 
     async def _read(self, ws) -> None:
@@ -115,7 +118,7 @@ class HAWatcher:
 
     async def _command(self, payload: dict, timeout: float = 30) -> Any:
         if self._ws is None:
-            raise HAWatcherError("Home Assistant non collegato")
+            raise HAWatcherError(tr("Home Assistant non collegato"))
         mid = next(self._ids)
         fut = asyncio.get_running_loop().create_future()
         self._pending[mid] = fut
@@ -138,6 +141,12 @@ class HAWatcher:
         self.entities = {e["entity_id"]: e for e in entities}
         self.states = {s["entity_id"]: s for s in states}
         await self._load_aliases()
+        try:  # Home Assistant's language: the add-on speaks it unless told otherwise
+            self.language = ((await self._command({"type": "get_config"})) or {}).get("language")
+        except HAWatcherError:
+            self.language = None
+        if self.language and self.on_language:
+            self.on_language(self.language)
 
     async def _load_aliases(self) -> None:
         """The aliases set in Home Assistant (entity settings → Aliases): the list above leaves
@@ -212,7 +221,7 @@ class HAWatcher:
         if not wanted:
             return language, None
         if not language:
-            raise HAWatcherError(f"{engine} non parla la lingua di Home Assistant ({lang or '?'})")
+            raise HAWatcherError(tr("{a} non parla la lingua di Home Assistant ({b})", a=engine, b=lang or '?'))
         res = await self._command({"type": "tts/engine/voices", "engine_id": engine, "language": language}) or {}
         voices = res.get("voices") or []
         w = wanted.casefold()
@@ -223,7 +232,7 @@ class HAWatcher:
             if hit:
                 return language, hit["voice_id"]
         names = ", ".join(v["name"] for v in voices[:30]) or "nessuna"
-        raise HAWatcherError(f"voce '{wanted}' non trovata in {engine} ({language}). Disponibili: {names}")
+        raise HAWatcherError(tr("voce '{a}' non trovata in {b} ({c}). Disponibili: {d}", a=wanted, b=engine, c=language, d=names))
 
     async def is_admin(self, user_id: str) -> bool:
         """Whether a Home Assistant user is an administrator (owner or in the admin group)."""

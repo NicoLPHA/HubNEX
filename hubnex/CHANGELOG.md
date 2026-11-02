@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.10.0
+- L'add-on parla inglese: nuova opzione "Lingua" (auto = quella di Home Assistant, it, en).
+  - Jarvis e gli agenti rispondono in inglese (le istruzioni in agents.yaml possono restare
+    in italiano);
+  - registro attività, Telegram (messaggi, pulsanti, posta), notifiche ed errori in inglese;
+  - la dashboard riceve gli errori nella lingua di chi la usa, Assist risponde nella lingua
+    in cui gli parli;
+  - la voce legge unità, simboli e date in inglese ("kilowatt hours", "1 September").
+- Fuori dall'Italia le fasce energetiche partono da "tariffa unica" invece del calendario ARERA.
+- Un test controlla che ogni messaggio dell'add-on abbia la sua traduzione.
+
 ## 1.9.0
 - La dashboard parla inglese: scelta da sola in base alla lingua di Home Assistant di chi la
   apre, o a mano in ⚙ Preferenze → Lingua. Tutti i testi (Casa, card, Energia, piantina, HQ,

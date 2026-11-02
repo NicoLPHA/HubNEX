@@ -1,5 +1,7 @@
-"""The Italian texts of the dashboard that need an English version: every t("…") in web/*.js and
-the data-i18n texts and attributes of web/index.html.  python dev/i18n_keys.py [--missing]"""
+"""The Italian texts that need an English version.
+Dashboard: every t("…") in web/*.js and the data-i18n texts and attributes of web/index.html.
+Add-on (--python): every tr("…") / tr_sys("…") in hubnex/**/*.py.
+    python dev/i18n_keys.py [--python] [--missing]"""
 
 import json
 import re
@@ -7,7 +9,9 @@ import sys
 from html import unescape
 from pathlib import Path
 
-WEB = Path(__file__).resolve().parents[1] / "web"
+ROOT = Path(__file__).resolve().parents[1]
+WEB = ROOT / "web"
+PY_CALL = re.compile(r'''\btr(?:_sys)?\(\s*((?:"(?:[^"\\]|\\.)*"\s*)+|'(?:[^'\\]|\\.)*')''')
 CALL = re.compile(r'\bt\(\s*"((?:[^"\\]|\\.)*)"')
 
 
@@ -38,6 +42,27 @@ def html_keys() -> set[str]:
     return keys
 
 
+def py_keys() -> set[str]:
+    keys = set()
+    for f in (ROOT / "hubnex").rglob("*.py"):
+        for m in PY_CALL.finditer(f.read_text(encoding="utf-8")):
+            lit = m.group(1)
+            if lit.startswith("'"):  # a single-quoted literal (inside an f-string)
+                keys.add(lit[1:-1].replace("\\'", "'"))
+                continue
+            parts = re.findall(r'"((?:[^"\\]|\\.)*)"', lit)  # adjacent literals join
+            keys.add("".join(json.loads(f'"{p}"') for p in parts))
+    return keys
+
+
+def py_english() -> dict:
+    from importlib import util
+    spec = util.spec_from_file_location("i18n_en", ROOT / "hubnex" / "i18n_en.py")
+    mod = util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.EN
+
+
 def english() -> dict:
     src = (WEB / "i18n-en.js").read_text(encoding="utf-8")
     body = src[src.index("{"): src.rindex("}") + 1]
@@ -45,8 +70,9 @@ def english() -> dict:
 
 
 if __name__ == "__main__":
-    keys = js_keys() | html_keys()
+    python = "--python" in sys.argv
+    keys = py_keys() if python else js_keys() | html_keys()
     if "--missing" in sys.argv:
-        have = english()
+        have = py_english() if python else english()
         keys = keys - set(have)
     print(json.dumps(sorted(keys), ensure_ascii=False, indent=0))

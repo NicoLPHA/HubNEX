@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
+from hubnex.i18n import tr
 
 if TYPE_CHECKING:
     from hubnex.integrations.ha_ws import HAWatcher
@@ -88,7 +89,7 @@ def plan_image(data: bytes) -> tuple[bytes, float]:
             img = Image.open(io.BytesIO(data))
             img = ImageOps.exif_transpose(img)
         except Exception as exc:
-            raise LayoutError("formato non riconosciuto: usa una foto, un'immagine o un PDF") from exc
+            raise LayoutError(tr("formato non riconosciuto: usa una foto, un'immagine o un PDF")) from exc
     img = img.convert("RGB")
     ink = ImageOps.invert(img.convert("L")).point(lambda v: 255 if v > 40 else 0)
     box = ink.getbbox()
@@ -183,21 +184,21 @@ def parse_layout(text: str) -> dict:
     try:
         raw = yaml.safe_load(text) or {}
     except yaml.YAMLError as exc:
-        raise LayoutError(f"YAML non valido: {exc}") from exc
+        raise LayoutError(tr("YAML non valido: {a}", a=exc)) from exc
     if not isinstance(raw, dict):
-        raise LayoutError("il file deve iniziare con floors: (oppure rooms: per un solo piano)")
+        raise LayoutError(tr("il file deve iniziare con floors: (oppure rooms: per un solo piano)"))
     raw = _keys(raw)
     if "rooms" in raw and "floors" not in raw:  # a single floor written without "floors:"
         raw["floors"] = [{"name": raw.pop("name", "Piano terra"), "aspect": raw.pop("aspect", None), "rooms": raw.pop("rooms")}]
     unknown = set(raw) - {"floors", "outside", "energy"}
     if unknown:
-        raise LayoutError(f"chiave sconosciuta: {', '.join(sorted(unknown))} (valide: floors, outside, energy)")
+        raise LayoutError(tr("chiave sconosciuta: {a} (valide: floors, outside, energy)", a=', '.join(sorted(unknown))))
     if not raw.get("floors"):
-        raise LayoutError("nessun piano: manca floors: con almeno una stanza")
+        raise LayoutError(tr("nessun piano: manca floors: con almeno una stanza"))
     floors = []
     for i, f in enumerate(raw.get("floors") or [], 1):
         if not isinstance(f, dict):
-            raise LayoutError(f"piano {i}: formato non valido (controlla i trattini e i rientri)")
+            raise LayoutError(tr("piano {a}: formato non valido (controlla i trattini e i rientri)", a=i))
         f = _keys(f)
         rooms = []
         for j, r in enumerate(f.get("rooms") or [], 1):
@@ -207,18 +208,18 @@ def parse_layout(text: str) -> dict:
             try:
                 box = {k: float(r[k]) for k in ("x", "y", "w", "h")}
             except (KeyError, TypeError, ValueError) as exc:
-                raise LayoutError(f"piano {i}, stanza {r.get('area')}: servono x, y, w, h numerici") from exc
+                raise LayoutError(tr("piano {a}, stanza {b}: servono x, y, w, h numerici", a=i, b=r.get('area'))) from exc
             if box["w"] <= 0 or box["h"] <= 0 or min(box["x"], box["y"]) < 0 or box["x"] + box["w"] > 100.5 or box["y"] + box["h"] > 100.5:
-                raise LayoutError(f"piano {i}, stanza {r.get('area')}: fuori dal disegno (0-100)")
+                raise LayoutError(tr("piano {a}, stanza {b}: fuori dal disegno (0-100)", a=i, b=r.get('area')))
             rooms.append({"area": str(r.get("area") or r.get("label")), **box, "outline": bool(r.get("outline"))})
         aspect = float(f.get("aspect") or 1.4)
         image = str(f.get("image") or "")
         if image and not PLAN_IMAGE.fullmatch(image):
-            raise LayoutError(f"piano {i}: nome dell'immagine non valido")
+            raise LayoutError(tr("piano {a}: nome dell'immagine non valido", a=i))
         floors.append({"name": str(f.get("name") or f"Piano {i}"), "aspect": max(0.3, min(aspect, 4.0)),
                        "rooms": rooms, **({"image": image} if image else {})})
         if not rooms:
-            raise LayoutError(f"piano {i}: nessuna stanza (manca rooms:)")
+            raise LayoutError(tr("piano {a}: nessuna stanza (manca rooms:)", a=i))
     energy = _keys(raw.get("energy") or {}) if isinstance(raw.get("energy"), dict) else {}
     return {
         "floors": floors,
@@ -262,7 +263,7 @@ class Casa:
     # ------------------------------------------------------------------ floor plan images and editor
     def save_plan_image(self, floor: int, data: bytes) -> tuple[str, float]:
         if len(data) > MAX_UPLOAD:
-            raise LayoutError("file troppo grande (massimo 25 MB)")
+            raise LayoutError(tr("file troppo grande (massimo 25 MB)"))
         image, aspect = plan_image(data)
         name = f"pianta-{floor}.jpg"
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -347,7 +348,7 @@ class Casa:
         kinds = self.adjust.setdefault("kind", {})
         if kind:
             if kind not in SHOW_AS:
-                raise ValueError(f"tipo sconosciuto: {kind}")
+                raise ValueError(tr("tipo sconosciuto: {a}", a=kind))
             kinds[entity_id] = kind
         else:
             kinds.pop(entity_id, None)

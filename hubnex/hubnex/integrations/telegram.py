@@ -20,6 +20,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 from hubnex.context import CURRENT_CHAT
 from hubnex.maildesk import MAIL_AGENT_ID, Buttons
 from hubnex.speech import for_voice
+from hubnex.i18n import tr_sys
 
 if TYPE_CHECKING:
     from hubnex.config import Settings
@@ -169,17 +170,17 @@ class TelegramTeam:
     async def cmd_id(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         await update.effective_message.reply_text(
             f"chat id: {update.effective_chat.id}\nuser id: {update.effective_user.id}\n\n"
-            "Inserisci questi valori in allowed_chat_id e allowed_user_id nella configurazione dell'add-on."
+            + tr_sys("Inserisci questi valori in allowed_chat_id e allowed_user_id nella configurazione dell'add-on.")
         )
 
     async def cmd_stato(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not self.allowed(update):
             return
-        lines = [f"{self.hq.org.boss_name} operativo.", f"Modelli: {self.settings.model} / mail {self.settings.model_mail}"]
+        lines = [tr_sys("{name} operativo.", name=self.hq.org.boss_name), f"{tr_sys('Modelli')}: {self.settings.model} / mail {self.settings.model_mail}"]
         if self.hq.maildesk:
             lines.append(await self.hq.maildesk.status())
         if self.hq.ha.enabled:
-            lines.append("Home Assistant: " + ("OK" if await self.hq.ha.ping() else "non raggiungibile"))
+            lines.append("Home Assistant: " + ("OK" if await self.hq.ha.ping() else tr_sys("non raggiungibile")))
         if self.hq.connectors.enabled:
             lines.extend(await self.hq.connectors.status())
         await update.effective_message.reply_text("\n".join(lines))
@@ -189,15 +190,15 @@ class TelegramTeam:
             return
         rules = "\n".join(f"{i}. {r}" for i, r in enumerate(self.hq.rules, 1))
         await update.effective_message.reply_text(
-            f"Le tue regole, valide per tutto il team:\n{rules}" if rules else
-            "Nessuna regola salvata. Dimmi pure \"d'ora in poi…\" o \"non fare mai…\" e la salvo."
+            f"{tr_sys('Le tue regole, valide per tutto il team')}:\n{rules}" if rules else
+            tr_sys("Nessuna regola salvata. Dimmi pure \"d'ora in poi…\" o \"non fare mai…\" e la salvo.")
         )
 
     async def cmd_posta(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not self.allowed(update):
             return
         if not self.hq.maildesk:
-            await update.effective_message.reply_text("Casella email non configurata.")
+            await update.effective_message.reply_text(tr_sys("Casella email non configurata."))
             return
         await self.hq.maildesk.check(manual_chat=update.effective_chat.id)
 
@@ -211,7 +212,7 @@ class TelegramTeam:
             answer, said, _ = await self.hq.converse(f"telegram:{chat_id}", text, spoken=speak)
         except Exception as exc:
             log.exception("Errore Jarvis")
-            answer, said = f"Mi scusi, qualcosa è andato storto: {exc}", None
+            answer, said = f"{tr_sys('Mi scusi, qualcosa è andato storto')}: {exc}", None
         if not answer:
             return  # the delegated agent already answered in the group
         await self.post(JARVIS, answer, chat_id)
@@ -220,7 +221,7 @@ class TelegramTeam:
             try:
                 audio, ctype = await self.hq.speak_audio(speakable(said or answer))
             except Exception as exc:
-                await self.post(JARVIS, f"🔇 Risposta solo scritta: {exc}", chat_id)
+                await self.post(JARVIS, f"🔇 {tr_sys('Risposta solo scritta')}: {exc}", chat_id)
                 return
             if "mpeg" in ctype or "ogg" in ctype or "mp4" in ctype:
                 await ctx.bot.send_voice(chat_id, voice=bytes(audio))
@@ -233,7 +234,7 @@ class TelegramTeam:
             return
         if not self.allowed(update):
             if not self.settings.telegram_chat_id:
-                await msg.reply_text("Configurazione incompleta: scrivi /id e inserisci gli id nell'add-on.")
+                await msg.reply_text(tr_sys("Configurazione incompleta: scrivi /id e inserisci gli id nell'add-on."))
             return
         if update.effective_chat.type != ChatType.PRIVATE and self.addressed_to(update):
             return  # for another agent's bot
@@ -245,14 +246,14 @@ class TelegramTeam:
         if not self.allowed(update):
             return
         if not self.hq.voice.stt_enabled:
-            await msg.reply_text("Per i vocali serve la chiave ElevenLabs nella configurazione.")
+            await msg.reply_text(tr_sys("Per i vocali serve la chiave ElevenLabs nella configurazione."))
             return
         audio = msg.voice or msg.audio
         await ctx.bot.send_chat_action(update.effective_chat.id, ChatAction.TYPING)
         data = await (await ctx.bot.get_file(audio.file_id)).download_as_bytearray()
         text = await self.hq.voice.transcribe(bytes(data))
         if not text:
-            await msg.reply_text("Non ho capito il vocale.")
+            await msg.reply_text(tr_sys("Non ho capito il vocale."))
             return
         await msg.reply_text(f"🎙 «{text}»")
         await self._ask_jarvis(update, ctx, text, voice=True)
@@ -261,7 +262,7 @@ class TelegramTeam:
         """✅/❌ on actions in connected programs proposed by the agents."""
         q = update.callback_query
         if not self.allowed(update):
-            await q.answer("Non autorizzato")
+            await q.answer(tr_sys("Non autorizzato"))
             return
         kind, key, decision = (q.data.split(":") + ["", "", ""])[:3]
         if kind != "a":
@@ -270,9 +271,9 @@ class TelegramTeam:
         CURRENT_CHAT.set(q.message.chat.id)
         action = await self.hq.store.action(int(key))
         if not action or action["status"] != "open":
-            await q.answer("Azione non più in attesa")
+            await q.answer(tr_sys("Azione non più in attesa"))
             return
-        await q.answer("Un attimo…" if decision == "ok" else "Annullata")
+        await q.answer(tr_sys("Un attimo…") if decision == "ok" else tr_sys("Annullata"))
         try:
             await self.hq.actions.decide(int(key), decision == "ok")
         except Exception as exc:  # the action's message in the group already says what went wrong
@@ -305,7 +306,7 @@ class TelegramTeam:
                 )
             except Exception as exc:
                 log.exception("Errore agente %s", agent_id)
-                await self.post(agent_id, f"Errore: {exc}", chat_id)
+                await self.post(agent_id, f"{tr_sys('Errore')}: {exc}", chat_id)
 
         return handler
 
@@ -313,7 +314,7 @@ class TelegramTeam:
         async def handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
             q = update.callback_query
             if not self.allowed(update):
-                await q.answer("Non autorizzato")
+                await q.answer(tr_sys("Non autorizzato"))
                 return
             kind, key, action = (q.data.split(":") + ["", "", ""])[:3]
             desk = self.hq.maildesk
@@ -344,7 +345,7 @@ class TelegramTeam:
                     await self.post(MAIL_AGENT_ID, reply, chat_id)
                 except Exception as exc:
                     log.exception("Errore pulsante")
-                    await self.post(MAIL_AGENT_ID, f"Errore: {exc}", chat_id)
+                    await self.post(MAIL_AGENT_ID, f"{tr_sys('Errore')}: {exc}", chat_id)
             else:
                 await q.answer()
 

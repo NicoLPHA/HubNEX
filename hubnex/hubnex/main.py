@@ -32,6 +32,7 @@ from hubnex.config import Settings, load_org
 from hubnex.context import ORIGIN
 from hubnex.graph import build_graph
 from hubnex.speech import for_voice
+from hubnex.i18n import REQUEST_LANG, norm, tr, tr_sys
 from hubnex.hq import HQ
 from hubnex.actions import ActionClosed
 from hubnex.maildesk import DraftClosed
@@ -204,7 +205,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             hq = HQ(settings, load_org(settings.agents_file), Store(settings.db_path))
         await hq.load()
         if restored:
-            await hq.log("system", f"Backup ripristinato (HubNEX {restored.get('version', '?')} del {restored.get('created', '?')}).")
+            await hq.log("system", tr_sys("Backup ripristinato (HubNEX {version} del {date}).", version=restored.get('version', '?'), date=restored.get('created', '?')))
         app.state.hq = hq
         if start_workers and settings.trusted_proxy:  # running as a Home Assistant add-on
             await setup_assist(hq)
@@ -219,7 +220,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
                 workers.append(asyncio.create_task(hq.watcher.run()))
             if not settings.hq_token and not settings.trusted_proxy:
                 log.warning("HQ_TOKEN non impostato: dashboard e API sono aperte a chiunque in rete!")
-        await hq.log("system", f"{hq.org.boss_name} è online. {len(hq.org.agents)} agenti nel team.")
+        await hq.log("system", tr_sys("{name} è online. {n} agenti nel team.", name=hq.org.boss_name, n=len(hq.org.agents)))
         yield
         for w in workers:
             w.cancel()
@@ -238,7 +239,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         if not settings.hq_token and not settings.trusted_proxy:
             return  # standalone without a token: open (warned at startup)
         # As an add-on with no token set, only the HA sidebar may get in.
-        raise HTTPException(401, "token mancante o errato")
+        raise HTTPException(401, tr("token mancante o errato"))
 
     async def role_of(client_host: str | None, headers) -> str:
         """"full", or "casa" for a Home Assistant user who is not an administrator: the sidebar
@@ -265,7 +266,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
 
     async def full(role: str = Depends(auth)) -> None:
         if role != "full":
-            raise HTTPException(403, "riservato agli amministratori di Home Assistant")
+            raise HTTPException(403, tr("riservato agli amministratori di Home Assistant"))
 
     def get_hq(request: Request) -> HQ:
         return request.app.state.hq
@@ -279,7 +280,12 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def revalidate_dashboard(request: Request, call_next):
         # Browsers (and the HA app) must check for a newer dashboard after an update instead
         # of showing the cached one: "no-cache" still allows a cheap 304 when nothing changed.
-        response = await call_next(request)
+        # The viewer's language (the dashboard sends it): errors and answers to this request.
+        token = REQUEST_LANG.set(norm(request.headers.get("x-hubnex-lang")))
+        try:
+            response = await call_next(request)
+        finally:
+            REQUEST_LANG.reset(token)
         if request.url.path == "/" or request.url.path.startswith("/static/"):
             response.headers["Cache-Control"] = "no-cache"
         return response
@@ -315,7 +321,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         )
         if body.voice and reply:
             reply = for_voice(reply)  # Assist reads it aloud: units and symbols as words
-        out = {"reply": reply or "L'agente ha risposto direttamente nel gruppo Telegram.", "by": by}
+        out = {"reply": reply or tr("L'agente ha risposto direttamente nel gruppo Telegram."), "by": by}
         if spoken:
             out["spoken"] = spoken  # what the voice says of a long answer ("riassunto")
         return out
@@ -323,13 +329,13 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     @app.get("/api/agents/{agent_id}", dependencies=[Depends(full)])
     async def agent_detail(agent_id: str, hq: HQ = Depends(get_hq)):
         if agent_id not in hq.agents:
-            raise HTTPException(404, "agente sconosciuto")
+            raise HTTPException(404, tr("agente sconosciuto"))
         return {"tasks": await hq.store.agent_tasks(agent_id, 10)}
 
     @app.post("/api/agents/{agent_id}/task", dependencies=[Depends(full)])
     async def assign(agent_id: str, body: TaskIn, hq: HQ = Depends(get_hq)):
         if hq.org.agent(agent_id) is None:
-            raise HTTPException(404, "agente sconosciuto")
+            raise HTTPException(404, tr("agente sconosciuto"))
         if body.wait:
             return {"result": await hq.run_agent(agent_id, body.task, source="user")}
         hq.run_agent_background(agent_id, body.task, source="user", report=False)
@@ -340,7 +346,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         try:
             datetime.fromisoformat(body.due)
         except ValueError:
-            raise HTTPException(422, "data non valida, usa AAAA-MM-GG")
+            raise HTTPException(422, tr("data non valida, usa AAAA-MM-GG"))
         did = await hq.store.deadline_add(body.title, body.due, body.company, None, body.notes)
         await hq.emit_deadlines()
         return {"id": did}
@@ -353,18 +359,18 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
 
     def desk(hq: HQ):
         if hq.maildesk is None:
-            raise HTTPException(503, "casella email non configurata")
+            raise HTTPException(503, tr("casella email non configurata"))
         return hq.maildesk
 
     @app.post("/api/drafts/{draft_id}/revise", dependencies=[Depends(full)])
     async def revise_draft(draft_id: int, body: ReviseIn, hq: HQ = Depends(get_hq)):
         d = await hq.store.draft(draft_id)
         if not d:
-            raise HTTPException(404, "bozza sconosciuta")
+            raise HTTPException(404, tr("bozza sconosciuta"))
         try:
             await desk(hq).revise(d, body.text)
         except DraftClosed:
-            raise HTTPException(409, "Bozza non più attiva")
+            raise HTTPException(409, tr("Bozza non più attiva"))
         return {"ok": True}
 
     @app.post("/api/drafts/{draft_id}/{action}", dependencies=[Depends(full)])
@@ -372,7 +378,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         try:
             note = await desk(hq).finish(draft_id, action)
         except DraftClosed:
-            raise HTTPException(409, "Bozza non più attiva")
+            raise HTTPException(409, tr("Bozza non più attiva"))
         return {"ok": True, "note": note}
 
     @app.post("/api/actions/{action_id}/{decision}", dependencies=[Depends(full)])
@@ -380,7 +386,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         try:
             note = await hq.actions.decide(action_id, decision == "ok")
         except ActionClosed:
-            raise HTTPException(409, "Azione non più in attesa")
+            raise HTTPException(409, tr("Azione non più in attesa"))
         except Exception as exc:
             raise HTTPException(502, str(exc))
         return {"ok": True, "note": note}
@@ -388,7 +394,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     @app.post("/api/tts", dependencies=[Depends(full)])
     async def tts(body: TTSIn, hq: HQ = Depends(get_hq)):
         if not hq.tts_enabled:
-            raise HTTPException(503, "Voce non configurata (ElevenLabs o sintesi vocale di Home Assistant)")
+            raise HTTPException(503, tr("Voce non configurata (ElevenLabs o sintesi vocale di Home Assistant)"))
         try:
             audio, ctype = await hq.speak_audio(body.text)
         except Exception as exc:
@@ -407,7 +413,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     # ------------------------------------------------------------- house view
     def need_ha(hq: HQ) -> None:
         if not hq.watcher.enabled:
-            raise HTTPException(503, "Home Assistant non configurato")
+            raise HTTPException(503, tr("Home Assistant non configurato"))
 
     @app.get("/api/casa", dependencies=[Depends(auth)])
     async def casa(hq: HQ = Depends(get_hq)):
@@ -419,13 +425,13 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         """A button pressed by the owner in the house view: no AI involved."""
         need_ha(hq)
         if role != "full" and not house_service(body.domain, body.service):
-            raise HTTPException(403, f"{body.domain}.{body.service}: riservato agli amministratori di Home Assistant")
+            raise HTTPException(403, f"{body.domain}.{body.service}: {tr('riservato agli amministratori di Home Assistant')}")
         try:
             await hq.ha.call_service(body.domain, body.service, body.data, by_owner=True)
         except HomeAssistantError as exc:
             raise HTTPException(502, str(exc))
         target = body.data.get("entity_id", "")
-        await hq.log("ha", f"Tu (Casa): {body.domain}.{body.service} {target if isinstance(target, str) else ', '.join(target)}", None)
+        await hq.log("ha", f"{tr_sys('Tu (Casa)')}: {body.domain}.{body.service} {target if isinstance(target, str) else ', '.join(target)}", None)
         return {"ok": True}
 
     @app.get("/api/casa/camera/{entity_id}", dependencies=[Depends(auth)])
@@ -433,7 +439,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         """A frame of the camera, fetched by the add-on (works from the sidebar and outside)."""
         need_ha(hq)
         if not entity_id.startswith("camera."):
-            raise HTTPException(404, "non è una telecamera")
+            raise HTTPException(404, tr("non è una telecamera"))
         try:
             image, ctype = await hq.ha.camera_image(entity_id)
         except HomeAssistantError as exc:
@@ -446,7 +452,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         """Live MJPEG through the add-on: used when the HA video player (HLS) isn't reachable."""
         need_ha(hq)
         if not entity_id.startswith("camera."):
-            raise HTTPException(404, "non è una telecamera")
+            raise HTTPException(404, tr("non è una telecamera"))
         try:
             ctype, chunks = await hq.ha.camera_stream(entity_id)
         except HomeAssistantError as exc:
@@ -503,9 +509,9 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def casa_add(area_id: str, body: RoomEntityIn, hq: HQ = Depends(get_hq)):
         need_ha(hq)
         if area_id not in hq.watcher.areas:
-            raise HTTPException(404, "area sconosciuta")
+            raise HTTPException(404, tr("area sconosciuta"))
         if body.entity_id not in hq.watcher.states:
-            raise HTTPException(404, "entità sconosciuta")
+            raise HTTPException(404, tr("entità sconosciuta"))
         if body.mode == "ha":
             try:
                 await hq.watcher.set_area(body.entity_id, area_id)
@@ -521,7 +527,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def casa_kind(entity_id: str, body: KindIn, hq: HQ = Depends(get_hq)):
         need_ha(hq)
         if entity_id not in hq.watcher.states:
-            raise HTTPException(404, "entità sconosciuta")
+            raise HTTPException(404, tr("entità sconosciuta"))
         await hq.casa.set_kind(entity_id, body.kind)
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
@@ -531,12 +537,12 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         """A card composed in "Modifica stanza" (e.g. the stove: switch, start and stop time)."""
         need_ha(hq)
         if area_id not in hq.watcher.areas:
-            raise HTTPException(404, "area sconosciuta")
+            raise HTTPException(404, tr("area sconosciuta"))
         unknown = [e for e in body.entities if e not in hq.watcher.states]
         if unknown:
-            raise HTTPException(422, f"entità sconosciute: {', '.join(unknown)}")
+            raise HTTPException(422, f"{tr('entità sconosciute')}: {', '.join(unknown)}")
         if body.enable and body.enable not in body.entities:
-            raise HTTPException(422, "l'interruttore degli orari deve essere nella card")
+            raise HTTPException(422, tr("l'interruttore degli orari deve essere nella card"))
         card_id = await hq.casa.save_card(area_id, body.id, body.name, body.entities, body.size, body.group, body.enable, body.nochart)
         hq.emit({"type": "casa_changed"})
         return {"ok": True, "id": card_id}
@@ -552,7 +558,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def casa_order(area_id: str, body: OrderIn, hq: HQ = Depends(get_hq)):
         need_ha(hq)
         if area_id not in hq.watcher.areas:
-            raise HTTPException(404, "area sconosciuta")
+            raise HTTPException(404, tr("area sconosciuta"))
         await hq.casa.set_order(area_id, body.items)
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
@@ -562,7 +568,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         """Rename or resize an entity's card in HubNEX only."""
         need_ha(hq)
         if entity_id not in hq.watcher.states:
-            raise HTTPException(404, "entità sconosciuta")
+            raise HTTPException(404, tr("entità sconosciuta"))
         sent = body.model_fields_set
         await hq.casa.set_display(entity_id, body.name, body.size, rename="name" in sent, resize="size" in sent, chart=body.chart)
         hq.emit({"type": "casa_changed"})
@@ -572,7 +578,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def casa_temperature(area_id: str, body: RoomTempIn, hq: HQ = Depends(get_hq)):
         need_ha(hq)
         if area_id not in hq.watcher.areas:
-            raise HTTPException(404, "area sconosciuta")
+            raise HTTPException(404, tr("area sconosciuta"))
         await hq.casa.set_temperature(area_id, body.entity_id)
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
@@ -599,7 +605,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         except LayoutError as exc:
             raise HTTPException(422, str(exc))
         rooms = sum(len(f["rooms"]) for f in hq.casa.layout["floors"])
-        await hq.log("system", f"Piantina della casa salvata: {rooms} stanze in {hq.casa.host_path()}")
+        await hq.log("system", tr_sys("Piantina della casa salvata: {n} stanze in {path}", n=rooms, path=hq.casa.host_path()))
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
 
@@ -617,7 +623,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         except LayoutError as exc:
             raise HTTPException(422, str(exc))
         rooms = sum(len(f.rooms) for f in body.floors)
-        await hq.log("system", f"Piantina della casa salvata dall'editor: {rooms} stanze")
+        await hq.log("system", tr_sys("Piantina della casa salvata dall'editor: {n} stanze", n=rooms))
         hq.emit({"type": "casa_changed"})
         return {"ok": True}
 
@@ -636,7 +642,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             manifest = await asyncio.to_thread(stage_restore, await request.body(), settings.db_path)
         except BackupError as exc:
             raise HTTPException(422, str(exc))
-        await hq.log("system", "Backup caricato: viene applicato al riavvio di HubNEX.")
+        await hq.log("system", tr_sys("Backup caricato: viene applicato al riavvio di HubNEX."))
         restarting = bool(os.environ.get("SUPERVISOR_TOKEN"))
         if restarting:
             asyncio.create_task(restart_addon())
@@ -656,7 +662,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def casa_plan_image(name: str, hq: HQ = Depends(get_hq)):
         path = hq.casa.plan_image_path(name)
         if not path:
-            raise HTTPException(404, "immagine non trovata")
+            raise HTTPException(404, tr("immagine non trovata"))
         return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
 
     @app.post("/api/casa/plan-suggest", dependencies=[Depends(full)])
@@ -664,7 +670,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         """Claude looks at the plan and proposes the rooms (to check in the editor)."""
         path = hq.casa.plan_image_path(body.image)
         if not path:
-            raise HTTPException(404, "carica prima la planimetria")
+            raise HTTPException(404, tr("carica prima la planimetria"))
         areas = sorted(a.get("name") or k for k, a in hq.watcher.areas.items())
         image = base64.b64encode(path.read_bytes()).decode()
         try:
@@ -682,8 +688,8 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             )
             rooms = clean_suggestion(json.loads(raw), areas)
         except Exception as exc:
-            raise HTTPException(502, f"proposta non riuscita: {exc}")
-        await hq.log("system", f"Proposta della piantina: {len(rooms)} stanze riconosciute")
+            raise HTTPException(502, f"{tr('proposta non riuscita')}: {exc}")
+        await hq.log("system", tr_sys("Proposta della piantina: {n} stanze riconosciute", n=len(rooms)))
         return {"rooms": rooms}
 
     @app.websocket("/ws")

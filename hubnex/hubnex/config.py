@@ -54,6 +54,7 @@ ADDON_OPTIONS = {
     "voice_tts_entity": "VOICE_TTS_ENTITY",
     "voice_tts_voice": "VOICE_TTS_VOICE",
     "voice_answers": "VOICE_ANSWERS",
+    "language": "HUBNEX_LANGUAGE",
     "ha_blocked_services": "HA_BLOCKED_SERVICES",
     "install_assist_integration": "HUBNEX_INSTALL_ASSIST",
     "non_admin_access": "HUBNEX_NON_ADMIN_ACCESS",
@@ -151,6 +152,7 @@ class Settings:
     mail: MailSettings = field(default_factory=MailSettings)
     # Voice from Home Assistant's own text-to-speech (Piper, HA Cloud, Google…) instead of ElevenLabs
     voice_tts_entity: str = ""  # e.g. tts.piper
+    language: str = "auto"  # auto (Home Assistant's) | it | en
     voice_answers: str = "completa"  # completa | riassunto: what the voice reads of a long answer
     voice_tts_voice: str = ""  # that engine's voice by name, e.g. Rinaldo (empty: its default)
     elevenlabs_key: str = ""
@@ -210,6 +212,7 @@ class Settings:
             elevenlabs_model=e("ELEVENLABS_MODEL") or "eleven_flash_v2_5",
             voice_tts_entity=(e("VOICE_TTS_ENTITY") or "").strip(),
             voice_tts_voice=(e("VOICE_TTS_VOICE") or "").strip(),
+            language=(e("HUBNEX_LANGUAGE") or "auto").strip().lower(),
             voice_answers="riassunto" if (e("VOICE_ANSWERS") or "").strip().lower() == "riassunto" else "completa",
             timezone=e("TZ") or "Europe/Rome",
             db_path=e("HUBNEX_DB") or "data/hubnex.db",

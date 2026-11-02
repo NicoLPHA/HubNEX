@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
+from hubnex.i18n import tr
 
 
 class HomeAssistantError(Exception):
@@ -32,7 +33,7 @@ class HomeAssistant:
         try:
             r = await self._client.request(method, path, **kw)
         except httpx.HTTPError as exc:
-            raise HomeAssistantError(f"Home Assistant non raggiungibile: {exc}") from exc
+            raise HomeAssistantError(tr("Home Assistant non raggiungibile: {a}", a=exc)) from exc
         if r.status_code == 404:
             raise HomeAssistantError(f"Non trovato: {path}")
         if r.status_code >= 400:
@@ -97,13 +98,13 @@ class HomeAssistant:
         info = await self._request("POST", "/tts_get_url", json=body)
         path = (info or {}).get("path") or ""
         if not path:
-            raise HomeAssistantError(f"sintesi vocale {engine}: nessun audio")
+            raise HomeAssistantError(tr("sintesi vocale {a}: nessun audio", a=engine))
         try:
             r = await self._client.get(path[4:] if path.startswith("/api/") else path, timeout=60)
         except httpx.HTTPError as exc:
-            raise HomeAssistantError(f"Home Assistant non raggiungibile: {exc}") from exc
+            raise HomeAssistantError(tr("Home Assistant non raggiungibile: {a}", a=exc)) from exc
         if r.status_code >= 400:
-            raise HomeAssistantError(f"sintesi vocale {engine}: HA {r.status_code}")
+            raise HomeAssistantError(tr("sintesi vocale {a}: HA {b}", a=engine, b=r.status_code))
         return r.content, r.headers.get("content-type", "audio/mpeg")
 
     async def conversation(self, text: str, agent_id: str = "conversation.home_assistant") -> dict:
@@ -115,7 +116,7 @@ class HomeAssistant:
         try:
             r = await self._client.get(f"/camera_proxy/{entity_id}", timeout=15)
         except httpx.HTTPError as exc:
-            raise HomeAssistantError(f"Home Assistant non raggiungibile: {exc}") from exc
+            raise HomeAssistantError(tr("Home Assistant non raggiungibile: {a}", a=exc)) from exc
         if r.status_code >= 400:
             raise HomeAssistantError(f"telecamera {entity_id}: HA {r.status_code}")
         return r.content, r.headers.get("content-type", "image/jpeg")
@@ -126,7 +127,7 @@ class HomeAssistant:
         try:
             r = await self._client.send(req, stream=True)
         except httpx.HTTPError as exc:
-            raise HomeAssistantError(f"Home Assistant non raggiungibile: {exc}") from exc
+            raise HomeAssistantError(tr("Home Assistant non raggiungibile: {a}", a=exc)) from exc
         if r.status_code >= 400:
             await r.aclose()
             raise HomeAssistantError(f"telecamera {entity_id}: HA {r.status_code}")

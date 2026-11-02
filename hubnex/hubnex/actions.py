@@ -11,6 +11,7 @@ import logging
 from typing import TYPE_CHECKING, Awaitable, Callable
 
 from hubnex.context import CURRENT_CHAT
+from hubnex.i18n import tr
 
 if TYPE_CHECKING:
     from hubnex.hq import HQ
@@ -23,7 +24,7 @@ Executor = Callable[[dict], Awaitable[str]]
 
 class ActionClosed(Exception):
     def __str__(self) -> str:
-        return "Azione non più in attesa"
+        return tr("Azione non più in attesa")
 
 
 def action_buttons(action_id: int):
@@ -59,7 +60,7 @@ class ActionDesk:
         try:
             run = self.executors.get(a["kind"])
             if run is None:
-                raise RuntimeError(f"nessuno sa eseguire azioni '{a['kind']}' (connettore rimosso?)")
+                raise RuntimeError(tr("nessuno sa eseguire azioni '{a}' (connettore rimosso?)", a=a['kind']))
             note = await run(a["payload"])
         except Exception as exc:
             log.exception("action %s failed", action_id)
