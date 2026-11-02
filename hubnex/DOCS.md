@@ -333,8 +333,9 @@ Assistant.
 
 Da **⚙ Preferenze → Backup → Scarica** ottieni un unico file `.zip` con tutto ciò che HubNEX
 sa: memoria e mappa neurale, scadenze, chat, impostazioni della Casa (card, nomi, ordine,
-energia), piantina con le sue immagini e `agents.yaml`. Le opzioni dell'add-on (chiavi API,
-token) **non** sono incluse. Solo per gli amministratori.
+energia), piantina con le sue immagini e `agents.yaml`. Le opzioni dell'add-on (chiave Anthropic,
+Telegram, posta) **non** sono incluse; `agents.yaml` sì, con gli eventuali token dei connettori
+MCP: custodisci il file come una password. Solo per gli amministratori.
 
 **Ripristina → Carica…** su un'altra installazione mette tutto al suo posto e riavvia HubNEX.
 I file che sostituisce restano accanto con il suffisso `.prima-del-ripristino`.

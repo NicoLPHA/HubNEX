@@ -26,8 +26,9 @@ Solo l'ultima versione pubblicata riceve correzioni di sicurezza: aggiorna l'add
 
 ## Cosa fa già HubNEX
 
-- Le chiavi stanno solo nelle opzioni dell'add-on e in `agents.yaml`, nel tuo Home Assistant;
-  il backup di HubNEX non le contiene.
+- Le chiavi stanno solo nelle opzioni dell'add-on e in `agents.yaml`, nel tuo Home Assistant.
+  Il backup di HubNEX non contiene le opzioni dell'add-on; contiene `agents.yaml`, quindi gli
+  eventuali token dei connettori: va custodito come una password.
 - Dalla barra laterale vale l'accesso di Home Assistant; da fuori serve il token HQ.
 - Serrature, allarme e servizi bloccati chiedono sempre conferma; le scritture sui programmi
   di lavoro (MCP) e le email partono solo dopo il tuo ✅.

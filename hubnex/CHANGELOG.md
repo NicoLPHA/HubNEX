@@ -2,7 +2,7 @@
 
 ## 1.8.9
 - Backup di HubNEX dalle Preferenze: un file con memoria e mappa neurale, scadenze, chat,
-  impostazioni della Casa, piantina ed energia, `agents.yaml`. Senza chiavi API.
+  impostazioni della Casa, piantina ed energia, `agents.yaml`. Senza le opzioni dell'add-on (chiavi API, Telegram, posta).
 - Ripristino dallo stesso pannello: applicato al riavvio, che parte da solo; i file sostituiti
   restano come `.prima-del-ripristino`. Serve anche per passare dalla copia locale all'add-on
   del repository (vedi la documentazione).
