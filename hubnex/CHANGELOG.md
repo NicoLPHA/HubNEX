@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.8.7
+- Dashboard e Assist seguono la strada più veloce:
+  1. dashboard: prima le frasi di Home Assistant (istantaneo, senza AI);
+  2. la via rapida per le richieste sulla casa (Haiku con l'elenco delle entità);
+  3. Jarvis con il suo modello per tutto il resto. Le domande complesse fatte ad Assist ora
+     arrivano a Jarvis, non restano su Haiku.
+- Serrature, allarme e porte non passano mai da Home Assistant o dalla via rapida: decide
+  Jarvis, con la conferma.
+- Nella chat della dashboard "⚡ Home Assistant" o "⚡ risposta rapida" dice chi ha risposto.
+
 ## 1.8.6
 - Comandi vocali (Assist) più veloci:
   - nuova opzione "Modello per i comandi vocali", di serie Haiku: Telegram e dashboard

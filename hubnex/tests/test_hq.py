@@ -299,15 +299,15 @@ async def test_spoken_summary_only_when_asked(make_hq, settings):
         ]
     )
     # "completa" (default): no request for a summary, a stray [VOCE] line is still removed
-    assert await hq.converse("t", "verifiche?", spoken=True) == (long, None)
+    assert await hq.converse("t", "verifiche?", spoken=True) == (long, None, "jarvis")
     assert "[VOCE]" not in hq.client.requests[-1]["messages"][-1]["content"]
 
     settings.voice_answers = "riassunto"
-    written, said = await hq.converse("t", "verifiche?", spoken=True)
+    written, said, _ = await hq.converse("t", "verifiche?", spoken=True)
     assert written == long and said == "Il dettaglio è qui sotto."
     assert "[VOCE]" in hq.client.requests[-1]["messages"][-1]["content"]
     # a short answer has nothing to summarise: the voice reads it whole
-    assert await hq.converse("t", "spegni", spoken=True) == ("Fatto, Signore.", None)
+    assert await hq.converse("t", "spegni", spoken=True) == ("Fatto, Signore.", None, "jarvis")
 
 
 def test_split_voice():
@@ -317,11 +317,15 @@ def test_split_voice():
     assert split_voice("Solo testo.") == ("Solo testo.", None)
 
 
-async def test_voice_commands_are_quick(make_hq):
-    hq = make_hq([response([text_block("Fatto, Signore.")], "end_turn"), response([text_block("Prego.")], "end_turn")])
+def _house(hq, local=None):
+    asked = []
 
     class HA:
         enabled = True
+
+        async def conversation(self, text, agent_id="conversation.home_assistant"):
+            asked.append(text)
+            return local or {"response": {"response_type": "error", "data": {"code": "no_intent_match"}}}
 
     hq.ha = HA()
     w = hq.watcher
@@ -334,19 +338,44 @@ async def test_voice_commands_are_quick(make_hq):
         "sensor.cpu": {"entity_id": "sensor.cpu", "state": "3", "attributes": {}},
         "automation.x": {"entity_id": "automation.x", "state": "on", "attributes": {}},
     }
-    assert await hq.chat("assist", "accendi la luce della cucina", voice=True) == "Fatto, Signore."
-    req = hq.client.requests[-1]
-    assert req["model"] == "claude-haiku-5-5"
-    assert "IL TUO TEAM" not in req["system"] and "Assist" in req["system"]
-    last = req["messages"][-1]["content"]
-    assert "light.cucina · Luce cucina · Cucina · off" in last and "sensor.temp_cucina" in last and "21.5 °C" in last
-    assert "sensor.cpu" not in last and "automation.x" not in last
-    names = {t.get("name") for t in req.get("tools", [])}
-    assert "team_overview" not in names and "delegate" in names
+    return asked
 
-    # the dashboard keeps Jarvis' own model and system; the house list is not stored in the history
-    await hq.chat("dashboard", "grazie")
+
+async def test_assist_house_request_takes_the_quick_route(make_hq):
+    hq = make_hq([response([text_block("Fatto, Signore.")], "end_turn")])
+    asked = _house(hq)
+    assert await hq.converse("assist", "accendi la luce della cucina", voice=True, quick=True) == ("Fatto, Signore.", None, "quick")
+    assert asked == []  # Assist already tried Home Assistant's sentences
     req = hq.client.requests[-1]
-    assert req["model"] == hq.settings.model and "IL TUO TEAM" in req["system"]
-    history = await hq.store.chat_history("assist", 10)
-    assert all("Casa adesso" not in h["text"] for h in history)
+    assert req["model"] == "claude-haiku-5-5" and "IL TUO TEAM" not in req["system"]
+    last = req["messages"][-1]["content"]
+    assert "light.cucina · Luce cucina · Cucina · off" in last and "21.5 °C" in last
+    assert "sensor.cpu" not in last and "automation.x" not in last
+    assert {t.get("name") for t in req.get("tools", [])} <= {"ha_list_entities", "ha_get_state", "ha_call_service"}
+    assert all("Casa adesso" not in h["text"] for h in await hq.store.chat_history("assist", 10))
+
+
+async def test_complex_request_goes_to_jarvis(make_hq):
+    hq = make_hq([response([text_block("[[JARVIS]]")], "end_turn"),
+                  response([text_block("Le verifiche annuali sono tre, Signore.")], "end_turn")])
+    _house(hq)
+    reply, _, by = await hq.converse("assist", "quali verifiche servono in un locale di gruppo 2?", voice=True, quick=True)
+    assert by == "jarvis" and reply.startswith("Le verifiche")
+    quick_req, full_req = hq.client.requests[-2:]
+    assert quick_req["model"] == "claude-haiku-5-5"
+    assert full_req["model"] == hq.settings.model and "IL TUO TEAM" in full_req["system"]
+    # the history has the question once and Jarvis' answer, not the hand-over
+    texts = [h["text"] for h in await hq.store.chat_history("assist", 10)]
+    assert texts == ["quali verifiche servono in un locale di gruppo 2?", "Le verifiche annuali sono tre, Signore."]
+
+
+async def test_dashboard_tries_home_assistant_first(make_hq):
+    hq = make_hq([])
+    asked = _house(hq, {"response": {"response_type": "action_done", "speech": {"plain": {"speech": "Luce accesa"}}}})
+    out = await hq.converse("dashboard", "[Sono nella stanza Cucina della vista Casa] accendi la luce", quick=True, local=True)
+    assert out == ("Luce accesa", None, "ha") and asked == ["accendi la luce"] and hq.client.requests == []
+    # locks and the alarm never go through Home Assistant's sentences nor the quick route
+    hq2 = make_hq([response([text_block("Mi conferma che devo sbloccare la porta, Signore?")], "end_turn")])
+    asked2 = _house(hq2, {"response": {"response_type": "action_done", "speech": {"plain": {"speech": "Sbloccata"}}}})
+    reply, _, by = await hq2.converse("dashboard", "sblocca la porta d'ingresso", quick=True, local=True)
+    assert by == "jarvis" and asked2 == [] and hq2.client.requests[-1]["model"] == hq2.settings.model

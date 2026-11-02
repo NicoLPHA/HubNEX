@@ -208,7 +208,7 @@ class TelegramTeam:
         await ctx.bot.send_chat_action(chat_id, ChatAction.TYPING)
         try:
             speak = voice and self.settings.telegram_voice_replies and self.hq.tts_enabled
-            answer, said = await self.hq.converse(f"telegram:{chat_id}", text, spoken=speak)
+            answer, said, _ = await self.hq.converse(f"telegram:{chat_id}", text, spoken=speak)
         except Exception as exc:
             log.exception("Errore Jarvis")
             answer, said = f"Mi scusi, qualcosa è andato storto: {exc}", None

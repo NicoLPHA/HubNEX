@@ -9,8 +9,8 @@ configuration:
     name: Modello di Jarvis Mail
     description: Usato dall'agente email e per classificare la posta.
   model_voice:
-    name: Modello per i comandi vocali
-    description: Usato da Jarvis quando risponde ad Assist. Haiku è il più veloce; vuoto = lo stesso modello di Jarvis.
+    name: Modello per i comandi rapidi
+    description: La via rapida per le richieste sulla casa (dashboard e Assist). Haiku è il più veloce; le domande complesse passano comunque al modello di Jarvis. Vuoto = niente via rapida.
   anthropic_credit_usd:
     name: Credito Anthropic ($)
     description: Il saldo che vedi su console.anthropic.com (es. 4.90). La dashboard scala da qui il costo stimato di ogni richiesta. Quando ricarichi, scrivi il nuovo saldo e il conteggio riparte. 0 = mostra solo la spesa.

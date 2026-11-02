@@ -29,7 +29,7 @@ def test_integration_token_works_without_hq_token(settings, make_hq):
         auth = {"Authorization": "Bearer interno"}
         assert client.get("/api/ping", headers=auth).json() == {"name": "Jarvis"}
         r = client.post("/api/chat", headers=auth, json={"text": "ciao", "channel": "assist", "voice": True})
-        assert r.json() == {"reply": "Buonasera, signore."}
+        assert r.json() == {"reply": "Buonasera, signore.", "by": "jarvis"}
 
 
 def test_integration_installed_once_and_updated_on_change(tmp_path):

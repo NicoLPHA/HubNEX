@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -42,6 +43,32 @@ VOICE_DOMAINS = {
     "scene", "script", "input_boolean", "input_select", "input_number", "select", "number",
     "vacuum", "valve", "humidifier", "water_heater", "siren", "lawn_mower", "button", "input_button",
 }
+QUICK_PASS = "[[JARVIS]]"  # the quick route hands the request to Jarvis
+# Never through Home Assistant's own sentences or the quick route: Jarvis asks for confirmation.
+SENSITIVE = re.compile(r"sblocc|disinser|disattiv\w*\s+(l'|l |il |la )?allarm|\bapri\w*\s+(la |il |l')?(porta|portone|cancell|serratur|garage)", re.I)
+
+
+def fill_history(history: list[dict], text: str) -> list[dict]:
+    """The past turns + this message (folded into a previous user turn that got no answer)."""
+    messages = [dict(m) for m in history]
+    if messages and messages[-1]["role"] == "user":
+        messages[-1]["content"] += f"\n\n{text}"
+    else:
+        messages.append({"role": "user", "content": text})
+    return messages
+
+
+def strip_context(text: str) -> str:
+    """Without the dashboard's "[Sono nella stanza …]" note."""
+    return re.sub(r"^\s*\[[^\]]*\]\s*", "", text)
+
+
+def local_ok(text: str) -> bool:
+    """A short command Home Assistant may handle by itself (never locks, alarm, doors)."""
+    t = strip_context(text)
+    return 0 < len(t) <= 160 and "\n" not in t and not SENSITIVE.search(t)
+
+
 VOICE_SENSOR_CLASSES = {"temperature", "humidity", "power", "door", "window", "garage_door", "opening", "lock"}
 # Jarvis answers exactly this when a delegated agent already replied in the group.
 SILENCE = "[[SILENZIO]]"
@@ -393,20 +420,24 @@ class HQ:
             f"{self._rules_text()}"
         )
 
-    def _voice_system(self) -> str:
-        """Jarvis for Assist: the same character and rules, without the team's details (it can
-        still delegate). Stable text, so the prompt cache holds across voice commands."""
-        agents = ", ".join(f"{a.name} (id: {a.id})" for a in self.org.agents) or "nessuno"
+    def _quick_system(self, voice: bool) -> str:
+        """The quick route: requests about the house only, everything else to Jarvis. Stable
+        text (one per mode), so the prompt cache holds."""
+        style = ("Rispondi a voce (Assist): al massimo due frasi brevi, niente elenchi, simboli o markdown."
+                 if voice else "Rispondi per iscritto in una o due frasi, senza markdown.")
         return (
-            f"Sei {self.org.boss_name}, l'assistente personale. Parli in italiano con il tono calmo "
-            "ed elegante di un maggiordomo britannico. Stai rispondendo a voce tramite Assist di Home "
-            "Assistant: al massimo due frasi brevi, niente elenchi, simboli o markdown.\n\n"
-            "Per la casa: nel messaggio trovi l'elenco delle entità con nome, area e stato attuale. "
-            "Usa direttamente quegli entity_id con ha_call_service, senza cercarli prima; usa "
-            "ha_list_entities solo se ciò che serve non è nell'elenco. Per una domanda sullo stato "
-            "rispondi dall'elenco. Dopo un comando conferma in poche parole.\n"
-            "Per lavoro, posta o compiti lunghi delega con `delegate` (wait=false) all'agente giusto "
-            f"e di' che riceverà la risposta. Agenti: {agents}.\n"
+            f"Sei {self.org.boss_name}, l'assistente personale, nella sua modalità rapida per la casa. "
+            f"Parli in italiano con il tono calmo ed elegante di un maggiordomo britannico. {style}\n\n"
+            "Gestisci SOLO comandi e domande sulla casa: accendere, spegnere, regolare, aprire o "
+            "chiudere dispositivi, scene, stato di luci, temperature, porte e finestre. Nel messaggio "
+            "trovi l'elenco delle entità con nome, area e stato: usa direttamente quegli entity_id con "
+            "ha_call_service, senza cercarli; ha_list_entities solo se ciò che serve non è "
+            "nell'elenco. Per una domanda sullo stato rispondi dall'elenco. Dopo un comando conferma "
+            "in poche parole.\n"
+            f"Per tutto il resto rispondi esattamente {QUICK_PASS} e nient'altro, senza usare "
+            "strumenti: lavoro, posta, agenti, scadenze, promemoria, domande generali o tecniche, "
+            "ragionamenti, e qualsiasi cosa su serrature, allarme o porte d'ingresso. Nel dubbio, "
+            f"{QUICK_PASS}.\n"
             "Fai solo ciò che ti viene chiesto, senza iniziative.\n\n"
             f"{self.org.boss_instructions.strip()}"
             f"{self._rules_text()}"
@@ -503,7 +534,11 @@ class HQ:
         t.add_done_callback(self._background.discard)
 
     async def _history_messages(self, channel: str, text: str, turns: int = CHAT_HISTORY_TURNS) -> list[dict]:
-        """Past turns of `channel` as plain text (no thinking blocks to keep valid) + `text`."""
+        """See fill_history: with text "" the past turns only, to be completed later."""
+        return fill_history(await self._past(channel, turns), text) if text else await self._past(channel, turns)
+
+    async def _past(self, channel: str, turns: int) -> list[dict]:
+        """Past turns of `channel` as plain text (no thinking blocks to keep valid)."""
         history = await self.store.chat_history(channel, turns)
         messages: list[dict] = []
         for h in history:
@@ -513,76 +548,135 @@ class HQ:
                 messages.append({"role": h["role"], "content": h["text"]})
         if messages and messages[0]["role"] == "assistant":
             messages.pop(0)
-        if messages and messages[-1]["role"] == "user":  # previous turn failed: fold it in
-            messages[-1]["content"] += f"\n\n{text}"
-        else:
-            messages.append({"role": "user", "content": text})
         return messages
 
     async def chat(self, channel: str, text: str, voice: bool = False) -> str:
         """A conversation turn with Jarvis. Returns "" when a delegated agent already answered.
 
         `voice`: the answer is spoken by Assist, so it must be short and quick."""
-        return (await self.converse(channel, text, voice=voice))[0]
+        return (await self.converse(channel, text, voice=voice, quick=voice))[0]
 
     async def converse(
-        self, channel: str, text: str, voice: bool = False, spoken: bool = False
-    ) -> tuple[str, str | None]:
-        """A conversation turn: the written answer and what the voice should say of it.
+        self, channel: str, text: str, voice: bool = False, spoken: bool = False,
+        quick: bool = False, local: bool = False,
+    ) -> tuple[str, str | None, str]:
+        """A conversation turn: the written answer, what the voice should say of it, and who
+        answered ("ha", "quick" or "jarvis").
 
+        `local`: Home Assistant's own sentences first ("accendi la luce della cucina"): done at
+        once, no AI. `quick`: then the quick route (the voice model with the house in hand) for
+        requests about the house; anything else goes to Jarvis with his full instructions.
+        `voice`: the answer is spoken by Assist, so it must be short.
         `spoken`: the answer will also be read aloud (dashboard speaker, Telegram voice note).
         With "Risposte a voce: riassunto" a long answer comes with a short summary for the
         voice; otherwise (or for a short answer) the voice reads the written answer."""
-        summary = spoken and not voice and self.settings.voice_answers == "riassunto"
         lock = self._chat_locks.setdefault(channel, asyncio.Lock())
         async with lock:
-            prompt = f"{self._stamp()}\n{text}"
-            if voice:
-                house = self._house_brief() if self.ha.enabled else ""
-                if house:
-                    prompt += f"\n\n[Casa adesso: entity_id · nome · area · stato]\n{house}"
-                prompt += "\n[Risposta letta ad alta voce: al massimo due frasi, niente elenchi né simboli.]"
-            elif summary:
-                prompt += VOICE_HINT
-            messages = await self._history_messages(channel, prompt, VOICE_HISTORY_TURNS if voice else CHAT_HISTORY_TURNS)
+            short = await self._history_messages(channel, "", VOICE_HISTORY_TURNS)
+            full = await self._history_messages(channel, "", VOICE_HISTORY_TURNS if voice else CHAT_HISTORY_TURNS)
             await self.store.chat_add(channel, "user", text)
             await self.log("chat", f"Tu ({channel}): {text}", BOSS_ID)
 
-            tool_names = list(
-                dict.fromkeys(
-                    BOSS_TOOLS + self.org.boss_tools + ALWAYS_TOOLS + ["deadline_done"]
-                )
-            )
-            if voice:  # Assist: the house, delegation and memory are enough
-                tool_names = [t for t in tool_names if t not in ("team_overview", "agent_history", "owner_rules")]
-            model = (self.settings.model_voice or self.settings.model) if voice else self.settings.model
+            answer, by = None, "jarvis"
+            if local and self.ha.enabled and local_ok(text):
+                answer = await self._ha_local(strip_context(text))
+                by = "ha"
+            if answer is None and quick and self.settings.model_voice and self.ha.enabled and not SENSITIVE.search(text):
+                answer = await self._quick(text, voice, short)
+                by = "quick"
+            if answer is not None:
+                await self.store.chat_add(channel, "assistant", answer)
+                await self.log("chat", f"{self.org.boss_name}: {answer}", BOSS_ID)
+                await self.emit_stats()
+                return answer, None, by
+            reply, said = await self._full(channel, text, voice, spoken, full)
+            return reply, said, "jarvis"
+
+    async def _ha_local(self, text: str) -> str | None:
+        """Home Assistant's built-in agent: its answer when it understood and did it, else None."""
+        try:
+            res = await self.ha.conversation(text)
+        except Exception as exc:
+            log.info("HA conversation unavailable: %s", exc)
+            return None
+        r = (res or {}).get("response") or {}
+        if r.get("response_type") not in ("action_done", "query_answer"):
+            return None
+        speech = ((r.get("speech") or {}).get("plain") or {}).get("speech") or "Fatto."
+        return speech.strip()
+
+    async def _quick(self, text: str, voice: bool, history: list[dict]) -> str | None:
+        """The quick route: requests about the house, with the house in hand. None when the
+        request is for Jarvis (QUICK_PASS) or the quick route failed."""
+        house = self._house_brief()
+        if not house:
+            return None
+        prompt = f"{self._stamp()}\n{text}\n\n[Casa adesso: entity_id · nome · area · stato]\n{house}"
+        messages = fill_history(history, prompt)
+        tool_names = [t for t in self.org.boss_tools if t.startswith("ha_")]
+        model = self.settings.model_voice
+        await self.set_status(BOSS_ID, "thinking", None, task=text)
+        try:
             tool_defs, extra = await self._toolbox(BOSS_ID, tool_names, model)
-            await self.set_status(BOSS_ID, "thinking", None, task=text)
-            try:
-                result = await run_agent_loop(
-                    self.client,
-                    model=model,
-                    effort="low" if voice else self.org.boss_effort,
-                    system=self._voice_system() if voice else self._boss_system(),
-                    tools=tool_defs,
-                    messages=messages,
-                    execute=self._executor(BOSS_ID, None, set(tool_names), extra),
-                    on_status=lambda s, d: self.set_status(BOSS_ID, s, d),
-                    on_usage=self.on_usage,
-                )
-            except Exception as exc:
-                log.exception("jarvis chat failed")
-                await self.set_status(BOSS_ID, "error", str(exc)[:200], task=None)
-                raise
-            reply = "" if result.text.strip() == SILENCE else result.text.replace(SILENCE, "").strip() or "Fatto."
-            reply, said = split_voice(reply)  # the [VOCE] line is for the voice only
-            await self.store.chat_add(channel, "assistant", reply or SILENCE)
-            st = self.agents[BOSS_ID]
-            await self.set_status(BOSS_ID, "sleeping", None, task=None, last_result=reply[:4000], done=st.done + 1)
-            if reply:
-                await self.log("chat", f"{self.org.boss_name}: {reply}", BOSS_ID)
-            await self.emit_stats()
-            return reply, (said if summary else None)
+            result = await run_agent_loop(
+                self.client, model=model, effort="low", system=self._quick_system(voice),
+                tools=tool_defs, messages=messages,
+                execute=self._executor(BOSS_ID, None, set(tool_names), extra),
+                on_status=lambda s, d: self.set_status(BOSS_ID, s, d), on_usage=self.on_usage,
+                max_turns=6,
+            )
+        except Exception:
+            log.exception("quick route failed: Jarvis takes it")
+            return None
+        reply = result.text.strip()
+        if not reply or QUICK_PASS in reply:
+            return None
+        st = self.agents[BOSS_ID]
+        await self.set_status(BOSS_ID, "sleeping", None, task=None, last_result=reply[:4000], done=st.done + 1)
+        return reply
+
+    async def _full(
+        self, channel: str, text: str, voice: bool, spoken: bool, history: list[dict]
+    ) -> tuple[str, str | None]:
+        """Jarvis with his full instructions and tools (the team, delegation, memory…)."""
+        summary = spoken and not voice and self.settings.voice_answers == "riassunto"
+        prompt = f"{self._stamp()}\n{text}"
+        if voice:
+            house = self._house_brief() if self.ha.enabled else ""
+            if house:
+                prompt += f"\n\n[Casa adesso: entity_id · nome · area · stato]\n{house}"
+            prompt += "\n[Risposta letta ad alta voce: al massimo due frasi, niente elenchi né simboli.]"
+        elif summary:
+            prompt += VOICE_HINT
+        messages = fill_history(history, prompt)
+        tool_names = list(dict.fromkeys(BOSS_TOOLS + self.org.boss_tools + ALWAYS_TOOLS + ["deadline_done"]))
+        tool_defs, extra = await self._toolbox(BOSS_ID, tool_names, self.settings.model)
+        await self.set_status(BOSS_ID, "thinking", None, task=text)
+        try:
+            result = await run_agent_loop(
+                self.client,
+                model=self.settings.model,
+                effort="low" if voice else self.org.boss_effort,
+                system=self._boss_system(),
+                tools=tool_defs,
+                messages=messages,
+                execute=self._executor(BOSS_ID, None, set(tool_names), extra),
+                on_status=lambda s, d: self.set_status(BOSS_ID, s, d),
+                on_usage=self.on_usage,
+            )
+        except Exception as exc:
+            log.exception("jarvis chat failed")
+            await self.set_status(BOSS_ID, "error", str(exc)[:200], task=None)
+            raise
+        reply = "" if result.text.strip() == SILENCE else result.text.replace(SILENCE, "").strip() or "Fatto."
+        reply, said = split_voice(reply)  # the [VOCE] line is for the voice only
+        await self.store.chat_add(channel, "assistant", reply or SILENCE)
+        st = self.agents[BOSS_ID]
+        await self.set_status(BOSS_ID, "sleeping", None, task=None, last_result=reply[:4000], done=st.done + 1)
+        if reply:
+            await self.log("chat", f"{self.org.boss_name}: {reply}", BOSS_ID)
+        await self.emit_stats()
+        return reply, (said if summary else None)
 
     # ------------------------------------------------------------------ snapshot for the dashboard
     async def snapshot(self) -> dict:

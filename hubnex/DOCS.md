@@ -91,11 +91,17 @@ preferisci: Piper (locale e gratuito), Home Assistant Cloud, ElevenLabs, Google�
    comandi semplici ("accendi la luce della cucina") li esegue Home Assistant, subito e senza
    consumare credito; tutto il resto va all'assistente.
 
-Le risposte a voce sono brevi (al massimo due frasi) e veloci: per Assist Jarvis usa il
-**Modello per i comandi vocali** (di serie Haiku, il più rapido), riceve subito l'elenco delle
-entità della casa con il loro stato (così non deve cercarle) e istruzioni più leggere. Per
-avere la massima velocità sui comandi semplici, esponi le entità ad Assist e dai loro un alias
-con il nome che pronunci: li esegue Home Assistant da solo, senza AI. Se l'integrazione non viene rilevata:
+Le risposte a voce sono brevi (al massimo due frasi). Ogni richiesta, da Assist o dalla
+dashboard, segue la strada più veloce possibile:
+
+1. **Home Assistant da solo** ("accendi la luce della cucina"): istantaneo, senza AI. Assist lo
+   fa già; la dashboard lo prova per prima. Esponi le entità ad Assist e dai loro un alias con
+   il nome che pronunci. Serrature, allarme e porte non passano mai di qui.
+2. **La via rapida** per le altre richieste sulla casa: il **Modello per i comandi rapidi** (di
+   serie Haiku) con l'elenco delle entità e del loro stato già in mano. Nella chat compare
+   "⚡ risposta rapida" (o "⚡ Home Assistant" per il punto 1).
+3. **Jarvis** con il suo modello e tutte le istruzioni per tutto il resto: domande complesse,
+   lavoro, agenti, serrature e allarme (con la conferma). Se l'integrazione non viene rilevata:
 Dispositivi e servizi → Aggiungi → "HubNEX", con l'indirizzo dell'add-on (`http://<hostname
 dell'add-on>:8765`, l'hostname è nella pagina dell'add-on) e il **Token HQ**.
 

@@ -106,6 +106,10 @@ class HomeAssistant:
             raise HomeAssistantError(f"sintesi vocale {engine}: HA {r.status_code}")
         return r.content, r.headers.get("content-type", "audio/mpeg")
 
+    async def conversation(self, text: str, agent_id: str = "conversation.home_assistant") -> dict:
+        """Home Assistant's own conversation agent (the sentences Assist understands locally)."""
+        return await self._request("POST", "/conversation/process", json={"text": text, "agent_id": agent_id}, timeout=10)
+
     async def camera_image(self, entity_id: str) -> tuple[bytes, str]:
         """A still frame of a camera (JPEG, usually) and its content type."""
         try:

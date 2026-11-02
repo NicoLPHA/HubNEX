@@ -281,10 +281,16 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
 
     @app.post("/api/chat", dependencies=[Depends(full)])
     async def chat(body: ChatIn, hq: HQ = Depends(get_hq)):
-        reply, spoken = await hq.converse(body.channel, body.text, voice=body.voice, spoken=body.speak)
+        # Dashboard: Home Assistant's own sentences first, then the quick route, then Jarvis.
+        # Assist: Home Assistant already tried its sentences, so the quick route, then Jarvis.
+        dashboard = body.channel == "dashboard"
+        reply, spoken, by = await hq.converse(
+            body.channel, body.text, voice=body.voice, spoken=body.speak,
+            quick=body.voice or dashboard, local=dashboard,
+        )
         if body.voice and reply:
             reply = for_voice(reply)  # Assist reads it aloud: units and symbols as words
-        out = {"reply": reply or "L'agente ha risposto direttamente nel gruppo Telegram."}
+        out = {"reply": reply or "L'agente ha risposto direttamente nel gruppo Telegram.", "by": by}
         if spoken:
             out["spoken"] = spoken  # what the voice says of a long answer ("riassunto")
         return out
