@@ -6,6 +6,9 @@ configuration:
     description: Used by Jarvis and by agents that don't set their own in agents.yaml.
   model_mail:
     name: Jarvis Mail model
+  model_voice:
+    name: Voice command model
+    description: Used by Jarvis when answering Assist. Haiku is the fastest; empty = Jarvis' model.
   anthropic_credit_usd:
     name: Anthropic credit ($)
     description: Your balance on console.anthropic.com. The dashboard counts down the estimated cost of each request. Enter the new balance after a top-up. 0 = show spend only.

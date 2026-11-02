@@ -34,6 +34,15 @@ log = logging.getLogger("hubnex.hq")
 BOSS_ID = "jarvis"
 BOSS_TOOLS = ["team_overview", "delegate", "agent_history", "owner_rules"]
 CHAT_HISTORY_TURNS = 20
+VOICE_HISTORY_TURNS = 6  # Assist: a short memory is enough ("spegnila") and keeps it quick
+VOICE_MAX_ENTITIES = 250
+# What Assist may need to name or answer about without searching first.
+VOICE_DOMAINS = {
+    "light", "switch", "fan", "cover", "climate", "lock", "alarm_control_panel", "media_player",
+    "scene", "script", "input_boolean", "input_select", "input_number", "select", "number",
+    "vacuum", "valve", "humidifier", "water_heater", "siren", "lawn_mower", "button", "input_button",
+}
+VOICE_SENSOR_CLASSES = {"temperature", "humidity", "power", "door", "window", "garage_door", "opening", "lock"}
 # Jarvis answers exactly this when a delegated agent already replied in the group.
 SILENCE = "[[SILENZIO]]"
 LOW_CREDIT_USD = 1.0  # warn once in the group below this
@@ -384,6 +393,52 @@ class HQ:
             f"{self._rules_text()}"
         )
 
+    def _voice_system(self) -> str:
+        """Jarvis for Assist: the same character and rules, without the team's details (it can
+        still delegate). Stable text, so the prompt cache holds across voice commands."""
+        agents = ", ".join(f"{a.name} (id: {a.id})" for a in self.org.agents) or "nessuno"
+        return (
+            f"Sei {self.org.boss_name}, l'assistente personale. Parli in italiano con il tono calmo "
+            "ed elegante di un maggiordomo britannico. Stai rispondendo a voce tramite Assist di Home "
+            "Assistant: al massimo due frasi brevi, niente elenchi, simboli o markdown.\n\n"
+            "Per la casa: nel messaggio trovi l'elenco delle entità con nome, area e stato attuale. "
+            "Usa direttamente quegli entity_id con ha_call_service, senza cercarli prima; usa "
+            "ha_list_entities solo se ciò che serve non è nell'elenco. Per una domanda sullo stato "
+            "rispondi dall'elenco. Dopo un comando conferma in poche parole.\n"
+            "Per lavoro, posta o compiti lunghi delega con `delegate` (wait=false) all'agente giusto "
+            f"e di' che riceverà la risposta. Agenti: {agents}.\n"
+            "Fai solo ciò che ti viene chiesto, senza iniziative.\n\n"
+            f"{self.org.boss_instructions.strip()}"
+            f"{self._rules_text()}"
+        )
+
+    def _house_brief(self) -> str:
+        """The house in a few lines for a voice command: entity_id · name · area · state."""
+        w, casa = self.watcher, self.casa
+        rows = []
+        for eid, st in w.states.items():
+            domain = eid.split(".", 1)[0]
+            attrs = st.get("attributes") or {}
+            if domain in ("sensor", "binary_sensor"):
+                if attrs.get("device_class") not in VOICE_SENSOR_CLASSES:
+                    continue
+            elif domain not in VOICE_DOMAINS:
+                continue
+            reg = w.entities.get(eid) or {}
+            if reg.get("disabled_by") or reg.get("hidden_by") or reg.get("entity_category"):
+                continue
+            c = casa.compact(eid, st) or {}
+            area = (w.areas.get(w.area_of(eid) or "") or {}).get("name", "")
+            state = st.get("state", "")
+            if domain == "climate" and attrs.get("current_temperature") is not None:
+                state += f", {attrs['current_temperature']}°"
+            elif attrs.get("unit_of_measurement"):
+                state += f" {attrs['unit_of_measurement']}"
+            rows.append(f"{eid} · {c.get('n') or eid} · {area or '-'} · {state}")
+            if len(rows) >= VOICE_MAX_ENTITIES:
+                break
+        return "\n".join(sorted(rows))
+
     # ------------------------------------------------------------------ running agents
     async def run_agent(
         self, agent_id: str, task: str, source: str = "user", history_channel: str | None = None
@@ -447,9 +502,9 @@ class HQ:
         self._background.add(t)
         t.add_done_callback(self._background.discard)
 
-    async def _history_messages(self, channel: str, text: str) -> list[dict]:
+    async def _history_messages(self, channel: str, text: str, turns: int = CHAT_HISTORY_TURNS) -> list[dict]:
         """Past turns of `channel` as plain text (no thinking blocks to keep valid) + `text`."""
-        history = await self.store.chat_history(channel, CHAT_HISTORY_TURNS)
+        history = await self.store.chat_history(channel, turns)
         messages: list[dict] = []
         for h in history:
             if messages and messages[-1]["role"] == h["role"]:
@@ -483,10 +538,13 @@ class HQ:
         async with lock:
             prompt = f"{self._stamp()}\n{text}"
             if voice:
+                house = self._house_brief() if self.ha.enabled else ""
+                if house:
+                    prompt += f"\n\n[Casa adesso: entity_id · nome · area · stato]\n{house}"
                 prompt += "\n[Risposta letta ad alta voce: al massimo due frasi, niente elenchi né simboli.]"
             elif summary:
                 prompt += VOICE_HINT
-            messages = await self._history_messages(channel, prompt)
+            messages = await self._history_messages(channel, prompt, VOICE_HISTORY_TURNS if voice else CHAT_HISTORY_TURNS)
             await self.store.chat_add(channel, "user", text)
             await self.log("chat", f"Tu ({channel}): {text}", BOSS_ID)
 
@@ -495,14 +553,17 @@ class HQ:
                     BOSS_TOOLS + self.org.boss_tools + ALWAYS_TOOLS + ["deadline_done"]
                 )
             )
-            tool_defs, extra = await self._toolbox(BOSS_ID, tool_names, self.settings.model)
+            if voice:  # Assist: the house, delegation and memory are enough
+                tool_names = [t for t in tool_names if t not in ("team_overview", "agent_history", "owner_rules")]
+            model = (self.settings.model_voice or self.settings.model) if voice else self.settings.model
+            tool_defs, extra = await self._toolbox(BOSS_ID, tool_names, model)
             await self.set_status(BOSS_ID, "thinking", None, task=text)
             try:
                 result = await run_agent_loop(
                     self.client,
-                    model=self.settings.model,
+                    model=model,
                     effort="low" if voice else self.org.boss_effort,
-                    system=self._boss_system(),
+                    system=self._voice_system() if voice else self._boss_system(),
                     tools=tool_defs,
                     messages=messages,
                     execute=self._executor(BOSS_ID, None, set(tool_names), extra),

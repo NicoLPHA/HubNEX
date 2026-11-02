@@ -315,3 +315,38 @@ def test_split_voice():
 
     assert split_voice("Testo.\n\n[VOCE] Breve.") == ("Testo.", "Breve.")
     assert split_voice("Solo testo.") == ("Solo testo.", None)
+
+
+async def test_voice_commands_are_quick(make_hq):
+    hq = make_hq([response([text_block("Fatto, Signore.")], "end_turn"), response([text_block("Prego.")], "end_turn")])
+
+    class HA:
+        enabled = True
+
+    hq.ha = HA()
+    w = hq.watcher
+    w.areas = {"cucina": {"area_id": "cucina", "name": "Cucina"}}
+    w.entities = {"light.cucina": {"entity_id": "light.cucina", "area_id": "cucina", "aliases": ["Luce cucina"]},
+                  "sensor.cpu": {"entity_id": "sensor.cpu", "entity_category": "diagnostic"}}
+    w.states = {
+        "light.cucina": {"entity_id": "light.cucina", "state": "off", "attributes": {"friendly_name": "Lampada"}},
+        "sensor.temp_cucina": {"entity_id": "sensor.temp_cucina", "state": "21.5", "attributes": {"device_class": "temperature", "unit_of_measurement": "°C"}},
+        "sensor.cpu": {"entity_id": "sensor.cpu", "state": "3", "attributes": {}},
+        "automation.x": {"entity_id": "automation.x", "state": "on", "attributes": {}},
+    }
+    assert await hq.chat("assist", "accendi la luce della cucina", voice=True) == "Fatto, Signore."
+    req = hq.client.requests[-1]
+    assert req["model"] == "claude-haiku-5-5"
+    assert "IL TUO TEAM" not in req["system"] and "Assist" in req["system"]
+    last = req["messages"][-1]["content"]
+    assert "light.cucina · Luce cucina · Cucina · off" in last and "sensor.temp_cucina" in last and "21.5 °C" in last
+    assert "sensor.cpu" not in last and "automation.x" not in last
+    names = {t.get("name") for t in req.get("tools", [])}
+    assert "team_overview" not in names and "delegate" in names
+
+    # the dashboard keeps Jarvis' own model and system; the house list is not stored in the history
+    await hq.chat("dashboard", "grazie")
+    req = hq.client.requests[-1]
+    assert req["model"] == hq.settings.model and "IL TUO TEAM" in req["system"]
+    history = await hq.store.chat_history("assist", 10)
+    assert all("Casa adesso" not in h["text"] for h in history)

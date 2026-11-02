@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.6
+- Comandi vocali (Assist) più veloci:
+  - nuova opzione "Modello per i comandi vocali", di serie Haiku: Telegram e dashboard
+    restano sul modello di Jarvis;
+  - Jarvis riceve l'elenco delle entità della casa con area e stato, quindi comanda subito
+    senza cercarle e risponde alle domande sullo stato senza strumenti;
+  - istruzioni e cronologia più leggere per la voce (può sempre delegare agli agenti).
+
 ## 1.8.5
 - I popup della Casa (Energia compresa) scorrono senza la barra di scorrimento chiara, come il
   resto di HubNEX.

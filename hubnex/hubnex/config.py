@@ -31,6 +31,7 @@ ADDON_OPTIONS = {
     "anthropic_api_key": "ANTHROPIC_API_KEY",
     "model_jarvis": "HUBNEX_MODEL",
     "model_mail": "HUBNEX_MODEL_MAIL",
+    "model_voice": "HUBNEX_MODEL_VOICE",
     "hq_token": "HQ_TOKEN",
     "telegram_token_jarvis": "TELEGRAM_TOKEN_JARVIS",
     "telegram_token_mail": "TELEGRAM_TOKEN_MAIL",
@@ -63,6 +64,7 @@ INGRESS_PROXY_IP = "172.30.32.2"
 DEFAULT_AGENTS = Path(__file__).resolve().parent.parent / "config" / "agents.yaml"
 DEFAULT_MODEL = "claude-sonnet-5-5"
 DEFAULT_MAIL_MODEL = "claude-haiku-5-5"
+DEFAULT_VOICE_MODEL = "claude-haiku-5-5"  # Assist: speed first
 
 
 def _load_addon_options(options_file: str = "/data/options.json", config_dir: str = "/config") -> bool:
@@ -131,6 +133,7 @@ class MailSettings:
 class Settings:
     model: str = DEFAULT_MODEL  # Jarvis and every agent without its own model
     model_mail: str = DEFAULT_MAIL_MODEL  # the mail agent
+    model_voice: str = DEFAULT_VOICE_MODEL  # Jarvis answering Assist (voice commands)
     anthropic_credit_usd: float = 0.0  # prepaid credit to count down from (0 = just show spend)
     hq_token: str = ""
     internal_token: str = ""  # used by the Assist integration (add-on only)
@@ -170,6 +173,7 @@ class Settings:
         return cls(
             model=e("HUBNEX_MODEL") or DEFAULT_MODEL,
             model_mail=e("HUBNEX_MODEL_MAIL") or DEFAULT_MAIL_MODEL,
+            model_voice=e("HUBNEX_MODEL_VOICE") or DEFAULT_VOICE_MODEL,
             anthropic_credit_usd=float(e("ANTHROPIC_CREDIT_USD") or 0),
             hq_token=e("HQ_TOKEN", ""),
             internal_token=e("HUBNEX_INTERNAL_TOKEN", ""),
