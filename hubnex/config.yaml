@@ -7,8 +7,6 @@ arch:
   - amd64
   - aarch64
 init: false
-startup: application
-boot: auto
 # Accesso all'API di Home Assistant tramite il Supervisor (niente token da creare)
 homeassistant_api: true
 # Dashboard nella barra laterale di HA
