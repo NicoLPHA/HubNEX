@@ -349,6 +349,7 @@ Per passare da una copia locale (`/addons/local`) all'add-on del repository:
    salva e avvia.
 4. Apri HubNEX: **Preferenze → Ripristina → Carica…** e scegli il backup. HubNEX si riavvia
    con i tuoi dati.
-5. Assist: in **Dispositivi e servizi** elimina la vecchia integrazione HubNEX e configura
-   quella "rilevata" del nuovo add-on.
+5. Assist: in **Dispositivi e servizi** elimina la vecchia integrazione HubNEX, poi
+   **riavvia l'add-on HubNEX**: compare "HubNEX rilevato", premi *Configura* (nessun token da
+   inserire).
 6. Quando tutto funziona, disinstalla l'add-on locale.

@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "HubNEX",
-        "description": "Address of the HubNEX add-on and its HQ token.",
+        "description": "Usually not needed: restart the HubNEX add-on and confirm \"HubNEX discovered\". By hand: http://<add-on hostname>:8765 (the hostname is on the add-on page) and the HQ token from the add-on configuration.",
         "data": { "url": "URL", "token": "Token" }
       },
       "hassio_confirm": {

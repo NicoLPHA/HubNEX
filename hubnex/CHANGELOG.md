@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.10
+- Integrazione Assist aggiunta a mano: niente più indirizzo predefinito della copia locale
+  (`local-hubnex`), che con l'add-on del repository è sbagliato; la finestra spiega che di
+  solito basta riavviare l'add-on e confermare "HubNEX rilevato".
+
 ## 1.8.9
 - Backup di HubNEX dalle Preferenze: un file con memoria e mappa neurale, scadenze, chat,
   impostazioni della Casa, piantina ed energia, `agents.yaml`. Senza le opzioni dell'add-on (chiavi API, Telegram, posta).

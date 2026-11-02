@@ -40,7 +40,9 @@ class HubNEXConfigFlow(ConfigFlow, domain=DOMAIN):
             errors["base"] = error
         schema = vol.Schema(
             {
-                vol.Required(CONF_URL, default=(user_input or {}).get(CONF_URL, "http://local-hubnex:8765")): str,
+                # The add-on's hostname depends on how it was installed (local copy or repository):
+                # it is on the add-on's page. Usually there is no need: the add-on announces itself.
+                vol.Required(CONF_URL, default=(user_input or {}).get(CONF_URL, "http://")): str,
                 vol.Required(CONF_TOKEN): str,
             }
         )
