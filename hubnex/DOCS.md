@@ -98,8 +98,8 @@ dashboard, segue la strada più veloce possibile:
    fa già; la dashboard lo prova per prima. Esponi le entità ad Assist e dai loro un alias con
    il nome che pronunci. Serrature, allarme e porte non passano mai di qui.
 2. **La via rapida** per le altre richieste sulla casa: il **Modello per i comandi rapidi** (di
-   serie Haiku) con l'elenco delle entità e del loro stato già in mano. Nella chat compare
-   "⚡ risposta rapida" (o "⚡ Home Assistant" per il punto 1).
+   serie Haiku) con l'elenco delle entità e del loro stato già in mano. Nella chat, sotto la
+   risposta, compare la scritta RISPOSTA RAPIDA (o HOME ASSISTANT per il punto 1).
 3. **Jarvis** con il suo modello e tutte le istruzioni per tutto il resto: domande complesse,
    lavoro, agenti, serrature e allarme (con la conferma). Se l'integrazione non viene rilevata:
 Dispositivi e servizi → Aggiungi → "HubNEX", con l'indirizzo dell'add-on (`http://<hostname

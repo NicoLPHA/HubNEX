@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.8
+- Chi ha risposto nella chat è una piccola scritta nello stile di HubNEX (HOME ASSISTANT,
+  RISPOSTA RAPIDA), senza emoji.
+
 ## 1.8.7
 - Dashboard e Assist seguono la strada più veloce:
   1. dashboard: prima le frasi di Home Assistant (istantaneo, senza AI);
