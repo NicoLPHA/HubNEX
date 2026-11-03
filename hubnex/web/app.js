@@ -8,6 +8,7 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { Brain, TYPES } from "./brain.js";
 import { Orb, describeTool } from "./orb.js";
 import { CasaView } from "./casa.js";
+import { CostsView, money } from "./costs.js";
 import { t, LANG, LOCALE, setLang, translatePage } from "./i18n.js";
 
 translatePage();
@@ -41,6 +42,7 @@ async function api(path, opts = {}) {
 }
 
 const orb = new Orb($("orb"));
+const costs = new CostsView(api);
 
 // ===================================================================== three.js scene
 const container = $("scene");
@@ -444,6 +446,7 @@ $("ha-prefs").addEventListener("click", () => {
   if (open) loadStartPref().catch((err) => { $("pref-start-note").textContent = `⚠ ${err.message || err}`; });
 });
 $("prefs-close").addEventListener("click", () => { $("prefs").classList.add("hidden"); $("ha-prefs").setAttribute("aria-expanded", "false"); });
+$("pref-costs").addEventListener("click", () => { $("prefs-close").click(); costs.open(); });
 
 // Backup and restore (administrators only; the add-on checks it too).
 $("backup-get").addEventListener("click", async () => {
@@ -644,14 +647,16 @@ function renderStats() {
   const fmt = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "k" : n);
   // Remaining Anthropic credit (estimated: credit entered in the add-on minus the cost of each call).
   const left = s.credit_usd - s.spent_usd;
-  const money = s.credit_usd
-    ? [t("Credito Claude"), `$${Math.max(left, 0).toFixed(2)}`, left < 1 ? "low" : "", true]
-    : [t("Spesa Claude"), `$${s.spent_usd.toFixed(2)}`, "", true];
+  const claudeTile = s.credit_usd
+    ? [t("Credito Claude"), money(Math.max(left, 0)), left < 1 ? "low" : "", true]
+    : [t("Spesa Claude"), money(s.spent_usd), "", true];
   $("stats").innerHTML = [
     [t("Agenti attivi"), `${S.data.agents.filter((a) => a.status !== "sleeping" && a.status !== "error").length}/${S.data.agents.length}`, ""], [t("Compiti fatti"), s.tasks_done, ""],
-    [t("Memorie"), s.memories, ""], money,
-  ].map(([l, v, cls, claude]) => `<div class="stat ${cls}" ${claude ? `title="${esc(t("{n} token dall'avvio", { n: fmt(s.tokens_in + s.tokens_out) }))}"` : ""}><div class="v">${esc(v)}</div><div class="l">${l}</div></div>`).join("");
+    [t("Memorie"), s.memories, ""], claudeTile,
+  ].map(([l, v, cls, claude]) => `<div class="stat ${cls}${claude ? " stat-costs" : ""}" ${claude ? `role="button" tabindex="0" data-costs title="${esc(t("Storico della spesa · {n} token dall'avvio", { n: fmt(s.tokens_in + s.tokens_out) }))}"` : ""}><div class="v">${esc(v)}</div><div class="l">${l}</div></div>`).join("");
 }
+$("stats").addEventListener("click", (e) => { if (e.target.closest("[data-costs]")) costs.open(); });
+$("stats").addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.closest("[data-costs]")) { e.preventDefault(); costs.open(); } });
 
 function renderDeadlines() {
   const now = Date.now();

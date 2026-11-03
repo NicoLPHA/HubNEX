@@ -302,6 +302,11 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         """Older activity for the dashboard's "Mostra precedenti" button."""
         return await hq.store.recent_logs(min(limit, 100), before_id=before)
 
+    @app.get("/api/costs", dependencies=[Depends(full)])
+    async def costs(days: int = 30, hq: HQ = Depends(get_hq)):
+        """Claude spend history: per day, per agent, per model, this month and the budget."""
+        return await hq.costs(days)
+
     @app.get("/api/graph", dependencies=[Depends(full)])
     async def graph(hq: HQ = Depends(get_hq)):
         return await build_graph(hq)
@@ -684,7 +689,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
                 ],
                 effort="medium",
                 schema=SUGGEST_SCHEMA,
-                on_usage=hq.on_usage,
+                on_usage=hq.usage_for("plan"),
             )
             rooms = clean_suggestion(json.loads(raw), areas)
         except Exception as exc:

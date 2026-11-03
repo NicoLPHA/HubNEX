@@ -59,6 +59,7 @@ ADDON_OPTIONS = {
     "install_assist_integration": "HUBNEX_INSTALL_ASSIST",
     "non_admin_access": "HUBNEX_NON_ADMIN_ACCESS",
     "anthropic_credit_usd": "ANTHROPIC_CREDIT_USD",
+    "monthly_budget_usd": "HUBNEX_MONTHLY_BUDGET_USD",
 }
 # The Supervisor's ingress proxy: requests from here were already authenticated by HA.
 INGRESS_PROXY_IP = "172.30.32.2"
@@ -149,6 +150,7 @@ class Settings:
     model_mail: str = DEFAULT_MAIL_MODEL  # the mail agent
     model_voice: str = DEFAULT_VOICE_MODEL  # Jarvis answering Assist (voice commands)
     anthropic_credit_usd: float = 0.0  # prepaid credit to count down from (0 = just show spend)
+    monthly_budget_usd: float = 0.0  # warn at 80% and 100% of this monthly Claude spend (0 = off)
     hq_token: str = ""
     internal_token: str = ""  # used by the Assist integration (add-on only)
     install_assist_integration: bool = False
@@ -190,6 +192,7 @@ class Settings:
             model_mail=e("HUBNEX_MODEL_MAIL") or DEFAULT_MAIL_MODEL,
             model_voice=e("HUBNEX_MODEL_VOICE") or DEFAULT_VOICE_MODEL,
             anthropic_credit_usd=float(e("ANTHROPIC_CREDIT_USD") or 0),
+            monthly_budget_usd=float(e("HUBNEX_MONTHLY_BUDGET_USD") or 0),
             hq_token=e("HQ_TOKEN", ""),
             internal_token=e("HUBNEX_INTERNAL_TOKEN", ""),
             install_assist_integration=addon and _bool(e("HUBNEX_INSTALL_ASSIST"), True),

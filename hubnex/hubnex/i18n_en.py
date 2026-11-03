@@ -128,4 +128,9 @@ EN: dict[str, str] = {
     "{name} è online. {n} agenti nel team.": "{name} is online. {n} agents in the team.",
     "{n} nuove email": "{n} new emails",
     "{n} stanze": "{n} rooms",
+    "Budget mensile di Claude superato: spesi {spent} $ su {budget} $ questo mese.": "Monthly Claude budget exceeded: {spent} $ spent of {budget} $ this month.",
+    "Hai usato l'80% del budget mensile di Claude: {spent} $ su {budget} $.": "You have used 80% of the monthly Claude budget: {spent} $ of {budget} $.",
+    "HubNEX · spesa Claude": "HubNEX · Claude spend",
+    "Proposta della piantina": "Floor plan proposal",
+    "Sistema": "System",
 }

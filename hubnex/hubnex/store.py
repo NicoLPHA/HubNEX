@@ -73,6 +73,16 @@ CREATE TABLE IF NOT EXISTS actions (
     msg_id INTEGER,
     created REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS usage_daily (
+    day TEXT NOT NULL,
+    agent_id TEXT NOT NULL,
+    model TEXT NOT NULL,
+    calls INTEGER NOT NULL DEFAULT 0,
+    tokens_in INTEGER NOT NULL DEFAULT 0,
+    tokens_out INTEGER NOT NULL DEFAULT 0,
+    cost REAL NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, agent_id, model)
+);
 CREATE TABLE IF NOT EXISTS chat (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ts REAL NOT NULL,
@@ -111,6 +121,27 @@ class Store:
                 return cur.lastrowid
 
             return await asyncio.to_thread(work)
+
+    # --- Claude spend, one row per day, agent and model --------------------
+    async def usage_add(self, day: str, agent_id: str, model: str, tokens_in: int, tokens_out: int, cost: float) -> None:
+        await self._run(
+            "INSERT INTO usage_daily (day, agent_id, model, calls, tokens_in, tokens_out, cost) VALUES (?,?,?,1,?,?,?) "
+            "ON CONFLICT(day, agent_id, model) DO UPDATE SET calls=calls+1, tokens_in=tokens_in+excluded.tokens_in, "
+            "tokens_out=tokens_out+excluded.tokens_out, cost=cost+excluded.cost",
+            (day, agent_id, model, tokens_in, tokens_out, cost),
+        )
+
+    async def usage_by(self, column: str, since: str, until: str = "9999") -> list[dict]:
+        """Spend from day `since` to `until` (included) grouped by day, agent_id or model."""
+        if column not in ("day", "agent_id", "model"):
+            raise ValueError(column)
+        return await self._run(
+            f"SELECT {column} AS key, SUM(calls) AS calls, SUM(tokens_in) AS tokens_in, SUM(tokens_out) AS tokens_out, "
+            f"SUM(cost) AS cost FROM usage_daily WHERE day >= ? AND day <= ? GROUP BY {column} ORDER BY "
+            + ("day" if column == "day" else "cost DESC"),
+            (since, until),
+            fetch=True,
+        )
 
     # --- log -------------------------------------------------------------
     async def log(self, kind: str, text: str, agent_id: str | None = None) -> dict:

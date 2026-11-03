@@ -14,6 +14,9 @@ configuration:
   anthropic_credit_usd:
     name: Credito Anthropic ($)
     description: Il saldo che vedi su console.anthropic.com (es. 4.90). La dashboard scala da qui il costo stimato di ogni richiesta. Quando ricarichi, scrivi il nuovo saldo e il conteggio riparte. 0 = mostra solo la spesa.
+  monthly_budget_usd:
+    name: Budget mensile Claude ($)
+    description: Avviso nel gruppo Telegram e nelle notifiche quando la spesa del mese arriva all'80% e al 100%. È solo un avviso, HubNEX non si ferma. 0 = nessun avviso.
   telegram_token_jarvis:
     name: Token bot Jarvis
     description: Da @BotFather. Deve essere un bot che nessun altro programma sta ascoltando.

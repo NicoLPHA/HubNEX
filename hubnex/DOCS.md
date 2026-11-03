@@ -329,6 +329,24 @@ Il riquadro **Credito Claude** è una **stima**: in `anthropic_credit_usd` scriv
 vedi su console.anthropic.com → Billing e HubNEX scala il costo di ogni richiesta. Sotto 1 $
 ricevi un avviso. Con `0` vedi solo quanto hai speso.
 
+### Storico della spesa
+
+Clic sul riquadro **Spesa/Credito Claude** in HQ (sul telefono: ⚙ Preferenze → **Spesa Claude**)
+per aprire lo storico:
+
+- **oggi**, **questo mese** e la **stima a fine mese**, calcolata sul ritmo dei giorni passati;
+- una barra per giorno negli ultimi 7, 30 o 90 giorni (passaci sopra per cifra e chiamate);
+- la spesa **per agente** (Jarvis, Jarvis Mail, gli agenti del team, la proposta della
+  piantina) e **per modello** (Sonnet, Haiku…), con le chiamate e i token.
+
+Con `monthly_budget_usd` imposti un budget mensile: all'80% e al 100% ricevi un avviso nel
+gruppo Telegram e nelle notifiche di Home Assistant, e nel popup compare la barra del budget.
+È solo un avviso: HubNEX non si ferma. Lo storico parte dall'installazione di questa versione
+ed è incluso nel backup.
+
+Le cifre sono la stima di HubNEX con i prezzi di listino di ogni chiamata: il conto esatto è su
+console.anthropic.com.
+
 Per spendere poco: l'agente della posta usa il modello economico; con Assist i comandi semplici
 li fa Home Assistant; le routine e le ricerche web consumano, usale quando servono.
 

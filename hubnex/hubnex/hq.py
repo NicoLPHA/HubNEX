@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import calendar
 import logging
 import re
 import time
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -18,7 +19,7 @@ from hubnex import __version__
 from hubnex.config import AgentSpec, OrgChart, Settings
 from hubnex.integrations.elevenlabs import ElevenLabs
 from hubnex.speech import VOICE_HINT, for_voice, split_voice
-from hubnex.i18n import LANGS, lang, set_system_lang, system_lang, tr_sys
+from hubnex.i18n import LANGS, lang, set_system_lang, system_lang, tr, tr_sys
 from hubnex.actions import ActionDesk
 from hubnex.connectors import Connectors
 from hubnex.casa import Casa
@@ -310,12 +311,16 @@ class HQ:
         await self.store.chat_add(channel, "user", f"[nota dal gruppo] {text}")
         await self.store.chat_add(channel, "assistant", "Preso nota.")
 
-    async def on_usage(self, usage, model: str) -> None:
-        self.tokens["input"] += (usage.input_tokens or 0) + (usage.cache_read_input_tokens or 0) + (
-            usage.cache_creation_input_tokens or 0
+    async def on_usage(self, usage, model: str, agent_id: str = "system") -> None:
+        tokens_in = (usage.input_tokens or 0) + (getattr(usage, "cache_read_input_tokens", 0) or 0) + (
+            getattr(usage, "cache_creation_input_tokens", 0) or 0
         )
-        self.tokens["output"] += usage.output_tokens or 0
-        spent = await self.store.get("credit_spent_usd", 0.0) + call_cost(model, usage)
+        tokens_out = usage.output_tokens or 0
+        self.tokens["input"] += tokens_in
+        self.tokens["output"] += tokens_out
+        cost = call_cost(model, usage)
+        await self.store.usage_add(self.now().strftime("%Y-%m-%d"), agent_id, model, tokens_in, tokens_out, cost)
+        spent = await self.store.get("credit_spent_usd", 0.0) + cost
         await self.store.put("credit_spent_usd", spent)
         credit = self.settings.anthropic_credit_usd
         if credit and credit - spent < LOW_CREDIT_USD and not await self.store.get("credit_low_warned"):
@@ -323,6 +328,78 @@ class HQ:
             await self.notify(
                 "⚠️ " + tr_sys("Credito Anthropic quasi finito: restano circa {left} $. Ricarica su console.anthropic.com e aggiorna il credito nella configurazione dell'add-on.", left=f"{credit - spent:.2f}")
             )
+        await self._check_budget()
+
+    def usage_for(self, agent_id: str):
+        """on_usage callback that books the calls to `agent_id`."""
+        return lambda usage, model: self.on_usage(usage, model, agent_id)
+
+    async def _check_budget(self) -> None:
+        """Warn once at 80% and once at 100% of the monthly budget. It only warns: nothing stops."""
+        budget = self.settings.monthly_budget_usd
+        if not budget:
+            return
+        month = self.now().strftime("%Y-%m")
+        spent = sum(r["cost"] for r in await self.store.usage_by("model", month + "-01", month + "-31"))
+        level = 100 if spent >= budget else 80 if spent >= budget * 0.8 else 0
+        key = f"budget_warned_{month}"
+        if level and level > (await self.store.get(key, 0)):
+            await self.store.put(key, level)
+            msg = (
+                tr_sys("Budget mensile di Claude superato: spesi {spent} $ su {budget} $ questo mese.", spent=f"{spent:.2f}", budget=f"{budget:.2f}")
+                if level == 100
+                else tr_sys("Hai usato l'80% del budget mensile di Claude: {spent} $ su {budget} $.", spent=f"{spent:.2f}", budget=f"{budget:.2f}")
+            )
+            await self.notify("⚠️ " + msg)
+            try:  # also in Home Assistant's notifications, for who has no Telegram
+                await self.ha.call_service(
+                    "persistent_notification", "create",
+                    {"title": tr_sys("HubNEX · spesa Claude"), "message": msg, "notification_id": "hubnex_budget"},
+                )
+            except Exception:
+                log.debug("budget notification to Home Assistant failed", exc_info=True)
+
+    def _usage_label(self, agent_id: str) -> str:
+        if agent_id in self.agents:
+            return self.agents[agent_id].name
+        return {"plan": tr("Proposta della piantina"), "system": tr("Sistema")}.get(agent_id, agent_id)
+
+    async def costs(self, days: int = 30) -> dict:
+        """Claude spend for the dashboard: per day over `days`, per agent and model over the same span,
+        this month with an end-of-month estimate, and the monthly budget."""
+        days = max(1, min(int(days), 366))
+        now = self.now()
+        start = (now - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+        today = now.strftime("%Y-%m-%d")
+        per_day = {r["key"]: r for r in await self.store.usage_by("day", start)}
+        series = []
+        for i in range(days):
+            d = (now - timedelta(days=days - 1 - i)).strftime("%Y-%m-%d")
+            r = per_day.get(d)
+            series.append({"day": d, "cost": round(r["cost"], 4) if r else 0.0, "calls": r["calls"] if r else 0})
+        month = now.strftime("%Y-%m")
+        month_spent = sum(r["cost"] for r in await self.store.usage_by("model", month + "-01", month + "-31"))
+        days_in_month = calendar.monthrange(now.year, now.month)[1]
+        # Estimate: the pace of the elapsed days (today counted by the hours gone) over the whole month.
+        elapsed = now.day - 1 + (now.hour * 60 + now.minute + 1) / 1440
+        forecast = month_spent / elapsed * days_in_month if elapsed >= 1 else None
+
+        def rows(items, label):
+            return [
+                {"id": r["key"], "name": label(r["key"]), "cost": round(r["cost"], 4), "calls": r["calls"],
+                 "tokens_in": r["tokens_in"], "tokens_out": r["tokens_out"]}
+                for r in items
+            ]
+
+        return {
+            "days": series,
+            "today": next((p["cost"] for p in series if p["day"] == today), 0.0),
+            "period": round(sum(p["cost"] for p in series), 4),
+            "by_agent": rows(await self.store.usage_by("agent_id", start), self._usage_label),
+            "by_model": rows(await self.store.usage_by("model", start), lambda m: m),
+            "month": {"spent": round(month_spent, 4), "forecast": round(forecast, 2) if forecast is not None else None,
+                      "budget": self.settings.monthly_budget_usd},
+        }
 
     def model_for(self, spec: AgentSpec | None) -> str:
         if spec is None:
@@ -517,7 +594,7 @@ class HQ:
                     messages=messages,
                     execute=self._executor(agent_id, spec.company, set(tool_names), extra),
                     on_status=lambda s, d: self.set_status(agent_id, s, d),
-                    on_usage=self.on_usage,
+                    on_usage=self.usage_for(agent_id),
                 )
             except Exception as exc:
                 log.exception("agent %s failed", agent_id)
@@ -635,7 +712,7 @@ class HQ:
                 self.client, model=model, effort="low", system=self._quick_system(voice),
                 tools=tool_defs, messages=messages,
                 execute=self._executor(BOSS_ID, None, set(tool_names), extra),
-                on_status=lambda s, d: self.set_status(BOSS_ID, s, d), on_usage=self.on_usage,
+                on_status=lambda s, d: self.set_status(BOSS_ID, s, d), on_usage=self.usage_for(BOSS_ID),
                 max_turns=6,
             )
         except Exception:
@@ -675,7 +752,7 @@ class HQ:
                 messages=messages,
                 execute=self._executor(BOSS_ID, None, set(tool_names), extra),
                 on_status=lambda s, d: self.set_status(BOSS_ID, s, d),
-                on_usage=self.on_usage,
+                on_usage=self.usage_for(BOSS_ID),
             )
         except Exception as exc:
             log.exception("jarvis chat failed")

@@ -12,6 +12,9 @@ configuration:
   anthropic_credit_usd:
     name: Anthropic credit ($)
     description: Your balance on console.anthropic.com. The dashboard counts down the estimated cost of each request. Enter the new balance after a top-up. 0 = show spend only.
+  monthly_budget_usd:
+    name: Monthly Claude budget ($)
+    description: A warning in the Telegram group and in the notifications when this month's spend reaches 80% and 100%. Only a warning, HubNEX doesn't stop. 0 = no warning.
   telegram_token_jarvis:
     name: Jarvis bot token
   telegram_token_mail:

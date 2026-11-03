@@ -136,6 +136,33 @@ test("preferenze: il backup si scarica", { timeout: 30000 }, async () => {
   await done(page);
 });
 
+test("spesa Claude: dalla scheda in HQ, per giorno, agente e modello", { timeout: 30000 }, async () => {
+  const page = await open();
+  await page.click("#view-hq");
+  await page.click("[data-costs]");
+  await page.waitForSelector(".costs-row");
+  assert.equal(await page.locator(".costs-bar").count(), 30, "una barra per giorno");
+  assert.match(await page.textContent(".costs"), /Jarvis Mail/);
+  assert.match(await page.textContent(".costs"), /claude-haiku-5-5/);
+  assert.match(await page.textContent(".costs-budget"), /\$15,00/, "il budget della demo");
+  await page.click("[data-span='7']");
+  await page.waitForFunction(() => document.querySelectorAll(".costs-bar").length === 7);
+  await page.keyboard.press("Escape");
+  assert.equal(await page.locator(".costs-modal").count(), 0, "Esc chiude");
+  await done(page);
+});
+
+test("telefono: la spesa Claude si apre dalle preferenze", { timeout: 30000 }, async () => {
+  const page = await open({ width: 390, height: 844 });
+  await page.click("#ha-prefs");
+  await page.click("#pref-costs");
+  await page.waitForSelector(".costs-row");
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 390, "niente scorrimento laterale");
+  await page.click("[data-costs-close]");
+  assert.equal(await page.locator(".costs-modal").count(), 0);
+  await done(page);
+});
+
 test("telefono: la scheda della stanza sale dal basso", { timeout: 30000 }, async () => {
   const page = await open({ width: 390, height: 844 });
   await casa(page);

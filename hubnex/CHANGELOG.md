@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.11.0
+- Storico della spesa Claude: clic sul riquadro della spesa in HQ (o ⚙ Preferenze → Spesa
+  Claude). Oggi, mese, stima a fine mese, una barra per giorno (7/30/90 giorni), spesa per
+  agente e per modello con chiamate e token.
+- Nuova opzione `monthly_budget_usd`: avviso all'80% e al 100% del budget del mese, nel gruppo
+  Telegram e nelle notifiche di Home Assistant. Solo un avviso, niente si ferma.
+- La spesa di ogni chiamata a Claude è registrata per giorno, agente e modello (inclusa nel
+  backup).
+
 ## 1.10.1
 - Guida completa in inglese (DOCS.en.md) e team di esempio in inglese: con la lingua
   inglese, al primo avvio l'add-on crea agents.yaml già tradotto.

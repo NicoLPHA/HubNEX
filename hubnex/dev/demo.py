@@ -156,8 +156,33 @@ class DemoClaude(FakeClient):
         return _Stream(response([text_block("Sono la demo di HubNEX: qui Claude non c'è, ma la casa risponde.")], "end_turn"))
 
 
+s.monthly_budget_usd = 15.0
 hq = HQ(s, load_org(s.agents_file), Store(s.db_path), client=DemoClaude([]))
 hq.watcher._connect = lambda url: T.FakeWS()
+
+
+def seed_costs() -> None:
+    """Six weeks of Claude spend, so the spend popup has something to show."""
+    import random
+    from hubnex.hq import BOSS_ID
+    rnd = random.Random(7)
+    agents = [a.id for a in hq.org.agents][:4]
+    for back in range(42):
+        day = (datetime.now() - timedelta(days=back)).strftime("%Y-%m-%d")
+        busy = 0.4 if (datetime.now() - timedelta(days=back)).weekday() >= 5 else 1.0
+        rows = [(BOSS_ID, "claude-sonnet-5-5", 0.25), (BOSS_ID, "claude-haiku-5-5", 0.03), ("mail", "claude-haiku-5-5", 0.04)]
+        rows += [(a, "claude-sonnet-5-5", 0.08) for a in agents if a != "mail"]
+        for agent, model, base in rows:
+            cost = base * busy * (0.3 + 1.4 * rnd.random())
+            calls = max(1, int(cost * 60))
+            hq.store._conn.execute(
+                "INSERT INTO usage_daily VALUES (?,?,?,?,?,?,?)",
+                (day, agent, model, calls, calls * 9000, calls * 400, cost),
+            )
+    hq.store._conn.commit()
+
+
+seed_costs()
 
 
 class REST:

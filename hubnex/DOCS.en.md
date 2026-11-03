@@ -330,6 +330,25 @@ The **Claude credit** tile is an **estimate**: in `anthropic_credit_usd` write t
 see at console.anthropic.com → Billing and HubNEX subtracts the cost of every request. Below
 $1 you get a warning. With `0` you only see how much you spent.
 
+### Spend history
+
+Click the **Claude spend/credit** tile in HQ (on the phone: ⚙ Preferences → **Claude spend**)
+to open the history:
+
+- **today**, **this month** and the **end-of-month estimate**, based on the pace of the days
+  gone by;
+- one bar per day over the last 7, 30 or 90 days (hover for the amount and the calls);
+- the spend **by agent** (Jarvis, Jarvis Mail, the team's agents, the floor plan proposal) and
+  **by model** (Sonnet, Haiku…), with calls and tokens.
+
+With `monthly_budget_usd` you set a monthly budget: at 80% and 100% you get a warning in the
+Telegram group and in Home Assistant's notifications, and the popup shows the budget bar. It is
+only a warning: HubNEX doesn't stop. The history starts when you install this version and is
+included in the backup.
+
+The figures are HubNEX's estimate at list price for every call: the exact bill is on
+console.anthropic.com.
+
 To spend little: the mail agent uses the cheap model; with Assist simple commands are done by
 Home Assistant; routines and web searches cost credit, use them when needed.
 
