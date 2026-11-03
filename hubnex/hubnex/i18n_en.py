@@ -163,4 +163,5 @@ EN: dict[str, str] = {
     "il condizionatore è acceso": "the air conditioning is on",
     "il riscaldamento è acceso": "the heating is on",
     "sta piovendo": "it is raining",
+    "URGENTE: {title}": "URGENT: {title}",
 }

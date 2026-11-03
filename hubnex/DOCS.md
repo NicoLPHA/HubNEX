@@ -165,6 +165,10 @@ Imposta IMAP/SMTP del tuo provider (server, porte SSL 993/465, utente, password)
 
 - Ogni `check_interval_minutes` controlla la casella, classifica le nuove email (alta, media,
   bassa) e ti avvisa da `notify_min_priority` in su. Le email non vengono segnate come lette.
+- **Mittenti da non segnalare** (`mail_ignore`): separati da virgola, un indirizzo
+  (`offerte@negozio.it`), un dominio (`@newsletter.it`) o una parola dell'indirizzo (`noreply`).
+  Le loro email restano nella casella e Jarvis Mail le legge se glielo chiedi, ma non arriva
+  nessun messaggio su Telegram e non vengono nemmeno classificate (niente credito Claude).
 - **Niente parte senza di te**: ogni risposta è una bozza con Invia, Salva in Bozze, Modifica,
   Scarta, su Telegram e nella dashboard.
 - **Firma**: puoi incollare quella in HTML del tuo programma di posta.

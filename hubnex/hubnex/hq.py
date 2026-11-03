@@ -338,7 +338,7 @@ class HQ:
         if credit and credit - spent < LOW_CREDIT_USD and not await self.store.get("credit_low_warned"):
             await self.store.put("credit_low_warned", True)
             await self.notify(
-                "⚠️ " + tr_sys("Credito Anthropic quasi finito: restano circa {left} $. Ricarica su console.anthropic.com e aggiorna il credito nella configurazione dell'add-on.", left=f"{credit - spent:.2f}")
+                tr_sys("Credito Anthropic quasi finito: restano circa {left} $. Ricarica su console.anthropic.com e aggiorna il credito nella configurazione dell'add-on.", left=f"{credit - spent:.2f}")
             )
         await self._check_budget()
 
@@ -362,7 +362,7 @@ class HQ:
                 if level == 100
                 else tr_sys("Hai usato l'80% del budget mensile di Claude: {spent} $ su {budget} $.", spent=f"{spent:.2f}", budget=f"{budget:.2f}")
             )
-            await self.notify("⚠️ " + msg)
+            await self.notify(msg)
             try:  # also in Home Assistant's notifications, for who has no Telegram
                 await self.ha.call_service(
                     "persistent_notification", "create",

@@ -48,6 +48,7 @@ ADDON_OPTIONS = {
     "mail_signature": "MAIL_SIGNATURE",
     "check_interval_minutes": "MAIL_CHECK_INTERVAL_MINUTES",
     "notify_min_priority": "MAIL_NOTIFY_MIN_PRIORITY",
+    "mail_ignore": "MAIL_IGNORE",
     "elevenlabs_api_key": "ELEVENLABS_API_KEY",
     "elevenlabs_voice_id": "ELEVENLABS_VOICE_ID",
     "elevenlabs_model": "ELEVENLABS_MODEL",
@@ -138,6 +139,7 @@ class MailSettings:
     signature: str = ""
     check_interval_minutes: int = 5
     notify_min_priority: str = "media"  # bassa | media | alta
+    mail_ignore: tuple[str, ...] = ()  # senders never announced: address, @domain or a piece of it
 
     @property
     def enabled(self) -> bool:
@@ -222,6 +224,7 @@ class Settings:
                 signature=e("MAIL_SIGNATURE", ""),
                 check_interval_minutes=int(e("MAIL_CHECK_INTERVAL_MINUTES") or 5),
                 notify_min_priority=(e("MAIL_NOTIFY_MIN_PRIORITY") or "media").lower(),
+                mail_ignore=tuple(x.strip().lower() for x in (e("MAIL_IGNORE") or "").replace(";", ",").split(",") if x.strip()),
             ),
             elevenlabs_key=e("ELEVENLABS_API_KEY", ""),
             elevenlabs_voice=e("ELEVENLABS_VOICE_ID", ""),

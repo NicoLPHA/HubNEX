@@ -379,3 +379,16 @@ async def test_dashboard_tries_home_assistant_first(make_hq):
     asked2 = _house(hq2, {"response": {"response_type": "action_done", "speech": {"plain": {"speech": "Sbloccata"}}}})
     reply, _, by = await hq2.converse("dashboard", "sblocca la porta d'ingresso", quick=True, local=True)
     assert by == "jarvis" and asked2 == [] and hq2.client.requests[-1]["model"] == hq2.settings.model
+
+
+def test_mail_ignore_list(settings):
+    from hubnex.maildesk import MailDesk
+
+    settings.mail_ignore = ("@newsletter.it", "offerte@negozio.it", "noreply")
+    desk = MailDesk.__new__(MailDesk)
+    desk.settings = settings
+    assert desk.ignored("Newsletter <news@newsletter.it>")
+    assert desk.ignored("offerte@negozio.it")
+    assert desk.ignored("Banca <NoReply@banca.it>")
+    assert not desk.ignored("Mario Rossi <mario@negozio.it>")
+    assert not desk.ignored("cliente@newsletter.it.example.com")

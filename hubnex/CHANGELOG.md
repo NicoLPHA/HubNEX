@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.1
+- Posta: nuova opzione "Mittenti da non segnalare" (indirizzi, @domini o parole come noreply):
+  niente messaggio su Telegram e niente classificazione, quindi niente credito Claude.
+- Notifiche della casa più chiare: batterie scariche, dispositivi non raggiungibili e sensori di
+  sicurezza dicono quale dispositivo e in quale stanza ("Sensore porta (Ingresso) 8%").
+- Niente emoji nelle notifiche della casa e negli avvisi di credito e budget; gli avvisi urgenti
+  su Telegram iniziano con "URGENTE:".
+
 ## 1.12.0
 - Notifiche della casa, senza Claude: perdite/fumo/gas (subito, anche di notte), finestre aperte
   con riscaldamento/condizionatore acceso o pioggia, casa vuota con porte/cancello/serrature

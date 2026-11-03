@@ -108,7 +108,7 @@ async def test_quiet_hours_hold_the_rest_until_they_end(house):
     at(61)
     await hq.alerts.tick()
     [push] = pushes(calls)
-    assert "Termostato (9%)" in push[2]["message"]
+    assert "Termostato 9%" in push[2]["message"]
 
 
 async def test_nobody_home_lock_open_and_the_close_button(house):
@@ -201,3 +201,25 @@ async def test_people_unknown_while_home_assistant_restarts_is_not_away(house):
     at(10)
     await hq.alerts.tick()
     assert not pushes(calls)
+
+
+async def test_battery_says_which_device_and_where(house):
+    hq, team, calls, at = house
+    hq.watcher.states["sensor.batteria_5"] = st("8", "battery", "Batteria", unit_of_measurement="%")
+    hq.watcher.entities["sensor.batteria_5"] = {"entity_id": "sensor.batteria_5", "device_id": "d1"}
+    hq.watcher.devices["d1"] = {"id": "d1", "name": "Sensore porta", "area_id": "ingresso"}
+    hq.watcher.areas["ingresso"] = {"area_id": "ingresso", "name": "Ingresso"}
+    await hq.alerts.tick()
+    at(31)
+    await hq.alerts.tick()
+    [push] = pushes(calls)
+    assert "Sensore porta (Ingresso) 8%" in push[2]["message"]
+
+
+async def test_no_emoji_in_the_messages(house):
+    hq, team, calls, at = house
+    hq.watcher.states["binary_sensor.perdita_lavatrice"]["state"] = "on"
+    await hq.alerts.tick()
+    texts = [team.posts[-1]["text"]] + [c[2]["title"] + c[2]["message"] for c in pushes(calls)]
+    assert team.posts[-1]["text"].startswith("URGENTE: Perdita d'acqua")
+    assert all(ch.isascii() or ch.isalpha() or ch in "àèéìòù'’ " for t in texts for ch in t)

@@ -55,6 +55,9 @@ configuration:
   notify_min_priority:
     name: Avvisami da priorità
     description: bassa, media (consigliato) o alta.
+  mail_ignore:
+    name: Mittenti da non segnalare
+    description: Separati da virgola. Un indirizzo (offerte@negozio.it), un dominio (@newsletter.it) o una parola dell'indirizzo (noreply). Le loro email restano nella casella, ma niente messaggio su Telegram.
   hq_token:
     name: Token HQ
     description: Password per aprire la dashboard fuori da HA e per l'API (rest_command). Dalla barra laterale non serve.

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import asyncio
+from email.utils import parseaddr
 import json
 import logging
 from typing import TYPE_CHECKING, Awaitable, Callable
@@ -231,6 +232,19 @@ class MailDesk:
             for e in emails
         ]
 
+    def ignored(self, sender: str) -> bool:
+        """A sender on the "never announce" list (mail_ignore): the exact address, a domain
+        written as @domain.it, or any piece of the address (noreply, newsletter...)."""
+        addr = (parseaddr(sender)[1] or sender).lower()
+        for rule in self.settings.mail_ignore:
+            if rule.startswith("@") and addr.endswith(rule):
+                return True
+            if "@" in rule and not rule.startswith("@") and addr == rule:
+                return True
+            if "@" not in rule and rule in addr:
+                return True
+        return False
+
     async def check(self, manual_chat: int | None = None) -> None:
         chat = manual_chat or (self.team.home_chat if self.team else None)
         validity, max_uid = await asyncio.to_thread(self.client.mailbox_state)
@@ -246,6 +260,8 @@ class MailDesk:
         new = await asyncio.to_thread(self.client.new_since, int(last_uid))
         if new:
             await self.hq.store.put("mail_last_uid", max(e["uid"] for e in new))
+        if not manual_chat:  # the ignored senders: not even sorted (no Claude cost)
+            new = [e for e in new if not self.ignored(e["da"])]
         if not new:
             if manual_chat:
                 await self.team.post(MAIL_AGENT_ID, tr_sys("Nessuna nuova email dall'ultimo controllo."), chat)

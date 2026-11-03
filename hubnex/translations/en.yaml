@@ -46,6 +46,9 @@ configuration:
     name: Mail check (minutes)
   notify_min_priority:
     name: Notify from priority
+  mail_ignore:
+    name: Senders not to announce
+    description: Comma separated. An address (offers@shop.com), a domain (@newsletter.com) or a word of the address (noreply). Their emails stay in the mailbox, but no Telegram message.
   hq_token:
     name: HQ token
     description: Password for the dashboard outside HA and for the API. Not needed from the sidebar.

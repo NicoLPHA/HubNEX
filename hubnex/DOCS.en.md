@@ -170,6 +170,10 @@ Set your provider's IMAP/SMTP (servers, SSL ports 993/465, user, password).
 - Every `check_interval_minutes` it checks the mailbox, sorts the new emails (high, medium, low
   priority: `alta`, `media`, `bassa`) and tells you from `notify_min_priority` up. Emails are
   not marked as read.
+- **Senders not to announce** (`mail_ignore`): comma separated, an address
+  (`offers@shop.com`), a domain (`@newsletter.com`) or a word of the address (`noreply`).
+  Their emails stay in the mailbox and Jarvis Mail reads them if you ask, but no Telegram
+  message arrives and they aren't even sorted (no Claude credit).
 - **Nothing goes out without you**: every reply is a draft with Send, Save to Drafts, Edit,
   Discard, on Telegram and in the dashboard.
 - **Signature**: you can paste the HTML one from your mail program.

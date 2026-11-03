@@ -155,6 +155,15 @@ class Alerts:
     def name(self, eid: str) -> str:
         return (self.hq.casa.compact(eid) or {}).get("n") or eid
 
+    def device_name(self, eid: str) -> str:
+        """Which device it is, and where: "Sensore porta (Ingresso)". The entity's own name
+        ("Batteria") alone says nothing."""
+        reg = self.ha.entities.get(eid) or {}
+        dev = self.ha.devices.get(reg.get("device_id") or "")
+        name = ((dev.get("name_by_user") or dev.get("name")) if dev else None) or self.name(eid)
+        area = (self.ha.areas.get(self.ha.area_of(eid) or "") or {}).get("name")
+        return f"{name} ({area})" if area and area.lower() not in name.lower() else name
+
     def _watched(self, eid: str) -> bool:
         return eid not in self.cfg["exclude"] and self.hq.casa.visible(eid)
 
@@ -206,7 +215,7 @@ class Alerts:
             for e in self._on("safety"):
                 if state(e) == "on":
                     what = labels.get(self._dc(e) or "", labels["safety"])
-                    out.append(Finding(f"safety:{e}", "safety", f"🚨 {what}", f"{what}: {self.name(e)}", {e: None}, urgent=True))
+                    out.append(Finding(f"safety:{e}", "safety", what, f"{what}: {self.device_name(e)}", {e: None}, urgent=True))
 
         if rules["windows"]["on"]:
             open_ = [e for e in self._on("windows") if state(e) == "on"]
@@ -273,11 +282,11 @@ class Alerts:
                 s = st.get(e) or {}
                 if e.startswith("binary_sensor."):
                     if s.get("state") == "on":
-                        low[e] = self.name(e)
+                        low[e] = self.device_name(e)
                 else:
                     v = _float(s.get("state"))
                     if v is not None and v < rules["battery"]["percent"]:
-                        low[e] = f"{self.name(e)} ({v:.0f}%)"
+                        low[e] = f"{self.device_name(e)} {v:.0f}%"
             if low:
                 out.append(Finding("battery", "battery", tr_sys("Batterie scariche"),
                                    tr_sys("Da cambiare: {names}.", names=listing(list(low.values()))), {e: None for e in low}))
@@ -296,7 +305,7 @@ class Alerts:
                 dev = self.ha.devices.get((self.ha.entities.get(e) or {}).get("device_id") or "")
                 item = f"device:{dev['id']}" if dev else e
                 gone[item] = since
-                labels[item] = (dev.get("name_by_user") or dev.get("name")) if dev else self.name(e)
+                labels[item] = self.device_name(e)
             if gone:
                 out.append(Finding("offline", "offline", tr_sys("Dispositivi non raggiungibili"),
                                    tr_sys("Non rispondono da più di {m} minuti: {names}.", m=rules["offline"]["minutes"], names=listing(list(labels.values()))),
@@ -400,7 +409,8 @@ class Alerts:
             if ep.telegram and not first:  # the old message loses its buttons, the new one has them
                 await self._safe(self.hq.team.set_buttons(None, *ep.telegram, None))
             kb = [[(label, f"n:{tok}") for label, tok in buttons]] if buttons else None
-            res = await self._safe(self.hq.team.post(None, f"{'🚨' if f.urgent else '🏠'} {f.title}\n{f.text}", buttons=kb))
+            title = tr_sys("URGENTE: {title}", title=f.title) if f.urgent else f.title
+            res = await self._safe(self.hq.team.post(None, f"{title}\n{f.text}", buttons=kb))
             if isinstance(res, tuple):
                 ep.telegram = res
         if rule.get("ha"):
@@ -455,7 +465,7 @@ class Alerts:
                 if await self._safe(self.hq.ha.call_service("notify", service, {"title": title, "message": text, "data": {"tag": "hubnex_test"}})) is not None:
                     sent.append(next((p["name"] for p in self.phones if p["service"] == service), service))
         if any(r["on"] and r["telegram"] for r in rules) and self.hq.team_enabled:
-            if await self._safe(self.hq.team.post(None, f"🏠 {text}")) is not None:
+            if await self._safe(self.hq.team.post(None, text)) is not None:
                 sent.append("Telegram")
         if any(r["on"] and r["ha"] for r in rules):
             if await self._safe(self.hq.ha.call_service("persistent_notification", "create", {"title": title, "message": text, "notification_id": "hubnex_test"})) is not None:
