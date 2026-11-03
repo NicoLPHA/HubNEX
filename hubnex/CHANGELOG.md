@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.3
+- Chat della dashboard: la richiesta va a capo e il campo cresce fino a circa 6 righe, poi
+  scorre. Invio invia, Shift+Invio va a capo.
+
 ## 1.12.2
 - Posta: pulsanti Leggi e Rispondi senza emoji (restano i pallini della priorità).
 - Corretto: senza un bot separato per Jarvis Mail, i pulsanti della posta arrivano al bot di

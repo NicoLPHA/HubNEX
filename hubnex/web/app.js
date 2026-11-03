@@ -1071,11 +1071,27 @@ function lastSentences(text) {
   return out.length > 160 ? "…" + out.slice(-160) : out;
 }
 
+// The request wraps and grows with the text (up to about 6 lines, then it scrolls).
+function fitChatInput() {
+  const el = $("chat-input");
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight + 2, el.offsetParent ? parseFloat(getComputedStyle(el).maxHeight) || 999 : 999) + "px";
+  el.style.overflowY = el.scrollHeight > el.clientHeight + 2 ? "auto" : "hidden";
+}
+$("chat-input").addEventListener("input", fitChatInput);
+// Enter sends, Shift+Enter goes to a new line (on phones the keyboard's key sends too).
+$("chat-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    $("chat-form").requestSubmit();
+  }
+});
 $("chat-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const text = $("chat-input").value.trim();
   if (!text) return;
   $("chat-input").value = "";
+  fitChatInput();
   unlockAudio();
   sendChat(text);
 });

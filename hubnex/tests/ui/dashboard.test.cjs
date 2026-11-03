@@ -138,6 +138,25 @@ test("chat: Home Assistant da solo, poi la via rapida", { timeout: 30000 }, asyn
   await done(page);
 });
 
+test("chat: la richiesta va a capo e il campo cresce; Invio invia", { timeout: 30000 }, async () => {
+  const page = await open();
+  const box = page.locator("#chat-input");
+  const h0 = (await box.boundingBox()).height;
+  // typed in one go (letter by letter is slow with the 3D scene on a machine without a GPU)
+  await box.fill("Riassumimi le email di oggi del cliente Rossi e dimmi quali scadenze ci sono questa settimana, poi prepara una bozza");
+  await box.press("End");
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.insertText("con tono cordiale.");
+  const h1 = (await box.boundingBox()).height;
+  assert.ok(h1 > h0 * 1.8, `il campo cresce (${h0} → ${h1})`);
+  assert.match(await box.inputValue(), /bozza\ncon tono/, "Shift+Invio va a capo");
+  await page.keyboard.press("Enter");
+  await page.waitForSelector(".msg.me");
+  assert.equal(await box.inputValue(), "", "Invio invia e svuota");
+  assert.ok((await box.boundingBox()).height < h0 + 2, "il campo torna a una riga");
+  await done(page);
+});
+
 test("preferenze: il backup si scarica", { timeout: 30000 }, async () => {
   const page = await open();
   await page.click("#ha-prefs");

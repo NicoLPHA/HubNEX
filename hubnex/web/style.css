@@ -175,7 +175,14 @@ button.icon.on { background: rgba(79, 209, 255, 0.3); color: #fff; }
 .msg.pending { color: var(--muted); font-style: italic; }
 #chat-form { display: flex; gap: 6px; }
 .chat-close { position: absolute; top: -14px; right: -10px; width: 30px; height: 30px; padding: 0; border-radius: 50%; font-size: 18px; line-height: 1; background: #0b1828; z-index: 1; }
-#chat-form input { flex: 1; }
+#chat-form { align-items: flex-end; }
+#chat-form input, #chat-form textarea { flex: 1; }
+/* the request wraps and grows up to about 6 lines, then scrolls */
+#chat-input { resize: none; overflow-y: hidden; max-height: 9.5em; line-height: 1.4; font-family: inherit;
+  background: rgba(0, 0, 0, 0.35); border: 1px solid var(--panel-border); color: var(--text);
+  border-radius: 6px; padding: 9px 10px; font-size: 15px; outline: none; min-width: 0; box-sizing: border-box; scrollbar-width: none; }
+#chat-input::-webkit-scrollbar { display: none; }
+#chat-input:focus { border-color: var(--accent); }
 .msg.typing::after { content: "▍"; color: var(--accent, #4fd1ff); animation: blink 0.8s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
