@@ -254,6 +254,45 @@ the entities of an area (or of its device) appear in the room by themselves.
   for the code.
 - The Home view's commands go straight to Home Assistant and **use no Claude credit**.
 
+## House notifications
+
+HubNEX watches the house by itself and warns you when something is wrong. **It doesn't use
+Claude**: these are fixed rules on Home Assistant's states, so the warnings are immediate and
+free. Set them up in ⚙ Preferences → **House notifications**.
+
+| Rule | When it warns |
+|---|---|
+| Leaks, smoke, gas | A water, smoke, gas or carbon monoxide sensor goes off: at once, even in the quiet hours |
+| Windows open | A window stays open while the heating or the air conditioning is on, or while it rains |
+| Nobody home | Everybody is out and a door, the gate or a lock is open. **Close** button |
+| High consumption | The house's power (the sensor chosen in Energy) stays above the threshold |
+| Lights on at night | Lights still on during the night hours (23:30–06:00 by default). **Turn off** button |
+| Low batteries | Sensors with the battery below 15% |
+| Devices not responding | Devices that haven't answered for more than an hour |
+
+**Where they arrive**, rule by rule:
+
+- the Home Assistant **app** on your phone: a push notification with the buttons. HubNEX finds
+  the phones with the app by itself; you can leave some out. Urgent warnings come with high
+  priority.
+- **Telegram**, in Jarvis' group, with the same buttons.
+- **Home Assistant**: the notifications under the bell.
+
+How they behave:
+
+- every rule waits for the problem to last a few minutes (you choose how many), so a window
+  opened for a moment doesn't bother you;
+- it warns **once** per problem; if another one joins in the meantime (a second window) it
+  updates the warning;
+- when the problem is solved, the notification on the phone and under the bell **goes away by
+  itself**, and on Telegram the buttons disappear;
+- in the **quiet hours** warnings wait for the end of the slot (except leaks, smoke and gas);
+- **it acts only if you press a button** on the notification. Without your tap nothing changes.
+
+In every rule, «Watches N of N» lists the entities it looks at: untick those to ignore (for
+example a soil moisture sensor seen as a water leak). **Send a test** sends a notification on
+every channel in use.
+
 ## Neural map
 
 The **✺ Map** button shows the team's "mind" in 3D: the assistant in the middle, companies,

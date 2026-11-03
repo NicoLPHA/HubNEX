@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.0
+- Notifiche della casa, senza Claude: perdite/fumo/gas (subito, anche di notte), finestre aperte
+  con riscaldamento/condizionatore acceso o pioggia, casa vuota con porte/cancello/serrature
+  aperti, consumo alto, luci accese di notte, batterie scariche, dispositivi non raggiungibili.
+- Arrivano sull'app di Home Assistant (push con pulsanti Chiudi/Spegni), su Telegram e nelle
+  notifiche di Home Assistant, a scelta per ogni regola. Un avviso per problema, che sparisce da
+  solo quando il problema è risolto; ore di silenzio; nessuna azione senza il tuo tocco.
+- Si configurano in ⚙ Preferenze → Notifiche della casa, con entità da escludere e notifica di
+  prova.
+- Test: il popup Energia aspetta il grafico del giorno prima di provare lo scorrimento.
+
 ## 1.11.0
 - Storico della spesa Claude: clic sul riquadro della spesa in HQ (o ⚙ Preferenze → Spesa
   Claude). Oggi, mese, stima a fine mese, una barra per giorno (7/30/90 giorni), spesa per

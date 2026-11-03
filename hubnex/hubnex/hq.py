@@ -21,6 +21,7 @@ from hubnex.integrations.elevenlabs import ElevenLabs
 from hubnex.speech import VOICE_HINT, for_voice, split_voice
 from hubnex.i18n import LANGS, lang, set_system_lang, system_lang, tr, tr_sys
 from hubnex.actions import ActionDesk
+from hubnex.alerts import Alerts
 from hubnex.connectors import Connectors
 from hubnex.casa import Casa
 from hubnex.integrations.ha_ws import HAWatcher
@@ -129,6 +130,7 @@ class HQ:
             team = TelegramTeam(settings, self)
         self.team = team  # the Telegram group: Jarvis' bot plus one bot per agent that has one
         self.maildesk = MailDesk(self) if settings.mail.enabled else None
+        self.alerts = Alerts(self)  # smart notifications about the house (no Claude)
         self.actions = ActionDesk(self)  # changes to other programs wait for the owner's ✅
         self.connectors = Connectors(self, org.connectors)  # the programs of your work (MCP)
 
@@ -195,7 +197,17 @@ class HQ:
         """Home Assistant changed: the house view in the dashboard follows live."""
         if kind == "registry":
             self.emit({"type": "casa_changed"})
-        elif entity_id in self.casa.shown:
+            return
+        if kind == "app_action":  # a button on a notification of the Home Assistant app
+            if entity_id and entity_id.startswith("HUBNEX_"):
+                try:
+                    await self.alerts.press(entity_id[7:])
+                except Exception as exc:
+                    await self.log("error", tr_sys("Azione dalla notifica non riuscita: {e}", e=exc))
+            return
+        if entity_id:
+            self.alerts.on_state(entity_id, state)
+        if entity_id in self.casa.shown:
             self.emit({"type": "ha", "e": entity_id, "v": self.casa.compact(entity_id, state) if state else None})
 
     def subscribe(self) -> asyncio.Queue:

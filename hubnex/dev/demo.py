@@ -185,6 +185,13 @@ def seed_costs() -> None:
 seed_costs()
 
 
+async def demo_phones():
+    return [{"service": "mobile_app_pixel_9", "name": "Pixel 9"}, {"service": "mobile_app_ipad", "name": "iPad"}]
+
+
+hq.watcher.phones = demo_phones
+
+
 class REST:
     enabled = True
     blocked = set()

@@ -20,7 +20,9 @@ from hubnex.i18n import tr
 log = logging.getLogger(__name__)
 
 REGISTRY_EVENTS = ("area_registry_updated", "entity_registry_updated", "device_registry_updated", "floor_registry_updated")
-# Called with ("state", entity_id, new_state_or_None) or ("registry", None, None).
+APP_ACTION = "mobile_app_notification_action"  # a button pressed on a notification of the companion app
+# Called with ("state", entity_id, new_state_or_None), ("registry", None, None) or
+# ("app_action", action_id, event_data).
 OnEvent = Callable[[str, str | None, dict | None], Awaitable[None]]
 
 
@@ -89,7 +91,7 @@ class HAWatcher:
             reader = asyncio.create_task(self._read(ws))
             try:
                 await self._command({"type": "subscribe_events", "event_type": "state_changed"})
-                for ev in REGISTRY_EVENTS:
+                for ev in (*REGISTRY_EVENTS, APP_ACTION):
                     await self._command({"type": "subscribe_events", "event_type": ev})
                 await self._load()
                 self.ready.set()
@@ -175,6 +177,10 @@ class HAWatcher:
             else:
                 self.states[eid] = new
             await self._notify("state", eid, new)
+        elif etype == APP_ACTION:
+            data = event.get("data") or {}
+            if data.get("action"):
+                await self._notify("app_action", data["action"], data)
         elif etype in REGISTRY_EVENTS:
             # Edits often come in bursts (renaming a device touches all its entities).
             if self._reload_task is None or self._reload_task.done():
@@ -197,6 +203,19 @@ class HAWatcher:
                 log.exception("HA event handler failed")
 
     # ------------------------------------------------------------------ queries and changes
+    async def phones(self) -> list[dict]:
+        """The companion apps that can receive notifications: notify.mobile_app_<device>."""
+        try:
+            services = await self._command({"type": "get_services"}, timeout=10)
+        except (HAWatcherError, asyncio.TimeoutError):
+            return []
+        out = []
+        for name in sorted((services or {}).get("notify") or {}):
+            if name.startswith("mobile_app_"):
+                dev = next((d for d in self.devices.values() if (d.get("name_by_user") or d.get("name") or "").lower().replace(" ", "_").replace("-", "_") == name[11:]), None)
+                out.append({"service": name, "name": (dev or {}).get("name_by_user") or (dev or {}).get("name") or name[11:].replace("_", " ")})
+        return out
+
     def area_of(self, entity_id: str) -> str | None:
         """The entity's own area, or else its device's (that is what Home Assistant shows)."""
         reg = self.entities.get(entity_id)

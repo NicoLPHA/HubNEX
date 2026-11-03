@@ -88,8 +88,18 @@ test("popup Energia: si apre, resta dov'è con gli aggiornamenti dal vivo, si ch
   await page.click("[data-act='energy']");
   const panel = page.locator(".casa-energy-modal .panel");
   await panel.waitFor();
-  await panel.evaluate((el) => { el.scrollTop = 300; });
+  // the day's chart arrives a moment after the popup: wait until its height stops changing
+  let last = -1;
+  for (let i = 0; i < 20; i++) {
+    const h = await panel.evaluate((el) => el.scrollHeight);
+    if (h === last) break;
+    last = h;
+    await page.waitForTimeout(300);
+  }
+  // halfway down: a few pixels more or less at the bottom don't move it
+  await panel.evaluate((el) => { el.scrollTop = Math.round((el.scrollHeight - el.clientHeight) / 2); });
   const scrolled = await panel.evaluate((el) => el.scrollTop);
+  assert.ok(scrolled > 50, "il popup scorre");
   // something changes in the house while the popup is open
   await page.evaluate(() => fetch("api/casa/call", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ domain: "light", service: "toggle", data: { entity_id: "light.cucina" } }) }));
@@ -160,6 +170,24 @@ test("telefono: la spesa Claude si apre dalle preferenze", { timeout: 30000 }, a
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 390, "niente scorrimento laterale");
   await page.click("[data-costs-close]");
   assert.equal(await page.locator(".costs-modal").count(), 0);
+  await done(page);
+});
+
+test("notifiche della casa: regole, canali, prova", { timeout: 30000 }, async () => {
+  const page = await open();
+  await page.click("#ha-prefs");
+  await page.click("#pref-alerts");
+  await page.waitForSelector(".al-rule");
+  assert.equal(await page.locator(".al-rule").count(), 7, "sette regole");
+  assert.match(await page.textContent(".al-active"), /Finestra camera/, "la finestra aperta col riscaldamento");
+  assert.match(await page.textContent(".al-phones"), /Pixel 9/);
+  await page.click("[data-al-on='night']");
+  await page.waitForSelector(".al-note:has-text('Salvato')");
+  assert.ok(await page.locator("[data-al-on='night']").evaluate((b) => !b.classList.contains("on")), "regola spenta e salvata");
+  await page.click("[data-al-test]");
+  await page.waitForFunction(() => /Prova inviata/.test(document.querySelector(".al-note").textContent));
+  await page.keyboard.press("Escape");
+  assert.equal(await page.locator(".alerts-modal").count(), 0);
   await done(page);
 });
 

@@ -265,6 +265,15 @@ class TelegramTeam:
             await q.answer(tr_sys("Non autorizzato"))
             return
         kind, key, decision = (q.data.split(":") + ["", "", ""])[:3]
+        if kind == "n":  # a button on a notification about the house
+            try:
+                done = await self.hq.alerts.press(key)
+            except Exception as exc:
+                await q.answer(str(exc)[:190], show_alert=True)
+                return
+            await q.answer(tr_sys("Fatto") if done else tr_sys("Non più necessario"))
+            await q.edit_message_reply_markup(None)
+            return
         if kind != "a":
             await q.answer()
             return

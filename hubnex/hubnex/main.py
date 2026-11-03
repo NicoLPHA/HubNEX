@@ -218,6 +218,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
                 workers.append(asyncio.create_task(hq.maildesk.loop()))
             if hq.watcher.enabled:
                 workers.append(asyncio.create_task(hq.watcher.run()))
+                workers.append(asyncio.create_task(hq.alerts.run()))
             if not settings.hq_token and not settings.trusted_proxy:
                 log.warning("HQ_TOKEN non impostato: dashboard e API sono aperte a chiunque in rete!")
         await hq.log("system", tr_sys("{name} è online. {n} agenti nel team.", name=hq.org.boss_name, n=len(hq.org.agents)))
@@ -301,6 +302,20 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def logs(before: int | None = None, limit: int = 25, hq: HQ = Depends(get_hq)):
         """Older activity for the dashboard's "Mostra precedenti" button."""
         return await hq.store.recent_logs(min(limit, 100), before_id=before)
+
+    @app.get("/api/alerts", dependencies=[Depends(full)])
+    async def alerts_get(hq: HQ = Depends(get_hq)):
+        """Smart notifications: settings, phones, watched entities, what is active now."""
+        return await hq.alerts.overview()
+
+    @app.put("/api/alerts", dependencies=[Depends(full)])
+    async def alerts_put(body: dict, hq: HQ = Depends(get_hq)):
+        await hq.alerts.save(body)
+        return await hq.alerts.overview()
+
+    @app.post("/api/alerts/test", dependencies=[Depends(full)])
+    async def alerts_test(hq: HQ = Depends(get_hq)):
+        return {"sent": await hq.alerts.test()}
 
     @app.get("/api/costs", dependencies=[Depends(full)])
     async def costs(days: int = 30, hq: HQ = Depends(get_hq)):

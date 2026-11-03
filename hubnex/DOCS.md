@@ -251,6 +251,45 @@ Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nel
   tastierino per il codice.
 - I comandi della vista Casa vanno diretti a Home Assistant e **non usano credito Claude**.
 
+## Notifiche della casa
+
+HubNEX controlla la casa da solo e ti avvisa quando qualcosa non va. **Non usa Claude**: sono
+regole fisse sugli stati di Home Assistant, quindi gli avvisi sono immediati e gratis. Si
+configurano in ⚙ Preferenze → **Notifiche della casa**.
+
+| Regola | Quando avvisa |
+|---|---|
+| Perdite, fumo, gas | Un sensore di acqua, fumo, gas o monossido scatta: subito, anche nelle ore di silenzio |
+| Finestre aperte | Una finestra resta aperta con il riscaldamento o il condizionatore acceso, o mentre piove |
+| Casa vuota | Tutte le persone sono fuori e una porta, il cancello o una serratura sono aperti. Pulsante **Chiudi** |
+| Consumo alto | La potenza della casa (il sensore scelto in Energia) resta sopra la soglia |
+| Luci accese di notte | Luci ancora accese nella fascia notturna (23:30–06:00 di serie). Pulsante **Spegni** |
+| Batterie scariche | Sensori con la batteria sotto il 15% |
+| Dispositivi non raggiungibili | Dispositivi che non rispondono da più di un'ora |
+
+**Dove arrivano**, regola per regola:
+
+- **App** di Home Assistant sul telefono: notifica push con i pulsanti. HubNEX trova da solo i
+  telefoni con l'app; puoi escluderne qualcuno. Gli avvisi urgenti arrivano con priorità alta.
+- **Telegram**, nel gruppo di Jarvis, con gli stessi pulsanti.
+- **Home Assistant**: le notifiche nella campanella.
+
+Come si comportano:
+
+- ogni regola aspetta che il problema duri qualche minuto (lo scegli tu), così una finestra
+  aperta per un attimo non disturba;
+- avvisa **una volta** per problema; se nel frattempo se ne aggiunge un altro (una seconda
+  finestra) aggiorna l'avviso;
+- quando il problema si risolve, la notifica sul telefono e nella campanella **sparisce da
+  sola**, e su Telegram spariscono i pulsanti;
+- nelle **ore di silenzio** gli avvisi aspettano la fine della fascia (tranne perdite, fumo e
+  gas);
+- **agisce solo se premi un pulsante** della notifica. Senza il tuo tocco non cambia nulla.
+
+In ogni regola, «Controlla N di N» elenca le entità che guarda: togli la spunta a quelle da
+ignorare (per esempio un sensore di umidità del terreno visto come perdita d'acqua). **Invia una
+prova** manda una notifica su tutti i canali in uso.
+
 ## Mappa neurale
 
 Il pulsante **✺ Mappa** mostra la "mente" del team in 3D: l'assistente al centro, aziende,
