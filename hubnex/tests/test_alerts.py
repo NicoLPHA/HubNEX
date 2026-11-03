@@ -121,7 +121,7 @@ async def test_nobody_home_lock_open_and_the_close_button(house):
     [push] = pushes(calls)
     [button] = push[2]["data"]["actions"]
     assert button["title"] == "Chiudi" and button["action"].startswith("HUBNEX_")
-    assert team.posts[-1]["buttons"][0][0][1].startswith("n:")
+    assert team.posts[-1]["buttons"][0][0][1].startswith("h:")
     # pressed on the phone: Home Assistant sends the event, HubNEX locks
     await hq._ha_event("app_action", button["action"], {"action": button["action"]})
     assert ("lock", "lock", {"entity_id": "lock.ingresso"}, True) in calls

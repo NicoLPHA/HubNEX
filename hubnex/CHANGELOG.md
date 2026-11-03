@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.2
+- Posta: pulsanti Leggi e Rispondi senza emoji (restano i pallini della priorità).
+- Corretto: senza un bot separato per Jarvis Mail, i pulsanti della posta arrivano al bot di
+  Jarvis e ora funzionano (prima venivano ignorati, e dalla 1.12.0 scambiati per pulsanti delle
+  notifiche della casa). I pulsanti delle notifiche della casa hanno un codice tutto loro.
+
 ## 1.12.1
 - Posta: nuova opzione "Mittenti da non segnalare" (indirizzi, @domini o parole come noreply):
   niente messaggio su Telegram e niente classificazione, quindi niente credito Claude.

@@ -229,3 +229,51 @@ def test_html_signature_sends_formatted_email():
     plain_msg = MailClient(MailSettings(user="io@example.com", password="x", signature="Mario\\nMG")).build_reply(ORIGINAL, "Ok")
     assert plain_msg.get_content_type() == "text/plain"
     assert "Mario\nMG" in plain_msg.get_content()
+
+
+async def test_jarvis_bot_routes_mail_and_house_buttons(make_hq, settings):
+    """Without a Jarvis Mail bot the mail buttons reach Jarvis' bot: they must still work, and
+    never be taken for the buttons of a house notification."""
+    from types import SimpleNamespace as NS
+
+    from hubnex.integrations.telegram import TelegramTeam
+
+    team = TelegramTeam.__new__(TelegramTeam)
+    team.settings, team.hq = settings, make_hq([])
+    team.apps = {"jarvis": NS(bot=None)}
+    team.allowed = lambda update: True
+    routed, pressed = [], []
+
+    def mail_handler(agent_id):
+        async def handler(update, ctx):
+            routed.append((agent_id, update.callback_query.data))
+        return handler
+
+    async def press(tok):
+        pressed.append(tok)
+        return "ok"
+
+    team._agent_button_handler = mail_handler
+    team.hq.alerts.press = press
+
+    class Q:
+        def __init__(self, data):
+            self.data, self.message = data, NS(chat=NS(id=-100))
+
+        async def answer(self, *a, **k):
+            pass
+
+        async def edit_message_reply_markup(self, *a, **k):
+            pass
+
+    await team.on_button_jarvis(NS(callback_query=Q("n:42:read")), None)
+    await team.on_button_jarvis(NS(callback_query=Q("h:abc123")), None)
+    assert routed == [("mail", "n:42:read")]
+    assert pressed == ["abc123"]
+
+
+def test_mail_buttons_have_no_emoji():
+    import inspect
+
+    src = inspect.getsource(MailDesk.check)
+    assert "📖" not in src and "✍️" not in src

@@ -265,7 +265,11 @@ class TelegramTeam:
             await q.answer(tr_sys("Non autorizzato"))
             return
         kind, key, decision = (q.data.split(":") + ["", "", ""])[:3]
-        if kind == "n":  # a button on a notification about the house
+        if kind in ("n", "d") and MAIL_AGENT_ID not in self.apps:
+            # mail buttons posted with Jarvis' bot (no separate Jarvis Mail bot)
+            await self._agent_button_handler(MAIL_AGENT_ID)(update, ctx)
+            return
+        if kind == "h":  # a button on a notification about the house
             try:
                 done = await self.hq.alerts.press(key)
             except Exception as exc:

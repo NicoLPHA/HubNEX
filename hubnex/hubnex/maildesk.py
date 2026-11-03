@@ -284,7 +284,7 @@ class MailDesk:
         for n, e in enumerate(shown[:8], 1):
             sender = e["da"].split("<")[0].strip().strip('"') or e["da"]
             lines.append(f"\n{n}. {PRIO_ICON.get(e['priorita'], '🟡')} {sender} — {e['oggetto']}\n   {e['riassunto']}")
-            rows.append([(f"📖 {tr_sys('Leggi')} {n}", f"n:{e['uid']}:read"), (f"✍️ {tr_sys('Rispondi')} {n}", f"n:{e['uid']}:reply")])
+            rows.append([(f"{tr_sys('Leggi')} {n}", f"n:{e['uid']}:read"), (f"{tr_sys('Rispondi')} {n}", f"n:{e['uid']}:reply")])
         if skipped:
             lines.append("\n(" + tr_sys("+{n} a bassa priorità non mostrate", n=skipped) + ")")
         text = "\n".join(lines)

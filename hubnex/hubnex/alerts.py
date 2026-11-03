@@ -408,7 +408,7 @@ class Alerts:
         if rule.get("telegram") and self.hq.team_enabled:
             if ep.telegram and not first:  # the old message loses its buttons, the new one has them
                 await self._safe(self.hq.team.set_buttons(None, *ep.telegram, None))
-            kb = [[(label, f"n:{tok}") for label, tok in buttons]] if buttons else None
+            kb = [[(label, f"h:{tok}") for label, tok in buttons]] if buttons else None  # h: house
             title = tr_sys("URGENTE: {title}", title=f.title) if f.urgent else f.title
             res = await self._safe(self.hq.team.post(None, f"{title}\n{f.text}", buttons=kb))
             if isinstance(res, tuple):
