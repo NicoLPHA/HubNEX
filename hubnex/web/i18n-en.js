@@ -570,5 +570,9 @@ export const EN = {
   "Telefoni (app Home Assistant)": "Phones (Home Assistant app)",
   "Telegram": "Telegram",
   "Tranne perdite, fumo e gas. Vuoto = sempre attive": "Except leaks, smoke and gas. Empty = always on",
-  "in attesa": "waiting"
+  "in attesa": "waiting",
+  "Allega foto o file": "Attach photos or files",
+  "Allegato non caricato": "Attachment not uploaded",
+  "Rimuovi allegato": "Remove attachment",
+  "caricamento…": "uploading…"
 };

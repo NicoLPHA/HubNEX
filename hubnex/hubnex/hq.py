@@ -21,6 +21,7 @@ from hubnex.integrations.elevenlabs import ElevenLabs
 from hubnex.speech import VOICE_HINT, for_voice, split_voice
 from hubnex.i18n import LANGS, lang, set_system_lang, system_lang, tr, tr_sys
 from hubnex.actions import ActionDesk
+from hubnex.attachments import Attachment, Attachments, join, note, with_blocks
 from hubnex.alerts import Alerts
 from hubnex.connectors import Connectors
 from hubnex.casa import Casa
@@ -51,11 +52,12 @@ QUICK_PASS = "[[JARVIS]]"  # the quick route hands the request to Jarvis
 SENSITIVE = re.compile(r"sblocc|disinser|disattiv\w*\s+(l'|l |il |la )?allarm|\bapri\w*\s+(la |il |l')?(porta|portone|cancell|serratur|garage)", re.I)
 
 
-def fill_history(history: list[dict], text: str) -> list[dict]:
-    """The past turns + this message (folded into a previous user turn that got no answer)."""
+def fill_history(history: list[dict], text: str | list[dict]) -> list[dict]:
+    """The past turns + this message (folded into a previous user turn that got no answer).
+    `text` may be content blocks (attachments followed by the text)."""
     messages = [dict(m) for m in history]
     if messages and messages[-1]["role"] == "user":
-        messages[-1]["content"] += f"\n\n{text}"
+        messages[-1]["content"] = join(messages[-1]["content"], text)
     else:
         messages.append({"role": "user", "content": text})
     return messages
@@ -76,7 +78,9 @@ VOICE_SENSOR_CLASSES = {"temperature", "humidity", "power", "door", "window", "g
 # Jarvis answers exactly this when a delegated agent already replied in the group.
 SILENCE = "[[SILENZIO]]"
 LOW_CREDIT_USD = 1.0  # warn once in the group below this
-ALWAYS_TOOLS = ["memory_save", "memory_search", "deadline_add", "deadline_list"]
+ALWAYS_TOOLS = ["memory_save", "memory_search", "deadline_add", "deadline_list", "view_attachment"]
+# What Claude reads when the owner sends only files, without a word.
+ONLY_FILES = "[Nessun testo: solo allegati. Guardali; se non è chiaro cosa serve, chiedilo in breve.]"
 GIORNI = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
 MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
         "settembre", "ottobre", "novembre", "dicembre"]
@@ -133,6 +137,7 @@ class HQ:
         self.alerts = Alerts(self)  # smart notifications about the house (no Claude)
         self.actions = ActionDesk(self)  # changes to other programs wait for the owner's ✅
         self.connectors = Connectors(self, org.connectors)  # the programs of your work (MCP)
+        self.attachments = Attachments(Path(settings.db_path).parent / "allegati")  # files from the owner
 
         self.agents: dict[str, AgentState] = {
             BOSS_ID: AgentState(BOSS_ID, org.boss_name, "Capo del team", None, None, "#4fd1ff")
@@ -448,7 +453,10 @@ class HQ:
             if name not in allowed or name not in REGISTRY:
                 return f"Tool '{name}' non disponibile per te.", True
             try:
-                return to_text(await REGISTRY[name].handler(ctx, inp)), False
+                out = await REGISTRY[name].handler(ctx, inp)
+                if isinstance(out, list) and out and all(isinstance(b, dict) and "type" in b for b in out):
+                    return out, False  # content blocks (an attachment to look at)
+                return to_text(out), False
             except Exception as exc:
                 return f"Errore: {exc}", True
 
@@ -513,6 +521,10 @@ class HQ:
             "e nient'altro. Aggiungi qualcosa solo se serve davvero (un collegamento, un consiglio, una "
             "domanda). I messaggi che iniziano con [nota dal gruppo] ti raccontano cosa è successo nel "
             "gruppo mentre non c'eri.\n"
+            "L'utente può mandarti allegati (foto, PDF, file di testo): li vedi nel messaggio e la "
+            "conversazione ne conserva la nota [Allegati: #id …]. Se deleghi un lavoro che li riguarda, "
+            "passa i loro id all'agente in `allegati` (non vede la tua conversazione); per riguardarne "
+            "uno più tardi usa `view_attachment`.\n"
             "Fai ciò che l'utente ti chiede e non prendere iniziative non richieste: se pensi che "
             "servirebbe fare qualcosa, proponilo e aspetta il suo ok. Quando l'utente ti dà un'istruzione "
             "che deve valere sempre (\"non fare mai…\", \"d'ora in poi…\"), salvala con `owner_rules`: "
@@ -574,13 +586,18 @@ class HQ:
 
     # ------------------------------------------------------------------ running agents
     async def run_agent(
-        self, agent_id: str, task: str, source: str = "user", history_channel: str | None = None
+        self, agent_id: str, task: str, source: str = "user", history_channel: str | None = None,
+        attachments: list[Attachment] | None = None,
     ) -> str:
         """Run one task. With `history_channel` the agent also sees (and extends) that
-        conversation: used when the owner talks to an agent directly in the group."""
+        conversation: used when the owner talks to an agent directly in the group.
+        `attachments`: files for the task (photos, PDFs…), shown to the agent with the task."""
         spec = self.org.agent(agent_id)
         if spec is None:
             raise KeyError(agent_id)
+        if attachments:
+            task = f"{task.strip() or ONLY_FILES}\n{note(attachments)}"
+        blocks = self.attachments.blocks(attachments) if attachments else []
         lock = self._agent_locks[agent_id]
         if lock.locked():
             await self.set_status(agent_id, self.agents[agent_id].status, "in coda: " + task[:80])
@@ -592,10 +609,10 @@ class HQ:
             model = self.model_for(spec)
             tool_defs, extra = await self._toolbox(agent_id, tool_names, model)
             if history_channel:
-                messages = await self._history_messages(history_channel, f"{self._stamp()}\n{task}")
+                messages = await self._history_messages(history_channel, with_blocks(f"{self._stamp()}\n{task}", blocks))
                 await self.store.chat_add(history_channel, "user", task)
             else:
-                messages = [{"role": "user", "content": f"{self._stamp()}\n\nCompito:\n{task}"}]
+                messages = [{"role": "user", "content": with_blocks(f"{self._stamp()}\n\nCompito:\n{task}", blocks)}]
             try:
                 result = await run_agent_loop(
                     self.client,
@@ -623,11 +640,14 @@ class HQ:
             await self.emit_stats()
             return result.text
 
-    def run_agent_background(self, agent_id: str, task: str, source: str = "user", report: bool = True) -> None:
+    def run_agent_background(
+        self, agent_id: str, task: str, source: str = "user", report: bool = True,
+        attachments: list[Attachment] | None = None,
+    ) -> None:
         async def job():
             if source == "routine":
                 ORIGIN.set("routine")  # this task only: create_task copied the context
-            text = await self.run_agent(agent_id, task, source)
+            text = await self.run_agent(agent_id, task, source, attachments=attachments)
             if report:
                 await self.notify(f"✅ {tr_sys('Ho finito')}: {task[:80]}\n\n{text}", agent_id)
 
@@ -635,7 +655,7 @@ class HQ:
         self._background.add(t)
         t.add_done_callback(self._background.discard)
 
-    async def _history_messages(self, channel: str, text: str, turns: int = CHAT_HISTORY_TURNS) -> list[dict]:
+    async def _history_messages(self, channel: str, text: str | list[dict], turns: int = CHAT_HISTORY_TURNS) -> list[dict]:
         """See fill_history: with text "" the past turns only, to be completed later."""
         return fill_history(await self._past(channel, turns), text) if text else await self._past(channel, turns)
 
@@ -660,7 +680,7 @@ class HQ:
 
     async def converse(
         self, channel: str, text: str, voice: bool = False, spoken: bool = False,
-        quick: bool = False, local: bool = False,
+        quick: bool = False, local: bool = False, attachments: list[Attachment] | None = None,
     ) -> tuple[str, str | None, str]:
         """A conversation turn: the written answer, what the voice should say of it, and who
         answered ("ha", "quick" or "jarvis").
@@ -671,7 +691,12 @@ class HQ:
         `voice`: the answer is spoken by Assist, so it must be short.
         `spoken`: the answer will also be read aloud (dashboard speaker, Telegram voice note).
         With "Risposte a voce: riassunto" a long answer comes with a short summary for the
-        voice; otherwise (or for a short answer) the voice reads the written answer."""
+        voice; otherwise (or for a short answer) the voice reads the written answer.
+        `attachments`: files sent with the message: always for Jarvis, who sees them and can
+        hand them to the agents (the history keeps only their ids)."""
+        if attachments:
+            text = f"{text.strip() or ONLY_FILES}\n{note(attachments)}"
+            local = quick = False
         lock = self._chat_locks.setdefault(channel, asyncio.Lock())
         async with lock:
             short = await self._history_messages(channel, "", VOICE_HISTORY_TURNS)
@@ -691,7 +716,7 @@ class HQ:
                 await self.log("chat", f"{self.org.boss_name}: {answer}", BOSS_ID)
                 await self.emit_stats()
                 return answer, None, by
-            reply, said = await self._full(channel, text, voice, spoken, full)
+            reply, said = await self._full(channel, text, voice, spoken, full, attachments)
             return reply, said, "jarvis"
 
     async def _ha_local(self, text: str) -> str | None:
@@ -738,7 +763,8 @@ class HQ:
         return reply
 
     async def _full(
-        self, channel: str, text: str, voice: bool, spoken: bool, history: list[dict]
+        self, channel: str, text: str, voice: bool, spoken: bool, history: list[dict],
+        attachments: list[Attachment] | None = None,
     ) -> tuple[str, str | None]:
         """Jarvis with his full instructions and tools (the team, delegation, memory…)."""
         summary = spoken and not voice and self.settings.voice_answers == "riassunto"
@@ -750,7 +776,8 @@ class HQ:
             prompt += "\n[Risposta letta ad alta voce: al massimo due frasi, niente elenchi né simboli.]"
         elif summary:
             prompt += VOICE_HINT
-        messages = fill_history(history, prompt)
+        blocks = self.attachments.blocks(attachments) if attachments else []
+        messages = fill_history(history, with_blocks(prompt, blocks))
         tool_names = list(dict.fromkeys(BOSS_TOOLS + self.org.boss_tools + ALWAYS_TOOLS + ["deadline_done"]))
         tool_defs, extra = await self._toolbox(BOSS_ID, tool_names, self.settings.model)
         await self.set_status(BOSS_ID, "thinking", None, task=text)

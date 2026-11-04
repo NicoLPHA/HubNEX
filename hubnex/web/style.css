@@ -185,6 +185,20 @@ button.icon.on { background: rgba(79, 209, 255, 0.3); color: #fff; }
 #chat-input:focus { border-color: var(--accent); }
 .msg.typing::after { content: "▍"; color: var(--accent, #4fd1ff); animation: blink 0.8s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
+/* attachments: chips above the request, and in the sent message */
+#chat-files { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; padding: 0 4px; }
+.msg-files { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.msg-files:only-child { margin-bottom: 0; }
+.file-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; padding: 3px 6px 3px 3px;
+  border: 1px solid var(--panel-border); border-radius: 8px; background: rgba(0, 0, 0, 0.3); color: var(--text);
+  font-size: 12px; text-decoration: none; white-space: nowrap; }
+.file-chip img { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; flex: none; }
+.file-chip b { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 6px; flex: none;
+  background: rgba(79, 209, 255, 0.14); color: var(--accent); font-size: 10px; letter-spacing: 0.08em; }
+.file-chip span { overflow: hidden; text-overflow: ellipsis; }
+.file-chip.uploading { opacity: 0.6; }
+.file-chip.uploading span { font-style: italic; }
+.file-chip button.mini { flex: none; padding: 0 6px; }
 
 /* ---------------------------------------------------------------- Jarvis' orb */
 .orb { position: fixed; left: 50%; top: 40%; width: 260px; z-index: 5; pointer-events: none; display: flex; flex-direction: column; align-items: center;

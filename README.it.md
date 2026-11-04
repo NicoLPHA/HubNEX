@@ -23,7 +23,7 @@ suo ruolo: posta, amministrazione, ricerche tecniche, casa, sicurezza… Gli par
 - **Connettori MCP**: collega i programmi del tuo lavoro (gestionali, calendari, CRM…). Gli
   agenti leggono liberamente; ogni modifica parte solo dopo il tuo ✅.
 - **Posta**: smistamento delle email e bozze di risposta che approvi tu.
-- **Telegram**: un gruppo con un bot per l'assistente e uno per la posta, vocali compresi.
+- **Telegram**: un gruppo con un bot per l'assistente e uno per la posta, vocali, foto e documenti compresi.
 - **Voce**: Assist di Home Assistant (anche locale con Piper), ElevenLabs o la sintesi vocale di
   Home Assistant nella dashboard.
 - **Niente iniziative senza il tuo ordine**: routine spente di default, nessuna azione in casa
@@ -59,7 +59,8 @@ Tutte richiedono `Authorization: Bearer <HQ_TOKEN>` (o `?token=`).
 | Metodo | Percorso | |
 |---|---|---|
 | GET | `/api/state` | Stato completo (team, attività, scadenze, statistiche) |
-| POST | `/api/chat` | `{"text": "..."}` → risposta dell'assistente |
+| POST | `/api/chat` | `{"text": "...", "attachments": []}` → risposta dell'assistente |
+| POST | `/api/attachments?name=` | Foto, PDF o file di testo (corpo grezzo) → `{"id"}` per `attachments` |
 | POST | `/api/agents/{id}/task` | `{"task": "...", "wait": false}` assegna un compito |
 | POST | `/api/deadlines` | `{"title", "due", "notes"}` |
 | POST | `/api/tts` | `{"text"}` → audio della voce configurata |

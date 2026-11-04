@@ -23,7 +23,7 @@ its own role: mail, administration, technical research, home, security… You ta
 - **MCP connectors**: connect the programs of your work (management software, calendars, CRM…).
   Agents read freely; every change runs only after your ✅.
 - **Mail**: sorting of your emails and reply drafts you approve.
-- **Telegram**: a group with a bot for the assistant and one for the mail, voice notes included.
+- **Telegram**: a group with a bot for the assistant and one for the mail, voice notes, photos and documents included.
 - **Voice**: Home Assistant's Assist (also local with Piper), ElevenLabs or Home Assistant's
   text-to-speech in the dashboard.
 - **No initiative without your order**: routines off by default, no action in the house without
@@ -64,7 +64,8 @@ All of them need `Authorization: Bearer <HQ_TOKEN>` (or `?token=`).
 | Method | Path | |
 |---|---|---|
 | GET | `/api/state` | Full state (team, activity, deadlines, statistics) |
-| POST | `/api/chat` | `{"text": "..."}` → the assistant's answer |
+| POST | `/api/chat` | `{"text": "...", "attachments": []}` → the assistant's answer |
+| POST | `/api/attachments?name=` | A photo, PDF or text file (raw body) → `{"id"}` for `attachments` |
 | POST | `/api/agents/{id}/task` | `{"task": "...", "wait": false}` assigns a task |
 | POST | `/api/deadlines` | `{"title", "due", "notes"}` |
 | POST | `/api/tts` | `{"text"}` → audio in the configured voice |

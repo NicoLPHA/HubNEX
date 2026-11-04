@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.13.0
+- Allegati: foto, album, PDF e file di testo all'assistente e agli agenti, da Telegram (con la
+  richiesta nella didascalia, o rispondendo alla foto) e dalla dashboard (graffetta, fotocamera
+  del telefono, incolla o trascina). L'assistente li passa all'agente a cui delega il lavoro;
+  la conversazione ne tiene solo il codice, e chiunque del team può riguardarli
+  (`view_attachment`). Restano 30 giorni. API: `POST /api/attachments`.
+
 ## 1.12.3
 - Chat della dashboard: la richiesta va a capo e il campo cresce fino a circa 6 righe, poi
   scorre. Invio invia, Shift+Invio va a capo.

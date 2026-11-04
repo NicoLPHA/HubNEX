@@ -57,7 +57,7 @@ async def complete(
     return text_of(response)
 
 StatusCallback = Callable[[str, str | None], Awaitable[None]]  # (status, detail)
-ToolExecutor = Callable[[str, dict], Awaitable[tuple[str, bool]]]  # (name, input) -> (result, is_error)
+ToolExecutor = Callable[[str, dict], Awaitable[tuple[str | list, bool]]]  # (name, input) -> (text or content blocks, is_error)
 UsageCallback = Callable[[Any, str], Awaitable[None]]  # (usage, model): for the credit counter
 
 

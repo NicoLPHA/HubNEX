@@ -85,3 +85,17 @@ async def notify_owner(ctx: ToolContext, inp: dict):
     name = ctx.hq.agent_name(ctx.agent_id)
     await ctx.hq.notify(f"*{name}*: {inp['message']}")
     return {"ok": True}
+
+
+@tool(
+    "view_attachment",
+    "Riguarda un allegato dell'utente (foto, PDF o file di testo) indicato con il suo id, come "
+    "compare nelle note [Allegati: #id …] della conversazione o del compito.",
+    {"id": {"type": "string", "description": "L'id dell'allegato, es. 1a2b3c4d"}},
+    ["id"],
+)
+async def view_attachment(ctx: ToolContext, inp: dict):
+    att = ctx.hq.attachments.get(inp.get("id", ""))
+    if att is None:
+        return "Allegato non trovato o non più disponibile (gli allegati restano 30 giorni)."
+    return ctx.hq.attachments.blocks([att])

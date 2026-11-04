@@ -20,11 +20,13 @@ async def team_overview(ctx: ToolContext, inp: dict):
     "Assegna un compito a un agente del team. Con wait=true aspetti il risultato e lo usi nella "
     "risposta (per lavori brevi). Con wait=false l'agente lavora in background e il risultato "
     "arriva all'utente su Telegram/dashboard quando ha finito (per lavori lunghi). Scrivi il "
-    "compito in modo completo: l'agente non vede la tua conversazione.",
+    "compito in modo completo: l'agente non vede la tua conversazione. Se il lavoro riguarda "
+    "allegati dell'utente (foto, PDF…), passa i loro id in `allegati`: l'agente li vede con il compito.",
     {
         "agent_id": {"type": "string"},
         "task": {"type": "string"},
         "wait": {"type": "boolean"},
+        "allegati": {"type": "array", "items": {"type": "string"}, "description": "Id degli allegati, es. [\"1a2b3c4d\"]"},
     },
     ["agent_id", "task"],
 )
@@ -32,15 +34,18 @@ async def delegate(ctx: ToolContext, inp: dict):
     agent_id = inp["agent_id"]
     if agent_id not in ctx.hq.agents:
         return {"errore": f"Agente sconosciuto '{agent_id}'. Usa team_overview."}
+    files, missing = ctx.hq.attachments.find(inp.get("allegati"))
+    if missing:
+        return {"errore": f"Allegati non trovati: {', '.join(missing)}. Usa gli id delle note [Allegati: #id …]."}
     if inp.get("wait", True):
-        result = await ctx.hq.run_agent(agent_id, inp["task"], source=ctx.agent_id)
+        result = await ctx.hq.run_agent(agent_id, inp["task"], source=ctx.agent_id, attachments=files)
         chat = CURRENT_CHAT.get()
         if chat and ctx.hq.team_enabled:
             # In the Telegram group the agent answers with its own voice (and bot).
             await ctx.hq.team.post(agent_id, result, chat)
             return {"agente": agent_id, "risultato": result, "gia_mostrato_all_utente": True}
         return {"agente": agent_id, "risultato": result}
-    ctx.hq.run_agent_background(agent_id, inp["task"], source=ctx.agent_id, report=True)
+    ctx.hq.run_agent_background(agent_id, inp["task"], source=ctx.agent_id, report=True, attachments=files)
     return {"agente": agent_id, "stato": "avviato in background"}
 
 

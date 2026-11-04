@@ -163,6 +163,32 @@ Use:
 
 A bot can be listened to by one program only: two installations with the same tokens conflict.
 
+## Attachments: photos and documents
+
+You can send the assistant and the agents **photos, PDFs and text files** (txt, csv, md, json):
+handy, for instance, from a building site.
+
+- **Telegram**: send a photo, an album or a file, with the request in the caption ("look at this
+  crack: should I worry?"). Or reply to a photo already sent with the question. As with messages,
+  it goes to the assistant; for an agent with its own bot, reply to one of its messages or write
+  `@bot_name` in the caption. Without text, the assistant looks and asks you what you need.
+- **Dashboard**: the paperclip next to the chat field (on a phone, the camera too); you can also
+  paste a screenshot or drop files on the chat. Large photos are scaled down before sending, to
+  use less data.
+- **API**: `POST /api/attachments?name=photo.jpg` with the file as the body → `{"id": …}`; then
+  `"attachments": ["id"]` in `/api/chat` or `/api/agents/{id}/task`.
+
+The assistant sees the attachments and, when it delegates a job, hands them to the agent with
+the task. The conversation keeps only a note with their code (`#1a2b3c4d`): photos are not paid
+for again with every message, and anyone in the team can look at them again when needed ("in
+the photo from before…").
+
+Limits: 20 MB per file (the same limit as Telegram bots), PDFs up to 100 pages, 10 attachments
+per message. Photos are rotated as taken and scaled to 1568 pixels on the long side (what Claude
+reads anyway). Word and Excel files are not read directly: save them as PDF (or CSV for a
+sheet). Each photo costs about as much as 1,500 words of text; a PDF about 1,500–3,000 per page.
+Attachments are kept for 30 days in `/data/allegati`, then deleted.
+
 ## Work mailbox
 
 Set your provider's IMAP/SMTP (servers, SSL ports 993/465, user, password).

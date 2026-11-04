@@ -164,4 +164,13 @@ EN: dict[str, str] = {
     "il riscaldamento è acceso": "the heating is on",
     "sta piovendo": "it is raining",
     "URGENTE: {title}": "URGENT: {title}",
+    "Allegato non usato": "Attachment not used",
+    "PDF danneggiato o protetto da password": "PDF damaged or password protected",
+    "PDF troppo lungo (massimo {n} pagine)": "PDF too long (at most {n} pages)",
+    "allegato non trovato: {ids}": "attachment not found: {ids}",
+    "file di testo non leggibile": "text file not readable",
+    "file troppo grande (massimo 20 MB)": "file too large (at most 20 MB)",
+    "file vuoto": "empty file",
+    "formato non supportato: invia foto, PDF o file di testo": "format not supported: send photos, PDFs or text files",
+    "scrivi un messaggio o allega un file": "write a message or attach a file",
 }

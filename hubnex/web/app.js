@@ -937,11 +937,17 @@ addEventListener("keydown", (e) => {
   closeChat();
 });
 
-function addMsg(text, who, pending = false) {
+function addMsg(text, who, pending = false, files = []) {
   $("chat-close").classList.remove("hidden");
   const div = document.createElement("div");
   div.className = `msg ${who}${pending ? " pending" : ""}`;
   div.textContent = text;
+  if (files.length) {
+    const box = document.createElement("div");
+    box.className = "msg-files";
+    for (const f of files) box.appendChild(fileChip(f));
+    div.prepend(box);
+  }
   $("chat-log").appendChild(div);
   $("chat-log").scrollTop = $("chat-log").scrollHeight;
   return div;
@@ -1017,18 +1023,112 @@ async function speak(text, el, written = text) {
   }
 }
 
-async function sendChat(text) {
+// ===================================================================== attachments
+// Photos (from the camera too, on a phone), PDFs and text files for the next message.
+// Big photos are scaled down here first: less to upload from a building site.
+const files = { list: [] };
+const SHRINK_OVER = 1.5 * 1024 * 1024;
+
+function fileChip(f, onRemove) {
+  const chip = document.createElement(f.url ? "a" : "span");
+  chip.className = `file-chip ${f.kind || ""}${f.status ? " " + f.status : ""}`;
+  if (f.url) { chip.href = f.url; chip.target = "_blank"; chip.rel = "noopener"; }
+  if (f.kind === "image" && f.preview) {
+    const img = document.createElement("img");
+    img.src = f.preview; img.alt = "";
+    chip.appendChild(img);
+  } else {
+    const tag = document.createElement("b");
+    tag.textContent = f.kind === "pdf" ? "PDF" : f.kind === "text" ? "TXT" : "…";
+    chip.appendChild(tag);
+  }
+  const name = document.createElement("span");
+  name.textContent = f.status === "uploading" ? t("caricamento…") : f.name;
+  chip.appendChild(name);
+  if (onRemove) {
+    const x = document.createElement("button");
+    x.type = "button"; x.className = "mini"; x.textContent = "×";
+    x.title = t("Rimuovi allegato"); x.setAttribute("aria-label", x.title);
+    x.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); onRemove(); });
+    chip.appendChild(x);
+  }
+  return chip;
+}
+
+function renderFiles() {
+  const box = $("chat-files");
+  box.replaceChildren(...files.list.map((f) => fileChip(f, () => {
+    files.list = files.list.filter((g) => g !== f);
+    renderFiles();
+  })));
+  box.classList.toggle("hidden", !files.list.length);
+  $("attach").classList.toggle("on", files.list.length > 0);
+}
+
+async function shrink(file) {
+  if (!file.type.startsWith("image/") || file.size < SHRINK_OVER || file.type === "image/gif") return file;
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bmp.width * k); canvas.height = Math.round(bmp.height * k);
+    canvas.getContext("2d").drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.85));
+    return blob && blob.size < file.size ? blob : file;
+  } catch {
+    return file; // a format the browser cannot draw: the add-on tries itself
+  }
+}
+
+function addFiles(list) {
+  for (const file of list) {
+    if (files.list.length >= 10) break;
+    const f = { name: file.name, kind: file.type.startsWith("image/") ? "image" : "", status: "uploading" };
+    if (f.kind === "image") f.preview = URL.createObjectURL(file);
+    f.ready = (async () => {
+      try {
+        const body = await shrink(file);
+        const res = await api(`/api/attachments?name=${encodeURIComponent(file.name)}`, {
+          method: "POST", body, headers: { "Content-Type": body.type || file.type || "application/octet-stream" },
+        });
+        Object.assign(f, await res.json(), { status: "" });
+      } catch (err) {
+        files.list = files.list.filter((g) => g !== f);
+        addMsg(`⚠ ${t("Allegato non caricato")} (${file.name}): ${errorText(err)}`, "jarvis");
+      }
+      renderFiles();
+    })();
+    files.list.push(f);
+  }
+  renderFiles();
+}
+
+$("attach").addEventListener("click", () => $("attach-input").click());
+$("attach-input").addEventListener("change", (e) => { addFiles([...e.target.files]); e.target.value = ""; });
+// Pasting a screenshot or dropping files on the chat attaches them too.
+$("chat-input").addEventListener("paste", (e) => {
+  const pasted = [...(e.clipboardData?.files || [])];
+  if (pasted.length) { e.preventDefault(); addFiles(pasted); }
+});
+$("chat").addEventListener("dragover", (e) => { if (e.dataTransfer?.types.includes("Files")) e.preventDefault(); });
+$("chat").addEventListener("drop", (e) => {
+  if (!e.dataTransfer?.files.length) return;
+  e.preventDefault();
+  addFiles([...e.dataTransfer.files]);
+});
+
+async function sendChat(text, sent = []) {
   stopTalk();
   const voice = S.speak && S.data?.integrations?.voice;
   talk.on = true;
   talk.thought = S.data?.agents.find((a) => a.id === S.data.boss.id)?.thought ?? null;
   orb.show("thinking");
-  addMsg(text, "me");
+  addMsg(text, "me", false, sent.map((f) => ({ ...f, url: `api/attachments/${f.id}${S.token ? `?token=${encodeURIComponent(S.token)}` : ""}` })));
   const wait = addMsg(t("{name} sta pensando…", { name: S.data?.boss?.name || t("L'assistente") }), "jarvis", true);
   try {
     // In a room of the house view Jarvis knows where you are ("spegni qui").
     const context = S.view === "casa" ? casa.context() : "";
-    const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ text: context + text, speak: !!voice }) });
+    const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ text: context + text, speak: !!voice, attachments: sent.map((f) => f.id) }) });
     const { reply, spoken: said, by } = await res.json();
     wait.classList.remove("pending");
     if (by === "ha" || by === "quick") { // a small note: who answered
@@ -1086,14 +1186,20 @@ $("chat-input").addEventListener("keydown", (e) => {
     $("chat-form").requestSubmit();
   }
 });
-$("chat-form").addEventListener("submit", (e) => {
+$("chat-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = $("chat-input").value.trim();
-  if (!text) return;
+  if (!text && !files.list.length) return;
   $("chat-input").value = "";
   fitChatInput();
   unlockAudio();
-  sendChat(text);
+  const pending = files.list;
+  files.list = [];
+  renderFiles();
+  await Promise.all(pending.map((f) => f.ready)); // photos still uploading
+  const sent = pending.filter((f) => f.id);
+  if (!text && !sent.length) return;
+  sendChat(text, sent);
 });
 
 $("speaker").classList.toggle("on", S.speak);

@@ -159,6 +159,32 @@ Uso:
 Un bot può essere ascoltato da un solo programma: due installazioni con gli stessi token vanno
 in conflitto.
 
+## Allegati: foto e documenti
+
+Puoi mandare all'assistente e agli agenti **foto, PDF e file di testo** (txt, csv, md, json):
+utile, per esempio, dal cantiere.
+
+- **Telegram**: invia una foto, un album o un file, con la richiesta nella didascalia ("guarda
+  questa crepa: è da preoccuparsi?"). Oppure rispondi a una foto già inviata con la domanda. Come
+  per i messaggi, va all'assistente; per un agente con un bot suo, rispondi a un suo messaggio o
+  scrivi `@nome_bot` nella didascalia. Senza testo, l'assistente guarda e ti chiede cosa serve.
+- **Dashboard**: la graffetta accanto al campo della chat (dal telefono anche la fotocamera); puoi
+  anche incollare uno screenshot o trascinare i file sulla chat. Le foto grandi vengono
+  rimpicciolite prima dell'invio, per consumare meno dati.
+- **API**: `POST /api/attachments?name=foto.jpg` con il file come corpo → `{"id": …}`; poi
+  `"attachments": ["id"]` in `/api/chat` o in `/api/agents/{id}/task`.
+
+L'assistente vede gli allegati e, quando delega un lavoro, li passa all'agente insieme al
+compito. La conversazione ne conserva solo una nota con il loro codice (`#1a2b3c4d`): le foto non
+si pagano di nuovo a ogni messaggio e chiunque del team può riguardarle quando servono ("nella
+foto di prima…").
+
+Limiti: 20 MB per file (lo stesso limite dei bot Telegram), PDF fino a 100 pagine, 10 allegati
+per messaggio. Le foto sono ruotate come scattate e ridotte a 1568 pixel sul lato lungo (quello
+che Claude legge comunque). Word ed Excel non si leggono direttamente: salvali in PDF (o CSV per
+un foglio). Ogni foto costa circa quanto 1.500 parole di testo; un PDF circa 1.500–3.000 per
+pagina. Gli allegati restano 30 giorni in `/data/allegati`, poi vengono cancellati.
+
 ## Posta di lavoro
 
 Imposta IMAP/SMTP del tuo provider (server, porte SSL 993/465, utente, password).

@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from hubnex import __version__
 from hubnex.addon import setup_assist
+from hubnex.attachments import MAX_BYTES, MAX_PER_MESSAGE, AttachmentError
 from hubnex.backup import BackupError, apply_pending_restore, make_backup, stage_restore
 from hubnex.casa import SUGGEST_SCHEMA, LayoutError, clean_suggestion, downsample, suggest_prompt
 from hubnex.energy import band_until, day_profile
@@ -46,7 +47,8 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
 # Request bodies live at module level: FastAPI must resolve these annotations by name.
 class ChatIn(BaseModel):
-    text: str = Field(min_length=1, max_length=8000)
+    text: str = Field(default="", max_length=8000)
+    attachments: list[str] = Field(default=[], max_length=MAX_PER_MESSAGE)  # ids from /api/attachments
     channel: str = "dashboard"
     voice: bool = False  # the answer will be spoken (Assist): keep it short
     speak: bool = False  # the dashboard will read the answer aloud too
@@ -54,6 +56,7 @@ class ChatIn(BaseModel):
 
 class TaskIn(BaseModel):
     task: str = Field(min_length=1, max_length=8000)
+    attachments: list[str] = Field(default=[], max_length=MAX_PER_MESSAGE)
     wait: bool = False
 
 
@@ -335,9 +338,12 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         # Dashboard: Home Assistant's own sentences first, then the quick route, then Jarvis.
         # Assist: Home Assistant already tried its sentences, so the quick route, then Jarvis.
         dashboard = body.channel == "dashboard"
+        files = attachments_for(hq, body.attachments)
+        if not body.text.strip() and not files:
+            raise HTTPException(422, tr("scrivi un messaggio o allega un file"))
         reply, spoken, by = await hq.converse(
             body.channel, body.text, voice=body.voice, spoken=body.speak,
-            quick=body.voice or dashboard, local=dashboard,
+            quick=body.voice or dashboard, local=dashboard, attachments=files,
         )
         if body.voice and reply:
             reply = for_voice(reply)  # Assist reads it aloud: units and symbols as words
@@ -356,10 +362,40 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def assign(agent_id: str, body: TaskIn, hq: HQ = Depends(get_hq)):
         if hq.org.agent(agent_id) is None:
             raise HTTPException(404, tr("agente sconosciuto"))
+        files = attachments_for(hq, body.attachments)
         if body.wait:
-            return {"result": await hq.run_agent(agent_id, body.task, source="user")}
-        hq.run_agent_background(agent_id, body.task, source="user", report=False)
+            return {"result": await hq.run_agent(agent_id, body.task, source="user", attachments=files)}
+        hq.run_agent_background(agent_id, body.task, source="user", report=False, attachments=files)
         return {"status": "started"}
+
+    # ------------------------------------------------------------------ attachments
+    def attachments_for(hq: HQ, ids: list[str]):
+        files, missing = hq.attachments.find(ids)
+        if missing:
+            raise HTTPException(404, tr("allegato non trovato: {ids}", ids=", ".join(missing)))
+        return files
+
+    @app.post("/api/attachments", dependencies=[Depends(full)])
+    async def attachment_upload(request: Request, name: str = "", hq: HQ = Depends(get_hq)):
+        """A photo, PDF or text file (raw body) for the next message: its id goes in `attachments`."""
+        if int(request.headers.get("content-length") or 0) > MAX_BYTES:
+            raise HTTPException(413, tr("file troppo grande (massimo 20 MB)"))
+        data = await request.body()
+        try:
+            att = await asyncio.to_thread(hq.attachments.save, data, name, request.headers.get("content-type"))
+        except AttachmentError as exc:
+            raise HTTPException(422, str(exc))
+        return {"id": att.id, "name": att.name, "kind": att.kind, "pages": att.pages}
+
+    @app.get("/api/attachments/{att_id}", dependencies=[Depends(full)])
+    async def attachment_get(att_id: str, hq: HQ = Depends(get_hq)):
+        att = hq.attachments.get(att_id)
+        if att is None:
+            raise HTTPException(404, tr("allegato non trovato: {ids}", ids=att_id))
+        return FileResponse(
+            hq.attachments.path(att), media_type=hq.attachments.media_type(att),
+            headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff"},
+        )
 
     @app.post("/api/deadlines", dependencies=[Depends(full)])
     async def add_deadline(body: DeadlineIn, hq: HQ = Depends(get_hq)):
