@@ -89,6 +89,14 @@ loop), `hubnex/connectors.py` and `hubnex/integrations/mcp.py` (MCP connectors),
 `hubnex/integrations/` (Home Assistant, Telegram, IMAP/SMTP, ElevenLabs), `web/` (dashboard:
 Three.js and hls.js included, it works without internet too).
 
+## Support HubNEX
+
+HubNEX is free and open source, and it will stay that way. If it gives you back a few minutes
+every day, help keep the reactor running: **[support it on PayPal](https://www.paypal.me/GSchiavo)**. Every contribution
+turns into new features, more tests and faster fixes.
+
+A star on GitHub helps too: it brings HubNEX to the people who need it.
+
 ## Licence
 
 [MIT](LICENSE). Includes [Three.js](https://threejs.org) (MIT) and

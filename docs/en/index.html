@@ -68,6 +68,11 @@ img { max-width: 100%; height: auto; display: block; }
 .steps li { counter-increment: s; display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: baseline; }
 .steps li::before { content: counter(s, decimal-leading-zero); font-family: var(--display); font-size: 26px; color: var(--cyan); }
 code { background: rgba(79, 209, 255, 0.08); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 15px; }
+.support { display: grid; gap: 22px; justify-items: start; }
+.support p { margin: 0; color: var(--muted); max-width: 62ch; }
+.donate { display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; border: 1px solid var(--cyan); border-radius: 8px; color: var(--text, #e6f1ff); text-decoration: none; font-family: var(--display); font-weight: 600; font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; background: rgba(79, 209, 255, 0.08); box-shadow: 0 0 24px -8px var(--cyan); transition: background 0.2s, box-shadow 0.2s; }
+.donate:hover, .donate:focus-visible { background: rgba(79, 209, 255, 0.16); box-shadow: 0 0 36px -6px var(--cyan); }
+.donate small { font-family: inherit; font-size: 13px; letter-spacing: 0.04em; text-transform: none; color: var(--muted); font-weight: 400; }
 footer { padding: 40px 0 70px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
 
 @media (max-width: 860px) {
@@ -192,6 +197,15 @@ footer { padding: 40px 0 70px; border-top: 1px solid var(--line); color: var(--m
       <li><span>Install HubNEX, enter the Anthropic API key, start it and turn on "Show in sidebar".</span></li>
       <li><span>Open HubNEX, draw your floor plan and tell the assistant who you are. Telegram, mail, voice, energy and connectors can be added whenever you like.</span></li>
     </ol>
+  </section>
+
+  <section class="chapter support">
+    <header>
+      <div class="kick">Support the project</div>
+      <h2>Power the reactor</h2>
+    </header>
+    <p>HubNEX is free, and it will stay free. Every feature is built in spare time, one night at a time. If it makes your day easier, a coffee keeps the reactor running and brings the next release closer.</p>
+    <a class="donate" href="https://www.paypal.me/GSchiavo" target="_blank" rel="noopener">Buy me a coffee <small>with PayPal</small></a>
   </section>
 
   <footer>

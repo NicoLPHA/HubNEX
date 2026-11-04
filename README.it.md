@@ -94,6 +94,14 @@ Struttura: `hubnex/hq.py` (il team, lo stato, la delega), `hubnex/llm.py` (ciclo
 IMAP/SMTP, ElevenLabs), `web/` (dashboard: Three.js e hls.js inclusi, funziona anche senza
 internet).
 
+## Sostieni HubNEX
+
+HubNEX è gratuito e open source, e lo resterà. Se ogni giorno ti restituisce qualche minuto,
+aiuta a tenere acceso il reattore: **[sostienilo con PayPal](https://www.paypal.me/GSchiavo)**. Ogni contributo diventa
+nuove funzioni, più test e correzioni più rapide.
+
+Anche una stella su GitHub aiuta: porta HubNEX a chi ne ha bisogno.
+
 ## Licenza
 
 [MIT](LICENSE). Include [Three.js](https://threejs.org) (MIT) e
