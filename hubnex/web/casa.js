@@ -535,6 +535,8 @@ export class CasaView {
         this.call(domain === "media_player" ? "media_player" : domain, "toggle", { entity_id: eid }, eid);
         break;
       }
+      case "lcolor": this.call("light", "turn_on", { entity_id: eid, rgb_color: el.dataset.rgb.split(",").map(Number) }); return;
+      case "lpick": return; // the colour picker: chosen in _change
       case "scene": this.call(domain, domain === "button" || domain === "input_button" ? "press" : "turn_on", { entity_id: eid }); this.toast(`▶ ${this.st(eid)?.n || eid}`); return;
       case "all-off": {
         const lights = this.lightsOf(this.area(area)).filter((x) => this.isOn(x));
@@ -686,6 +688,11 @@ export class CasaView {
     const el = e.target;
     if (el.dataset.act === "bright") {
       this.call("light", "turn_on", { entity_id: el.dataset.e, brightness_pct: Number(el.value) });
+    } else if (el.dataset.act === "ktemp") {
+      this.call("light", "turn_on", { entity_id: el.dataset.e, color_temp_kelvin: Number(el.value) });
+    } else if (el.dataset.act === "lpick") {
+      const hex = el.value.replace("#", "");
+      this.call("light", "turn_on", { entity_id: el.dataset.e, rgb_color: [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16)) });
     } else if (el.id === "card-enable" || el.id === "card-group") {
       this.cardKeep();
       this.render(true);
@@ -776,7 +783,7 @@ export class CasaView {
   render(force = false) {
     if (!this.visible) return;
     const active = document.activeElement;
-    if (!force && active && this.root.contains(active) && (active.type === "range" || active.tagName === "TEXTAREA" || active.tagName === "SELECT" || active.id === "casa-find" || active.closest(".casa-modal") || active.classList.contains("hc-input"))) {
+    if (!force && active && this.root.contains(active) && (active.type === "range" || active.type === "color" || active.tagName === "TEXTAREA" || active.tagName === "SELECT" || active.id === "casa-find" || active.closest(".casa-modal") || active.classList.contains("hc-input"))) {
       this.dirty = true; // don't yank the control from under the finger: redraw on blur
       return;
     }

@@ -1042,3 +1042,15 @@ body.casa-modal-open #chat, body.casa-modal-open #orb { display: none !important
   .al-body { padding-left: 0; }
 }
 .alerts input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+
+/* Light card: colour temperature and colours */
+#casa input.hc-ktemp { margin-top: 6px; }
+#casa input.hc-ktemp::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(90deg, #ff9f43, #ffe2b8 45%, #d9ecff 70%, #9fd0ff); }
+#casa input.hc-ktemp::-moz-range-track { height: 4px; border-radius: 2px; background: linear-gradient(90deg, #ff9f43, #ffe2b8 45%, #d9ecff 70%, #9fd0ff); }
+#casa input.hc-ktemp::-moz-range-progress { background: transparent; }
+#casa input.hc-ktemp::-webkit-slider-thumb { margin-top: -4px; background: #fff; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35); }
+.hc-colors { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.hc-color { width: 18px; height: 18px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25) !important; cursor: pointer; flex: none; }
+.hc-color:hover, .hc-color:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 1px; }
+.hc-color-pick { position: relative; overflow: hidden; background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); }
+.hc-color-pick input { position: absolute; inset: -4px; width: 28px; height: 28px; opacity: 0; cursor: pointer; border: 0; padding: 0; }

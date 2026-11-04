@@ -80,6 +80,12 @@ function spark(points) {
     <path class="line" d="${line}"/><circle cx="${(lx - 3).toFixed(1)}" cy="${ly.toFixed(1)}" r="3.5"/></svg>`;
 }
 
+// Colours offered on lights that have them (any other one from the picker).
+const LIGHT_COLORS = [
+  ["Rosso", "255,59,48"], ["Arancione", "255,149,0"], ["Giallo", "255,214,10"], ["Verde", "52,199,89"],
+  ["Azzurro", "90,200,250"], ["Blu", "10,90,255"], ["Viola", "175,82,222"], ["Rosa", "255,55,155"],
+];
+
 export const Cards = {
   // ---------------------------------------------------------------- the house dashboard (HUD)
   hudHTML() {
@@ -177,7 +183,30 @@ export const Cards = {
       ${this.head(s.nk ? t("Luce (relè)") : t("Luce"), s, icon("bulb"))}
       <div class="hc-line"><span class="hc-state">${state}</span>${color}${kelvin}</div>
       ${dim ? `<input class="hc-range" type="range" min="1" max="100" value="${pct || 1}" data-act="bright" data-e="${eid}" aria-label="${t("Luminosità")} ${esc(s.n)}" ${on ? "" : "disabled"}>` : `<div class="hc-bar"><i style="width:${on ? 100 : 0}%"></i></div>`}
+      ${this.lightTone(eid, s)}
     </article>`;
+  },
+
+  // Colour temperature (warm → cold) and colour, only where the bulb has them. They also turn
+  // the light on: choosing a colour on a light that is off lights it in that colour.
+  lightTone(eid, s) {
+    const modes = s.a.supported_color_modes || [];
+    const temp = modes.includes("color_temp");
+    const colour = modes.some((m) => ["hs", "rgb", "rgbw", "rgbww", "xy"].includes(m));
+    if (!temp && !colour) return "";
+    let out = "";
+    if (temp) {
+      const lo = s.a.min_color_temp_kelvin || 2000, hi = s.a.max_color_temp_kelvin || 6500;
+      const k = Math.min(hi, Math.max(lo, s.a.color_temp_kelvin || Math.round((lo + hi) / 2)));
+      out += `<input class="hc-range hc-ktemp" type="range" min="${lo}" max="${hi}" step="50" value="${k}" data-act="ktemp" data-e="${eid}" aria-label="${t("Temperatura colore")} ${esc(s.n)}" title="${t("Temperatura colore")}: ${k} K">`;
+    }
+    if (colour) {
+      const cur = s.a.rgb_color ? "#" + s.a.rgb_color.map((v) => v.toString(16).padStart(2, "0")).join("") : "#ffffff";
+      out += `<div class="hc-colors">${LIGHT_COLORS.map(([name, rgb]) =>
+        `<button class="hc-color" style="background:rgb(${rgb})" data-act="lcolor" data-e="${eid}" data-rgb="${rgb}" title="${t(name)}" aria-label="${t(name)} ${esc(s.n)}"></button>`).join("")}
+        <label class="hc-color hc-color-pick" title="${t("Altro colore")}"><input type="color" value="${cur}" data-act="lpick" data-e="${eid}" aria-label="${t("Altro colore")} ${esc(s.n)}"></label></div>`;
+    }
+    return out;
   },
 
   switchCard(eid, s) {

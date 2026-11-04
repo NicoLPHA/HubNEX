@@ -36,7 +36,7 @@ def add(eid, area, state, lc=30, device=None, **a):
 
 
 add("light.faretti_tv", "soggiorno", "on", brightness=102, supported_color_modes=["brightness"], friendly_name="Faretti TV")
-add("light.lampada_terra", "soggiorno", "on", brightness=255, supported_color_modes=["color_temp"], color_temp_kelvin=2700, friendly_name="Lampada da terra")
+add("light.lampada_terra", "soggiorno", "on", brightness=255, supported_color_modes=["color_temp", "hs"], color_mode="color_temp", color_temp_kelvin=2700, min_color_temp_kelvin=2200, max_color_temp_kelvin=6500, friendly_name="Lampada da terra")
 add("light.striscia", "soggiorno", "off", supported_color_modes=["hs"], friendly_name="Striscia LED")
 add("climate.soggiorno", "soggiorno", "heat", friendly_name="Clima soggiorno", current_temperature=21.8, temperature=22, hvac_modes=["off", "heat", "cool", "auto"], hvac_action="heating", target_temp_step=0.5, current_humidity=46)
 add("cover.salotto", "soggiorno", "open", friendly_name="Tapparella salotto", current_position=40)
@@ -205,6 +205,19 @@ class REST:
             st = dict(hq.watcher.states[eid])
             if service in ("set_datetime", "set_value", "select_option"):
                 st["state"] = data.get("time") or data.get("date") or data.get("datetime") or str(data.get("value", data.get("option")))
+                hq.watcher.states[eid] = st
+                await hq._ha_event("state", eid, st)
+                return []
+            if domain == "light" and service == "turn_on" and any(k in data for k in ("brightness_pct", "color_temp_kelvin", "rgb_color")):
+                a = dict(st.get("attributes") or {})
+                if "brightness_pct" in data:
+                    a["brightness"] = round(data["brightness_pct"] * 2.55)
+                if "color_temp_kelvin" in data:
+                    a.update(color_temp_kelvin=data["color_temp_kelvin"], color_mode="color_temp")
+                    a.pop("rgb_color", None)
+                if "rgb_color" in data:
+                    a.update(rgb_color=list(data["rgb_color"]), color_mode="hs")
+                st.update(state="on", attributes=a, last_changed=datetime.now(timezone.utc).isoformat())
                 hq.watcher.states[eid] = st
                 await hq._ha_event("state", eid, st)
                 return []

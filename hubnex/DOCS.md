@@ -205,7 +205,8 @@ Imposta IMAP/SMTP del tuo provider (server, porte SSL 993/465, utente, password)
 
 Il pulsante **⌂ Casa** apre la plancia di Home Assistant. In alto il **cruscotto**: chi è in
 casa, allarme, clima medio, luci accese, energia e telecamere; sotto le scene. Ogni entità ha la
-sua **card**: luci (tocca la card, barra della luminosità), clima con quadrante, tapparelle con la
+sua **card**: luci (tocca la card, barra della luminosità; se la lampadina li ha, anche
+temperatura colore da calda a fredda e colori, con un selettore per qualsiasi altro), clima con quadrante, tapparelle con la
 finestra disegnata, valvole, media con copertina e comandi, prese con il consumo, porte e finestre
 (rosse quando aperte, "da quanto"), sensori con il grafico delle ultime 24 ore, persone,
 telecamere. Le **serrature** con un codice in Home Assistant chiedono il codice sul tastierino,

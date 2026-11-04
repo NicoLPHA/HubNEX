@@ -36,6 +36,7 @@ ATTRS = (
     "unit_of_measurement", "device_class", "media_title", "source", "supported_color_modes",
     "supported_features", "code_format", "code_arm_required", "media_artist", "volume_level",
     "entity_picture", "media_position", "media_duration", "media_position_updated_at", "color_temp_kelvin",
+    "min_color_temp_kelvin", "max_color_temp_kelvin",
     "current_humidity", "battery_level", "hvac_action",
     "has_date", "has_time", "min", "max", "step", "mode", "options",
     "last_period", "last_reset", "meter_period",  # utility meters: the previous period, its start

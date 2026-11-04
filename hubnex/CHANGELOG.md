@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.13.1
+- Card delle luci: cursore della temperatura colore (da calda a fredda) e colori, con un
+  selettore per qualsiasi altro colore, solo sulle lampadine che li supportano. Un colore scelto
+  su una luce spenta la accende di quel colore.
+
 ## 1.13.0
 - Allegati: foto, album, PDF e file di testo all'assistente e agli agenti, da Telegram (con la
   richiesta nella didascalia, o rispondendo alla foto) e dalla dashboard (graffetta, fotocamera

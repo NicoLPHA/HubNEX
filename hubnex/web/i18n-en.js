@@ -574,5 +574,15 @@ export const EN = {
   "Allega foto o file": "Attach photos or files",
   "Allegato non caricato": "Attachment not uploaded",
   "Rimuovi allegato": "Remove attachment",
-  "caricamento…": "uploading…"
+  "caricamento…": "uploading…",
+  "Altro colore": "Other colour",
+  "Temperatura colore": "Colour temperature",
+  "Rosso": "Red",
+  "Arancione": "Orange",
+  "Giallo": "Yellow",
+  "Verde": "Green",
+  "Azzurro": "Light blue",
+  "Blu": "Blue",
+  "Viola": "Purple",
+  "Rosa": "Pink"
 };
