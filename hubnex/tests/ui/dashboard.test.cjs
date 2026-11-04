@@ -157,21 +157,29 @@ test("chat: la richiesta va a capo e il campo cresce; Invio invia", { timeout: 3
   await done(page);
 });
 
-test("luci: temperatura colore e colori dove la lampadina li ha", { timeout: 30000 }, async () => {
+test("luci: la card resta semplice, colore e temperatura nel popup", { timeout: 30000 }, async () => {
   const page = await open();
   await casa(page);
   await page.click(".plan-room[data-area='soggiorno']");
   await page.click(".casa-quick [data-act='open']");
   await page.waitForSelector(".casa-room");
-  assert.equal(await page.locator("[data-act='ktemp'][data-e='light.faretti_tv']").count(), 0, "solo luminosità: niente temperatura");
-  assert.equal(await page.locator("[data-act='lcolor'][data-e='light.faretti_tv']").count(), 0, "solo luminosità: niente colori");
-  // a colour on a light that is off turns it on in that colour
-  await page.click("[data-act='lcolor'][data-e='light.striscia'][data-rgb='10,90,255']");
+  assert.equal(await page.locator(".casa-room [data-act='ktemp'], .casa-room [data-act='lcolor']").count(), 0, "niente controlli in più sulla card");
+  assert.equal(await page.locator("[data-act='tone'][data-e='light.faretti_tv']").count(), 0, "solo luminosità: niente pallino");
+  // the LED strip (colour only, off): the popup has colours and no temperature
+  await page.click("[data-act='tone'][data-e='light.striscia']");
+  await page.waitForSelector(".hc-tonebox");
+  assert.equal(await page.locator(".hc-tonebox [data-act='ktemp']").count(), 0);
+  await page.click(".hc-tonebox [data-act='lcolor'][data-rgb='10,90,255']");
   await page.waitForFunction(() => document.querySelector(".hc-light[data-e='light.striscia']")?.classList.contains("on"));
-  await page.locator("[data-act='ktemp'][data-e='light.lampada_terra']").evaluate((el) => {
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".hc-tonebox", { state: "detached" });
+  // the floor lamp: temperature in the popup
+  await page.click("[data-act='tone'][data-e='light.lampada_terra']");
+  await page.locator(".hc-tonebox [data-act='ktemp']").evaluate((el) => {
     el.value = 5000;
     el.dispatchEvent(new Event("change", { bubbles: true }));
   });
+  await page.click("[data-act='tone-close']");
   await page.waitForFunction(() => /5000 K/.test(document.querySelector(".hc-light[data-e='light.lampada_terra']").textContent));
   await done(page);
 });

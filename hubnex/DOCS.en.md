@@ -210,8 +210,8 @@ Set your provider's IMAP/SMTP (servers, SSL ports 993/465, user, password).
 
 The **⌂ Home** button opens Home Assistant's dashboard. At the top the **HUD**: who is home,
 alarm, average climate, lights on, energy and cameras; below, the scenes. Every entity has its
-**card**: lights (tap the card, brightness bar; when the bulb has them, also colour
-temperature from warm to cold and colours, with a picker for any other one), climate with a dial, blinds with the window drawn,
+**card**: lights (tap the card, brightness bar; when the bulb has them, the dot next
+to the state opens colour temperature and colours), climate with a dial, blinds with the window drawn,
 valves, media with cover art and controls, plugs with their consumption, doors and windows (red
 when open, "for how long"), sensors with the chart of the last 24 hours, people, cameras.
 **Locks** with a code in Home Assistant ask for it on a keypad, the others for a confirmation in

@@ -62,6 +62,7 @@ export class CasaView {
     addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
       if (this.live) this.closeCamera();
+      else if (this.toneOpen && this.visible) { this.toneOpen = null; this.render(true); }
       else if (this.energyOpen && !this.energyEdit && this.visible) { this.energyOpen = false; clearInterval(this._energyTimer); this.render(true); }
     });
     this.data = null;
@@ -535,6 +536,9 @@ export class CasaView {
         this.call(domain === "media_player" ? "media_player" : domain, "toggle", { entity_id: eid }, eid);
         break;
       }
+      case "tone": this.toneOpen = eid; break;
+      case "tone-close": this.toneOpen = null; break;
+      case "tone-bg": if (el !== this._clickTarget) return; this.toneOpen = null; break; // a tap outside the popup
       case "lcolor": this.call("light", "turn_on", { entity_id: eid, rgb_color: el.dataset.rgb.split(",").map(Number) }); return;
       case "lpick": return; // the colour picker: chosen in _change
       case "scene": this.call(domain, domain === "button" || domain === "input_button" ? "press" : "turn_on", { entity_id: eid }); this.toast(`▶ ${this.st(eid)?.n || eid}`); return;
@@ -805,6 +809,7 @@ export class CasaView {
         <h3>${t("Allarme")} <button class="casa-x" data-act="alarm-close" aria-label="${t("Chiudi")}">×</button></h3>
         <div class="hc-grid">${this.data.alarms.filter((e) => this.st(e)).map((e) => this.cardHTML(e)).join("")}</div></section></div>`;
     }
+    if (this.toneOpen && this.st(this.toneOpen)) layer += this.toneHTML(this.toneOpen);
     if (this.pad) layer += this.padHTML();
     if (this.cardEdit) layer += this.cardEditHTML();
     if (this.renaming) layer += this.renameHTML();
@@ -822,7 +827,7 @@ export class CasaView {
     }
     this.root.scrollTop = scroll;
     document.body.classList.toggle("casa-sheet", !!(this.data && !this.page && this.selected && this.area(this.selected)));
-    document.body.classList.toggle("casa-modal-open", !!(this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen || this.energyOpen));
+    document.body.classList.toggle("casa-modal-open", !!(this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen || this.energyOpen || this.toneOpen));
     if (this.editing && this.cands) {
       const box = this.root.querySelector("#casa-cands");
       if (box) box.innerHTML = this.candsHTML();

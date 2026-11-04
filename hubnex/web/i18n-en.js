@@ -584,5 +584,7 @@ export const EN = {
   "Azzurro": "Light blue",
   "Blu": "Blue",
   "Viola": "Purple",
-  "Rosa": "Pink"
+  "Rosa": "Pink",
+  "Colore": "Colour",
+  "Colore e temperatura": "Colour and temperature"
 };

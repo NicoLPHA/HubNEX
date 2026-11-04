@@ -181,28 +181,53 @@ export const Cards = {
     const state = s.s === "unavailable" ? t("non disponibile") : on ? `${t("accesa")}${dim ? ` · ${pct}%` : ""}` : t("spenta");
     return `<article class="hc hc-light ${on ? "on" : ""}" data-act="toggle" data-e="${eid}" role="button" tabindex="0" aria-pressed="${on}" aria-label="${esc(s.n)}">
       ${this.head(s.nk ? t("Luce (relè)") : t("Luce"), s, icon("bulb"))}
-      <div class="hc-line"><span class="hc-state">${state}</span>${color}${kelvin}</div>
+      <div class="hc-line"><span class="hc-state">${state}</span>${color}${kelvin}${this.toneDot(eid, s)}</div>
       ${dim ? `<input class="hc-range" type="range" min="1" max="100" value="${pct || 1}" data-act="bright" data-e="${eid}" aria-label="${t("Luminosità")} ${esc(s.n)}" ${on ? "" : "disabled"}>` : `<div class="hc-bar"><i style="width:${on ? 100 : 0}%"></i></div>`}
-      ${this.lightTone(eid, s)}
     </article>`;
   },
 
-  // Colour temperature (warm → cold) and colour, only where the bulb has them. They also turn
-  // the light on: choosing a colour on a light that is off lights it in that colour.
+  toneModes(s) {
+    const modes = s?.a.supported_color_modes || [];
+    return { temp: modes.includes("color_temp"), colour: modes.some((m) => ["hs", "rgb", "rgbw", "rgbww", "xy"].includes(m)) };
+  },
+
+  // The small dot on the card that opens colour and temperature: the card stays as it is.
+  toneDot(eid, s) {
+    const { temp, colour } = this.toneModes(s);
+    if (!temp && !colour) return "";
+    const label = colour ? t("Colore e temperatura") : t("Temperatura colore");
+    return `<button class="hc-tone ${colour ? "" : "temp"}" data-act="tone" data-e="${eid}" title="${label}" aria-label="${label} ${esc(s.n)}"></button>`;
+  },
+
+  // The popup: brightness, colour temperature (warm → cold) and colours, only what the bulb has.
+  // Choosing a colour on a light that is off lights it in that colour.
+  toneHTML(eid) {
+    const s = this.st(eid);
+    if (!s) return "";
+    const on = s.s === "on";
+    const pct = on && s.a.brightness != null ? Math.round((s.a.brightness / 255) * 100) : on ? 100 : 0;
+    const k = on && s.a.color_temp_kelvin ? `${s.a.color_temp_kelvin} K` : "";
+    return `<div class="casa-modal" role="dialog" aria-label="${esc(s.n)}" data-act="tone-bg"><section class="panel casa-panel hc-tonebox">
+      <h3>${esc(s.n)} <button class="casa-x" data-act="tone-close" aria-label="${t("Chiudi")}">×</button></h3>
+      <p class="hc-state">${on ? `${t("accesa")} · ${pct}%${k ? ` · ${k}` : ""}` : t("spenta")}</p>
+      <span class="hc-kick">${t("Luminosità")}</span>
+      <input class="hc-range" type="range" min="1" max="100" value="${pct || 1}" data-act="bright" data-e="${eid}" aria-label="${t("Luminosità")} ${esc(s.n)}">
+      ${this.lightTone(eid, s)}
+    </section></div>`;
+  },
+
   lightTone(eid, s) {
-    const modes = s.a.supported_color_modes || [];
-    const temp = modes.includes("color_temp");
-    const colour = modes.some((m) => ["hs", "rgb", "rgbw", "rgbww", "xy"].includes(m));
+    const { temp, colour } = this.toneModes(s);
     if (!temp && !colour) return "";
     let out = "";
     if (temp) {
       const lo = s.a.min_color_temp_kelvin || 2000, hi = s.a.max_color_temp_kelvin || 6500;
       const k = Math.min(hi, Math.max(lo, s.a.color_temp_kelvin || Math.round((lo + hi) / 2)));
-      out += `<input class="hc-range hc-ktemp" type="range" min="${lo}" max="${hi}" step="50" value="${k}" data-act="ktemp" data-e="${eid}" aria-label="${t("Temperatura colore")} ${esc(s.n)}" title="${t("Temperatura colore")}: ${k} K">`;
+      out += `<span class="hc-kick">${t("Temperatura colore")}</span><input class="hc-range hc-ktemp" type="range" min="${lo}" max="${hi}" step="50" value="${k}" data-act="ktemp" data-e="${eid}" aria-label="${t("Temperatura colore")} ${esc(s.n)}" title="${t("Temperatura colore")}: ${k} K">`;
     }
     if (colour) {
       const cur = s.a.rgb_color ? "#" + s.a.rgb_color.map((v) => v.toString(16).padStart(2, "0")).join("") : "#ffffff";
-      out += `<div class="hc-colors">${LIGHT_COLORS.map(([name, rgb]) =>
+      out += `<span class="hc-kick">${t("Colore")}</span><div class="hc-colors">${LIGHT_COLORS.map(([name, rgb]) =>
         `<button class="hc-color" style="background:rgb(${rgb})" data-act="lcolor" data-e="${eid}" data-rgb="${rgb}" title="${t(name)}" aria-label="${t(name)} ${esc(s.n)}"></button>`).join("")}
         <label class="hc-color hc-color-pick" title="${t("Altro colore")}"><input type="color" value="${cur}" data-act="lpick" data-e="${eid}" aria-label="${t("Altro colore")} ${esc(s.n)}"></label></div>`;
     }

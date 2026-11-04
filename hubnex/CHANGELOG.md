@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.13.2
+- Card delle luci di nuovo minimale: colore e temperatura stanno in un popup, che si apre dal
+  piccolo pallino accanto allo stato (solo sulle lampadine che li hanno). Nel popup:
+  luminosità, temperatura da calda a fredda, colori e selettore.
+
 ## 1.13.1
 - Card delle luci: cursore della temperatura colore (da calda a fredda) e colori, con un
   selettore per qualsiasi altro colore, solo sulle lampadine che li supportano. Un colore scelto
