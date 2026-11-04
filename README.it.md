@@ -97,7 +97,7 @@ internet).
 ## Sostieni HubNEX
 
 HubNEX è gratuito e open source, e lo resterà. Se ogni giorno ti restituisce qualche minuto,
-aiuta a tenere acceso il reattore: **[sostienilo con PayPal](https://www.paypal.me/GSchiavo)**. Ogni contributo diventa
+aiuta a tenere acceso il reattore: **[sostienilo con PayPal](https://www.paypal.com/donate/?hosted_button_id=HTZJULXKFP8M4)**. Ogni contributo diventa
 nuove funzioni, più test e correzioni più rapide.
 
 Anche una stella su GitHub aiuta: porta HubNEX a chi ne ha bisogno.
