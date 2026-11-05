@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.14.1
+- Telecamere: la vista grande si apre subito. Usa il video già in corso nella miniatura invece
+  di aprirne uno nuovo, e dentro Home Assistant il video in alta qualità parte insieme, non più
+  dopo aver aspettato il primo fotogramma (fino a 10 secondi di attesa con alcune telecamere).
+
 ## 1.14.0
 - Card del **robot aspirapolvere**: stato, batteria, la sua **mappa** (dallo stesso dispositivo,
   si aggiorna ogni 5 secondi e mostra il robot che si muove), Pulisci/Pausa, Base, Trova e

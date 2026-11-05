@@ -201,8 +201,12 @@ test("card: robot con mappa, telecamera composta live con i sensori, media compl
   await page.waitForSelector(".hc-camcomp");
   assert.equal(await page.locator(".hc-camcomp .hc-chip.on").count(), 1, "il veicolo in movimento");
   await page.waitForSelector(".hc-camcomp img[data-live]");
+  await page.waitForFunction(() => document.querySelector(".hc-camcomp img[data-live]")?.naturalWidth > 0);
+  const t0 = Date.now();
   await page.click(".hc-camcomp .casa-cam");
   await page.waitForFunction(() => /LIVE/.test(document.querySelector(".cam-mode")?.textContent || ""));
+  assert.ok(Date.now() - t0 < 1500, `la vista grande è live subito (${Date.now() - t0} ms)`);
+  assert.equal(await page.locator(".casa-overlay img.cam-live").count(), 1, "il flusso della miniatura, spostato");
   assert.equal(await page.locator("#casa img[data-live]").count(), 0, "la miniatura chiude il suo flusso");
   await page.click(".casa-overlay .casa-x");
   await page.waitForSelector(".hc-camcomp img[data-live]");

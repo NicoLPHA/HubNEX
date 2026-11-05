@@ -340,8 +340,7 @@ export class CasaView {
   openCameraGrid() {
     const cams = this.data.areas.flatMap((a) => a.entities.filter((e) => this.st(e)?.k === "camera"));
     const box = this.overlay(t("Telecamere"), `<div class="casa-cams">${cams.map((e) => this.camHTML(e)).join("")}</div>`);
-    this.stopLive(); // the grid has its own streams: the view's are behind it
-    this.mountLive(box);
+    this.mountLive(box); // the streams already open move into the grid, they don't restart
     box.addEventListener("click", (e) => {
       const cam = e.target.closest("[data-act='cam']");
       if (cam) this.openCamera(cam.dataset.e);
@@ -351,47 +350,59 @@ export class CasaView {
   // Live video: the player Home Assistant itself uses (HLS stream from HA) when Jarvis runs
   // inside Home Assistant, otherwise MJPEG through the add-on. It sits outside the view's
   // HTML, so the view's redraws never restart it.
-  // Tries, in order: HA's own HLS stream (inside Home Assistant), MJPEG through the add-on,
-  // and as a last resort a still frame every second. The header says which one is running and,
+  // HA's own HLS stream (inside Home Assistant) and MJPEG through the add-on start together;
+  // as a last resort a still frame every second. The header says which one is running and,
   // if video failed, why.
   async openCamera(eid) {
     const s = this.st(eid);
-    this.stopLive(); // the big view opens its own stream
+    // The thumbnail already live moves into the big view: no new connection, live at once.
+    const thumb = this.liveImgs.get(eid);
+    const reuse = thumb?.dataset.live && thumb.naturalWidth ? thumb : null;
+    if (reuse) this.liveImgs.delete(eid);
+    this.stopLive(); // the other thumbnails: their connections serve the big view now
     const box = this.overlay(s?.n || eid, `<div class="cam-mode">${t("Avvio video…")}</div><div class="cam-stage"><img class="cam-still" src="${this.camSrc[eid] || this.camURL(eid)}" alt=""></div>`, true);
     const stage = box.querySelector(".cam-stage");
     const mode = (text, on = false) => { const m = box.querySelector(".cam-mode"); m.textContent = text; m.classList.toggle("on", on); };
     const live = this.live;
     const why = [];
-    // Live at once: the MJPEG through the add-on, the same as the thumbnail.
     let mjpeg = false;
-    try {
-      await this.playMJPEG(stage, eid, live);
-      if (this.live !== live) return;
+    let hd = false;
+    // MJPEG through the add-on (the same as the thumbnail) and, inside Home Assistant, its own
+    // HLS video (sharper) start together: whichever plays first is shown, HLS wins when it plays.
+    const mjpegP = (async () => {
+      if (reuse) {
+        reuse.onerror = null;
+        reuse.removeAttribute("data-cam");
+        reuse.removeAttribute("data-live");
+        reuse.className = "cam-live";
+        stage.appendChild(reuse);
+        live.img = reuse;
+      } else {
+        await this.playMJPEG(stage, eid, live);
+      }
+      if (this.live !== live || !live.img) return; // closed, or HLS already took over
       stage.querySelector(".cam-still")?.remove();
-      mode("● LIVE", true);
+      if (!hd) mode("● LIVE", true);
       mjpeg = true;
-    } catch (err) {
+    })().catch((err) => {
       why.push(`MJPEG: ${err.message}`);
       if (live.img) { live.img.src = ""; live.img.remove(); live.img = null; }
-      if (this.live !== live) return;
-    }
-    // Then, inside Home Assistant, its own video (HLS, sharper): it replaces the MJPEG once it plays.
+    });
     const hass = haParent();
-    if (hass && Number(s?.a.supported_features) & 2) {
-      try {
-        const { url } = await hass.connection.sendMessagePromise({ type: "camera/stream", entity_id: eid, format: "hls" });
-        if (this.live !== live) return;
-        await this.playHLS(stage, url, live);
-        if (live.img) { live.img.src = ""; live.img.remove(); live.img = null; }
-        mode("● LIVE · HD", true);
-        return;
-      } catch (err) {
-        why.push(`HLS: ${err.message || err.code || err}`);
-        this.stopVideo(live);
-        if (this.live !== live) return;
-      }
-    }
-    if (mjpeg) return;
+    const hlsP = hass && Number(s?.a.supported_features) & 2 ? (async () => {
+      const { url } = await hass.connection.sendMessagePromise({ type: "camera/stream", entity_id: eid, format: "hls" });
+      if (this.live !== live) return;
+      await this.playHLS(stage, url, live);
+      if (this.live !== live) return;
+      if (live.img) { live.img.src = ""; live.img.remove(); live.img = null; }
+      hd = true;
+      mode("● LIVE · HD", true);
+    })().catch((err) => {
+      why.push(`HLS: ${err.message || err.code || err}`);
+      this.stopVideo(live);
+    }) : null;
+    await Promise.all([mjpegP, hlsP]);
+    if (this.live !== live || mjpeg || hd) return;
     mode(`${t("Istantanee ogni secondo — video non disponibile")} (${why.join("; ")})`);
     const still = stage.querySelector(".cam-still");
     live.timer = setInterval(() => {
@@ -451,7 +462,7 @@ export class CasaView {
     live.img = img;
     const start = Date.now();
     while (!img.naturalWidth) {
-      if (this.live !== live) return;
+      if (this.live !== live || live.img !== img) return; // closed, or HLS took over
       if (Date.now() - start > 10000) throw new Error(t("nessuna immagine dopo {n} secondi", { n: 10 }));
       await new Promise((r) => setTimeout(r, 250));
     }
