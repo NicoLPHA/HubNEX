@@ -207,7 +207,9 @@ Il pulsante **⌂ Casa** apre la plancia di Home Assistant. In alto il **cruscot
 casa, allarme, clima medio, luci accese, energia e telecamere; sotto le scene. Ogni entità ha la
 sua **card**: luci (tocca la card, barra della luminosità; se la lampadina li ha, il pallino
 accanto allo stato apre temperatura colore e colori), clima con quadrante, tapparelle con la
-finestra disegnata, valvole, media con copertina e comandi, prese con il consumo, porte e finestre
+finestra disegnata, valvole, media con copertina, avanzamento, casuale/ripeti, volume e sorgente, **robot
+aspirapolvere** con la sua mappa (dove il robot si vede muovere), stato, batteria e comandi,
+prese con il consumo, porte e finestre
 (rosse quando aperte, "da quanto"), sensori con il grafico delle ultime 24 ore, persone,
 telecamere. Le **serrature** con un codice in Home Assistant chiedono il codice sul tastierino,
 le altre una conferma nella card; l'**allarme** si disinserisce con il tastierino. Le **stanze sono le aree di Home
@@ -276,8 +278,11 @@ Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nel
   che accende una luce è ancora meglio "Mostra come → Luce" nelle impostazioni dell'entità in
   Home Assistant: così anche Assist e l'assistente la trattano da luce.
 - **Media**: accendi e spegni, ▶ / ❚❚ e volume.
-- **Telecamere**: miniature nelle stanze e il pulsante **Telecamere** in alto; toccandone una
-  si apre il video dal vivo (lo stesso flusso che usa Home Assistant).
+- **Telecamere**: le miniature nelle stanze sono **dal vivo** (fino a 3 alla volta, le altre si
+  aggiornano ogni 5 secondi); toccandone una si apre grande, subito dal vivo, e dentro Home
+  Assistant passa al suo video in alta qualità. In una **card composta** con una telecamera e i
+  suoi sensori (un veicolo, una persona, il movimento), i sensori compaiono sopra l'immagine e si
+  accendono in rosso quando scattano. Il pulsante **Telecamere** in alto le mostra tutte.
 - **Allarme**: pulsante in alto con lo stato; In casa / Fuori / Notte e Disinserisci con
   tastierino per il codice.
 - I comandi della vista Casa vanno diretti a Home Assistant e **non usano credito Claude**.

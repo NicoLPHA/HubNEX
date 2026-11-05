@@ -494,7 +494,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def casa_camera(entity_id: str, hq: HQ = Depends(get_hq)):
         """A frame of the camera, fetched by the add-on (works from the sidebar and outside)."""
         need_ha(hq)
-        if not entity_id.startswith("camera."):
+        if not entity_id.startswith(("camera.", "image.")):  # image.*: e.g. a robot vacuum's map
             raise HTTPException(404, tr("non è una telecamera"))
         try:
             image, ctype = await hq.ha.camera_image(entity_id)

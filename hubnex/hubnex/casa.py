@@ -23,7 +23,7 @@ KINDS = {
     "climate": "climate", "cover": "cover", "media_player": "media", "lock": "lock",
     "alarm_control_panel": "alarm", "scene": "scene", "script": "script", "button": "button",
     "input_button": "button", "sensor": "sensor", "binary_sensor": "binary", "camera": "camera",
-    "vacuum": "switch", "water_heater": "climate", "humidifier": "switch", "valve": "valve", "siren": "siren",
+    "vacuum": "vacuum", "water_heater": "climate", "humidifier": "switch", "valve": "valve", "siren": "siren",
     "person": "person", "device_tracker": "person", "remote": "switch",
     # helpers the owner sets from the dashboard (the stove's start time, a target, a mode…)
     "input_datetime": "datetime", "time": "datetime", "date": "datetime", "datetime": "datetime",
@@ -37,6 +37,8 @@ ATTRS = (
     "supported_features", "code_format", "code_arm_required", "media_artist", "volume_level",
     "entity_picture", "media_position", "media_duration", "media_position_updated_at", "color_temp_kelvin",
     "min_color_temp_kelvin", "max_color_temp_kelvin",
+    "fan_speed", "fan_speed_list", "status", "source_list", "shuffle", "repeat", "is_volume_muted",
+    "media_album_name", "app_name", "media_series_title",
     "current_humidity", "battery_level", "hvac_action",
     "has_date", "has_time", "min", "max", "step", "mode", "options",
     "last_period", "last_reset", "meter_period",  # utility meters: the previous period, its start
@@ -465,7 +467,22 @@ class Casa:
             out["lc"] = s["last_changed"]  # since when (an open window, a person in a zone)
         if shown:
             out["nk"] = native  # what Home Assistant says it is
+        if entity_id.startswith("vacuum."):
+            out["mp"] = self.vacuum_map(entity_id)
         return out
+
+    def vacuum_map(self, entity_id: str) -> str | None:
+        """The map of a robot vacuum: a camera or image entity of the same device (Roborock,
+        Xiaomi, Valetudo draw the robot on it), else one whose name says map and robot."""
+        maps = [e for e in self.ha.states if e.split(".")[0] in ("camera", "image")]
+        dev = (self.ha.entities.get(entity_id) or {}).get("device_id")
+        same = [e for e in maps if dev and (self.ha.entities.get(e) or {}).get("device_id") == dev]
+        is_map = lambda e: any(w in e for w in ("map", "mappa"))  # noqa: E731
+        if same:
+            return sorted(same, key=lambda e: not is_map(e))[0]
+        token = entity_id.split(".", 1)[1].split("_")[0]
+        named = [e for e in maps if is_map(e) and token in e]
+        return named[0] if named else None
 
     def area_entities(self) -> dict[str, list[str]]:
         rooms: dict[str, list[str]] = {a: [] for a in self.ha.areas}

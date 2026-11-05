@@ -92,6 +92,20 @@ add("input_boolean.stufa_automatica", None, "on", friendly_name="Stufa automatic
 add("input_boolean.stufa_weekend", None, "off", friendly_name="Stufa weekend")
 add("input_boolean.stufa_notte", None, "on", friendly_name="Stufa notte")
 add("input_select.stufa_modo", "soggiorno", "Comfort", options=["Eco", "Comfort", "Notte"], friendly_name="Modalità stufa")
+# a robot vacuum and its map (an image entity of the same device, as Roborock does)
+T.DEVICES.append({"id": "dev-robot", "name": "Robot aspirapolvere", "area_id": "corridoio"})
+add("vacuum.robot", None, "cleaning", 12, device="dev-robot", friendly_name="Robot aspirapolvere", battery_level=64,
+    fan_speed="Bilanciata", fan_speed_list=["Silenziosa", "Bilanciata", "Turbo", "Max"], status="Pulisce il soggiorno",
+    supported_features=8192 | 4 | 16 | 32 | 512)
+add("image.robot_mappa", None, "2026-11-05T07:00:00+00:00", device="dev-robot", friendly_name="Mappa robot")
+# the entrance camera with what it detects
+add("binary_sensor.ingresso_veicolo", "giardino", "on", 1, device_class="moving", friendly_name="Ingresso Veicolo in movimento")
+add("binary_sensor.ingresso_persona", "giardino", "off", 47, device_class="occupancy", friendly_name="Ingresso Persona")
+# music in the kitchen, with everything a music player has
+add("media_player.cucina", "cucina", "playing", friendly_name="Altoparlante cucina", media_title="Clair de Lune", media_artist="Claude Debussy",
+    media_album_name="Suite bergamasque", app_name="Spotify", volume_level=0.42, is_volume_muted=False, shuffle=True, repeat="all",
+    source="Spotify", source_list=["Spotify", "Radio", "Bluetooth", "TV"], media_position=95, media_duration=301, media_position_updated_at=ago(0),
+    supported_features=1 | 4 | 8 | 16 | 32 | 2048 | 16384 | 32768 | 262144)
 
 EN = os.environ.get("DEMO_LANG") == "en"
 NAMES_EN = {
@@ -185,6 +199,18 @@ def seed_costs() -> None:
 seed_costs()
 
 
+def seed_cards() -> None:
+    """A composed card: the entrance camera with what it detects."""
+    import json
+    card = {"id": "c1", "name": "Ingresso", "entities": ["camera.ingresso", "binary_sensor.ingresso_veicolo", "binary_sensor.ingresso_persona"], "size": "wide"}
+    adjust = {"extra": {}, "hidden": {}, "cards": {"giardino": [card]}}
+    hq.store._conn.execute("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)", ("casa_adjust", json.dumps(adjust)))
+    hq.store._conn.commit()
+
+
+seed_cards()
+
+
 async def demo_phones():
     return [{"service": "mobile_app_pixel_9", "name": "Pixel 9"}, {"service": "mobile_app_ipad", "name": "iPad"}]
 
@@ -264,12 +290,40 @@ class REST:
                     return {"response": {"response_type": "action_done", "speech": {"plain": {"speech": f"{name}: {'accesa' if on else 'spenta'}"}}}}
         return {"response": {"response_type": "error", "data": {"code": "no_intent_match"}}}
 
+    async def camera_stream(self, eid):
+        """MJPEG like Home Assistant's camera_proxy_stream: a new frame twice a second."""
+        import asyncio
+
+        async def chunks():
+            while True:
+                frame, _ = await self.camera_image(eid)
+                yield b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: " + str(len(frame)).encode() + b"\r\n\r\n" + frame + b"\r\n"
+                await asyncio.sleep(0.5)
+
+        return "multipart/x-mixed-replace;boundary=frame", chunks()
+
     async def camera_image(self, eid):
+        if eid.startswith("image."):
+            im = Image.new("RGB", (640, 480), (10, 18, 30))
+            dr = ImageDraw.Draw(im)
+            rooms = [(60, 60, 330, 250, (40, 70, 110)), (330, 60, 580, 250, (55, 90, 70)), (60, 250, 260, 420, (90, 70, 50)), (260, 250, 580, 420, (70, 60, 100))]
+            for x1, y1, x2, y2, c in rooms:
+                dr.rectangle([x1, y1, x2, y2], fill=c, outline=(200, 220, 240), width=3)
+            k = time.time() / 4
+            path = [(120 + 10 * i, 120 + int(60 * math.sin(i / 3))) for i in range(int(k % 20) + 1)]
+            if len(path) > 1:
+                dr.line(path, fill=(150, 220, 255), width=6)
+            x, y = path[-1]
+            dr.ellipse([x - 12, y - 12, x + 12, y + 12], fill=(255, 255, 255), outline=(79, 209, 255), width=3)
+            dr.rectangle([500, 380, 540, 410], fill=(61, 220, 151))
+            b = io.BytesIO()
+            im.save(b, "JPEG", quality=85)
+            return b.getvalue(), "image/jpeg"
         im = Image.new("RGB", (640, 360), (24, 44, 38))
         dr = ImageDraw.Draw(im)
         for y in range(0, 360, 6):
             dr.line([(0, y), (640, y)], fill=(30, 52, 46))
-        dr.text((20, 20), f"{eid} {time.strftime('%H:%M:%S')}", fill=(220, 255, 230))
+        dr.text((20, 330), f"{eid} {time.strftime('%H:%M:%S')}", fill=(220, 255, 230))
         b = io.BytesIO()
         im.save(b, "JPEG")
         return b.getvalue(), "image/jpeg"

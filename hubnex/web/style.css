@@ -1065,3 +1065,50 @@ body.casa-modal-open #chat, body.casa-modal-open #orb { display: none !important
 .hc-color:hover, .hc-color:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 1px; }
 .hc-color-pick { position: relative; overflow: hidden; background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); }
 .hc-color-pick input { position: absolute; inset: -4px; width: 28px; height: 28px; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+
+/* Media card */
+.hc-media { position: relative; overflow: hidden; }
+.hc-media.dim .hc-name { color: var(--muted); }
+.hc-mbg { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(28px) saturate(1.2); opacity: 0.22; pointer-events: none; }
+.hc-media > *:not(.hc-mbg) { position: relative; }
+.hc-art.big { width: 84px; height: 84px; border-radius: 6px; display: grid; place-items: center; color: rgba(255, 255, 255, 0.5); }
+.hc-media-on .hc-nowtxt b { font-size: 17px; }
+.hc-media-on .hc-nowtxt .hc-kick { margin-top: 2px; }
+.hc-prog { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin-top: 10px; }
+.hc-prog .hc-bar { grid-column: 2; grid-row: 1; }
+.hc-prog .hc-state:first-of-type { grid-column: 1; grid-row: 1; font-size: 12px; font-variant-numeric: tabular-nums; }
+.hc-prog .hc-state:last-of-type { grid-column: 3; grid-row: 1; font-size: 12px; font-variant-numeric: tabular-nums; }
+.hc-media-on .hc-transport { justify-content: center; gap: 18px; margin: 6px 0 2px; }
+.hc-round.big { width: 44px; height: 44px; border: 1px solid rgba(243, 201, 138, 0.5) !important; border-radius: 50%; }
+.hc-round.lit { color: var(--warn); }
+.hc-round sup { font-size: 9px; margin-left: -4px; color: var(--warn); }
+.hc-mrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+.hc-mrow .hc-vol { flex: 1 1 160px; }
+.hc-vol .hc-state { font-size: 12px; min-width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
+.hc-msrc { max-width: 170px; }
+/* Robot vacuum */
+.hc-vacuum.alert { border-color: rgba(255, 92, 122, 0.5); }
+.hc-batt { width: 26px; height: 9px; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 2px; position: relative; padding: 1px; margin-left: auto; }
+.hc-batt::after { content: ""; position: absolute; right: -3px; top: 2px; width: 2px; height: 3px; background: rgba(255, 255, 255, 0.35); }
+.hc-batt i { display: block; height: 100%; background: var(--ok, #3ddc97); border-radius: 1px; }
+.hc-batt.low i { background: #ff5c7a; }
+.hc-vmap { margin-top: 10px; border-radius: 6px; overflow: hidden; background: #050b14; border: 1px solid rgba(79, 209, 255, 0.15); aspect-ratio: 4 / 3; }
+.hc-vmap img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.hc-vctl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.hc-vbtn { display: inline-flex; align-items: center; gap: 6px; }
+.hc-vctl .hc-select { margin-left: auto; }
+/* Camera composed card */
+.hc-camcomp { padding: 6px !important; }
+.hc-camcomp.alert { border-color: rgba(255, 92, 122, 0.55); }
+.hc-camwrap { position: relative; }
+.hc-camwrap .casa-cam { width: 100%; }
+.hc-chips { position: absolute; left: 8px; top: 8px; right: 8px; display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+.hc-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 12px; background: rgba(3, 7, 14, 0.65); border: 1px solid rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.75); backdrop-filter: blur(4px); }
+.hc-chip small { font-size: 10px; color: rgba(255, 255, 255, 0.5); }
+.hc-chip.on { border-color: #ff5c7a; color: #fff; background: rgba(255, 92, 122, 0.28); box-shadow: 0 0 12px rgba(255, 92, 122, 0.45); }
+.hc-chip.on small { color: #ffd0d8; }
+.hc-camcomp .hc-head { padding: 8px 8px 0; }
+.hc-camrows { padding: 4px 8px 4px; display: flex; flex-direction: column; gap: 4px; }
+.hc-num.sm { font-size: 15px; }
+.hc-ico.sm.line { stroke-width: 1.6; color: inherit; }
+.hc-round .hc-ico, .hc-vbtn .hc-ico { color: inherit; }

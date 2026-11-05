@@ -114,7 +114,8 @@ class HomeAssistant:
     async def camera_image(self, entity_id: str) -> tuple[bytes, str]:
         """A still frame of a camera (JPEG, usually) and its content type."""
         try:
-            r = await self._client.get(f"/camera_proxy/{entity_id}", timeout=15)
+            proxy = "image_proxy" if entity_id.startswith("image.") else "camera_proxy"
+            r = await self._client.get(f"/{proxy}/{entity_id}", timeout=15)
         except httpx.HTTPError as exc:
             raise HomeAssistantError(tr("Home Assistant non raggiungibile: {a}", a=exc)) from exc
         if r.status_code >= 400:

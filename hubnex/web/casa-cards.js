@@ -36,6 +36,13 @@ const PATHS = {
   prev: '<path d="M6 6h2v12H6zM9.5 12 18 6v12z" fill="currentColor"/>',
   next: '<path d="M16 6h2v12h-2zM6 6l8.5 6L6 18z" fill="currentColor"/>',
   power: '<path d="M12 3v9M6.3 6.3a8 8 0 1 0 11.4 0"/>',
+  robot: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="M8 5.6h8"/>',
+  dock: '<path d="M4 20h16M6 20V10l6-5 6 5v10"/><path d="M10 20v-5h4v5"/>',
+  target: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+  shuffle: '<path d="M3 7h3c4 0 6 10 10 10h5M3 17h3c1.5 0 2.7-1.4 3.7-3.2M14.3 10.2C15.3 8.4 16.5 7 18 7h3M18 4l3 3-3 3M18 14l3 3-3 3"/>',
+  repeat: '<path d="M4 11V9a3 3 0 0 1 3-3h12M16 3l3 3-3 3M20 13v2a3 3 0 0 1-3 3H5M8 21l-3-3 3-3"/>',
+  vol: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/>',
+  mute: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>',
 };
 export const icon = (name, cls = "hc-ico") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${PATHS[name] || PATHS.gauge}</svg>`;
 
@@ -162,6 +169,7 @@ export const Cards = {
       case "text": html = this.textCard(eid, s); break;
       case "scene": case "script": case "button": html = this.actionCard(eid, s); break;
       case "camera": html = `<div class="hc hc-camcard">${this.camHTML(eid)}</div>`; break;
+      case "vacuum": html = this.vacuumCard(eid, s); break;
       default: html = this.plainCard(eid, s);
     }
     return unavailable ? html.replace('class="hc ', 'class="hc off ') : html;
@@ -248,32 +256,70 @@ export const Cards = {
   mediaCard(eid, s) {
     const f = Number(s.a.supported_features) || 0;
     const active = ["playing", "paused", "buffering"].includes(s.s);
+    const sources = (f & 2048) && s.a.source_list?.length
+      ? `<select class="hc-select hc-msrc" data-act="msrc" data-e="${eid}" aria-label="${t("Sorgente")} ${esc(s.n)}">${s.a.source ? "" : `<option value="">${t("Sorgente")}</option>`}${s.a.source_list.map((o) => `<option ${o === s.a.source ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>` : "";
+    const muted = !!s.a.is_volume_muted;
+    const volume = s.a.volume_level != null
+      ? `<div class="hc-vol">${f & 8 ? `<button class="hc-round" data-act="mmute" data-e="${eid}" data-v="${muted ? 0 : 1}" aria-label="${muted ? t("Riattiva audio") : t("Silenzia")}">${icon(muted ? "mute" : "vol", "hc-ico sm line")}</button>` : ""}<input class="hc-range" type="range" min="0" max="100" value="${Math.round(s.a.volume_level * 100)}" data-act="volume" data-e="${eid}" aria-label="Volume ${esc(s.n)}"><span class="hc-state">${Math.round(s.a.volume_level * 100)}</span></div>` : "";
     if (!active) {
       const note = { idle: t("inattivo"), off: t("spento"), on: t("acceso"), standby: t("in standby"), unavailable: t("non disponibile") }[s.s] || s.s;
-      return `<article class="hc hc-media ${s.s === "on" || s.s === "idle" ? "" : ""}">
+      const on = !["off", "standby", "unavailable"].includes(s.s);
+      return `<article class="hc hc-media ${on ? "" : "dim"}">
         ${this.head(t("Media"), s, this.switchHTML(eid))}
-        <div class="hc-line"><span class="hc-state">${esc(note)}</span>${s.s !== "off" && (f & 16384 || f & 1) ? `<button class="hc-round" data-act="media" data-s="media_play_pause" data-e="${eid}" aria-label="${t("Riproduci")}">${icon("play", "hc-ico sm")}</button>` : ""}</div>
+        <div class="hc-line"><span class="hc-state">${esc(note)}${on && s.a.source ? ` · ${esc(s.a.source)}` : ""}</span>${on && (f & 16384 || f & 1) ? `<button class="hc-round" data-act="media" data-s="media_play_pause" data-e="${eid}" aria-label="${t("Riproduci")}">${icon("play", "hc-ico sm")}</button>` : ""}</div>
+        ${on ? `${volume}${sources ? `<div class="hc-mrow">${sources}</div>` : ""}` : ""}
       </article>`;
     }
     const title = s.a.media_title || t("In riproduzione");
-    const artist = s.a.media_artist || "";
+    const sub = [s.a.media_artist || s.a.media_series_title, s.a.media_album_name].filter(Boolean).join(" · ");
+    const app = s.a.app_name || s.a.source || "";
     let pos = Number(s.a.media_position);
     const dur = Number(s.a.media_duration);
     if (s.s === "playing" && s.a.media_position_updated_at && !isNaN(pos)) pos += (Date.now() - Date.parse(s.a.media_position_updated_at)) / 1000;
     const pct = dur > 0 && !isNaN(pos) ? Math.min(100, (pos / dur) * 100) : null;
     const clock = (x) => { x = Math.max(0, Math.round(x)); const h = Math.floor(x / 3600), m = Math.floor((x % 3600) / 60), sec = x % 60; return `${h ? h + ":" + String(m).padStart(2, "0") : m}:${String(sec).padStart(2, "0")}`; };
-    const art = s.a.entity_picture ? `<img src="${esc(s.a.entity_picture)}" alt="" onerror="this.remove()">` : "";
+    const pic = s.a.entity_picture ? esc(s.a.entity_picture) : "";
+    const art = pic ? `<img src="${pic}" alt="" onerror="this.remove()">` : icon("media", "hc-ico");
     const playing = s.s === "playing";
-    return `<article class="hc hc-media wide on">
+    const repeat = s.a.repeat || "off";
+    const nextRepeat = { off: "all", all: "one", one: "off" }[repeat] || "off";
+    return `<article class="hc hc-media hc-media-on wide on">
+      ${pic ? `<div class="hc-mbg" style="background-image:url('${pic}')" aria-hidden="true"></div>` : ""}
       ${this.head(t("Media"), s, `<span class="hc-eq ${playing ? "" : "still"}" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`)}
-      <div class="hc-now"><div class="hc-art">${art}</div>
-        <div class="hc-nowtxt"><b>${esc(title)}</b><span class="hc-state">${esc(artist)}${pct != null ? `${artist ? " · " : ""}${clock(pos)} / ${clock(dur)}` : ""}</span>${pct != null ? `<div class="hc-bar thin"><i style="width:${pct}%"></i></div>` : ""}</div></div>
+      <div class="hc-now"><div class="hc-art big">${art}</div>
+        <div class="hc-nowtxt"><b>${esc(title)}</b>${sub ? `<span class="hc-state">${esc(sub)}</span>` : ""}${app ? `<span class="hc-kick">${esc(app)}</span>` : ""}</div></div>
+      ${pct != null ? `<div class="hc-prog"><div class="hc-bar thin"><i style="width:${pct}%"></i></div><span class="hc-state">${clock(pos)}</span><span class="hc-state">${clock(dur)}</span></div>` : ""}
       <div class="hc-transport">
+        ${f & 32768 ? `<button class="hc-round ${s.a.shuffle ? "lit" : ""}" data-act="mshuffle" data-e="${eid}" data-v="${s.a.shuffle ? 0 : 1}" aria-label="${t("Casuale")}" aria-pressed="${!!s.a.shuffle}">${icon("shuffle", "hc-ico sm line")}</button>` : ""}
         ${f & 16 ? `<button class="hc-round" data-act="media" data-s="media_previous_track" data-e="${eid}" aria-label="${t("Precedente")}">${icon("prev", "hc-ico sm")}</button>` : ""}
-        <button class="hc-round big" data-act="media" data-s="media_play_pause" data-e="${eid}" aria-label="${playing ? t("Pausa") : t("Riproduci")}">${icon(playing ? "pause" : "play", "hc-ico sm")}</button>
+        <button class="hc-round big" data-act="media" data-s="media_play_pause" data-e="${eid}" aria-label="${playing ? t("Pausa") : t("Riproduci")}">${icon(playing ? "pause" : "play", "hc-ico")}</button>
         ${f & 32 ? `<button class="hc-round" data-act="media" data-s="media_next_track" data-e="${eid}" aria-label="${t("Successivo")}">${icon("next", "hc-ico sm")}</button>` : ""}
-        ${s.a.volume_level != null ? `<label class="hc-vol"><span>VOL</span><input class="hc-range" type="range" min="0" max="100" value="${Math.round(s.a.volume_level * 100)}" data-act="volume" data-e="${eid}" aria-label="Volume ${esc(s.n)}"></label>` : ""}
-        ${this.switchHTML(eid)}
+        ${f & 262144 ? `<button class="hc-round ${repeat !== "off" ? "lit" : ""}" data-act="mrepeat" data-e="${eid}" data-v="${nextRepeat}" aria-label="${t("Ripeti")}">${icon("repeat", "hc-ico sm line")}${repeat === "one" ? "<sup>1</sup>" : ""}</button>` : ""}
+      </div>
+      <div class="hc-mrow">${volume}${sources}</div>
+    </article>`;
+  },
+
+  // ---------------------------------------------------------------- robot vacuum
+  vacuumCard(eid, s) {
+    const f = Number(s.a.supported_features) || 0;
+    const label = { cleaning: t("pulisce"), docked: t("in base"), returning: t("torna alla base"), paused: t("in pausa"), idle: t("fermo"), error: t("errore"), unavailable: t("non disponibile") }[s.s] || s.s;
+    const busy = s.s === "cleaning";
+    const bat = s.a.battery_level;
+    const batHTML = bat != null ? `<span class="hc-batt ${bat < 20 ? "low" : ""}" title="${t("Batteria")} ${bat}%"><i style="width:${bat}%"></i></span><span class="hc-state">${bat}%</span>` : "";
+    const map = s.mp ? `<div class="hc-vmap"><img data-cam="${s.mp}" src="${this.camSrc[s.mp] ||= this.camURL(s.mp)}" alt="${t("Mappa")} ${esc(s.n)}"></div>` : "";
+    const fan = s.a.fan_speed_list?.length
+      ? `<select class="hc-select" data-act="vfan" data-e="${eid}" aria-label="${t("Potenza di aspirazione")} ${esc(s.n)}">${s.a.fan_speed_list.map((o) => `<option ${o === s.a.fan_speed ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>` : "";
+    const btn = (svc, ic, name) => `<button class="hc-btn hc-vbtn" data-act="vac" data-s="${svc}" data-e="${eid}">${icon(ic, ic === "play" || ic === "pause" ? "hc-ico sm" : "hc-ico sm line")}<span>${name}</span></button>`;
+    return `<article class="hc hc-vacuum ${map ? "wide" : ""} ${busy ? "on" : ""} ${s.s === "error" ? "alert" : ""}">
+      ${this.head(t("Robot"), s, icon("robot"))}
+      <div class="hc-line"><span class="hc-state ${s.s === "error" ? "bad" : ""}">${esc(label)}${s.a.status && s.a.status.toLowerCase() !== String(label).toLowerCase() ? ` · ${esc(s.a.status)}` : ""}</span>${batHTML}</div>
+      ${map}
+      <div class="hc-vctl">
+        ${busy ? btn("pause", "pause", t("Pausa")) : btn("start", "play", s.s === "paused" ? t("Riprendi") : t("Pulisci"))}
+        ${s.s !== "docked" ? btn("return_to_base", "dock", t("Base")) : ""}
+        ${f & 512 ? btn("locate", "target", t("Trova")) : ""}
+        ${fan}
       </div>
     </article>`;
   },
@@ -460,6 +506,8 @@ export const Cards = {
   // ---------------------------------------------------------------- a card composed in HubNEX
   composedCard(card) {
     const eids = card.entities.filter((e) => this.st(e));
+    const cam = eids.find((e) => e.startsWith("camera."));
+    if (cam) return this.cameraComposed(card, cam, eids);
     const label = (e) => {
       const n = this.st(e).n, pre = card.name.toLowerCase();
       return n.toLowerCase().startsWith(pre) && n.length > pre.length + 1 ? n.slice(pre.length).trim() : n;
@@ -518,6 +566,30 @@ export const Cards = {
       <header class="hc-head"><b class="hc-name">${esc(card.name)}</b>${status ? `<span class="hc-state">${esc(status)}</span>` : ""}</header>
       <div class="hc-slots">${eids.filter((e) => !isToggle(e)).map(slot).join("")}${toggleCol}${eids.length ? "" : `<span class="hc-state">${t("entità non disponibili")}</span>`}</div>
       ${band}
+    </article>`;
+  },
+
+  // A composed card with a camera: the picture, the binary sensors that go with it (a vehicle,
+  // a person, motion) lit over it, anything else below.
+  cameraComposed(card, cam, eids) {
+    const pre = card.name.toLowerCase();
+    const label = (e) => {
+      const n = this.st(e).n;
+      return n.toLowerCase().startsWith(pre) && n.length > pre.length + 1 ? n.slice(pre.length).trim() : n;
+    };
+    const bins = eids.filter((e) => this.st(e).k === "binary");
+    const rest = eids.filter((e) => e !== cam && !bins.includes(e));
+    const live = bins.filter((e) => this.st(e).s === "on");
+    const chips = bins.map((e) => {
+      const s = this.st(e), on = s.s === "on";
+      return `<span class="hc-chip ${on ? "on" : ""}" title="${esc(s.n)}">${esc(label(e))}${s.lc ? `<small>${on ? t("ora") : since(s.lc)}</small>` : ""}</span>`;
+    }).join("");
+    const status = live.length ? live.map((e) => label(e).toLowerCase()).join(", ") : bins.length ? t("tutto tranquillo") : "";
+    const rows = rest.map((e) => `<div class="hc-toggle-row"><span class="hc-state">${esc(label(e))}</span>${["switch", "light", "siren"].includes(this.st(e).k) ? this.switchHTML(e) : `<span class="hc-num sm">${esc(this.value(e))}</span>`}</div>`).join("");
+    return `<article class="hc hc-composed hc-camcomp ${card.size === "wide" ? "wide" : ""} ${live.length ? "alert" : ""}" data-card="${card.id}">
+      <div class="hc-camwrap">${this.camHTML(cam).replace(/<span class="casa-cam-label">[\s\S]*?<\/span>/, "")}${chips ? `<div class="hc-chips">${chips}</div>` : ""}</div>
+      <header class="hc-head"><b class="hc-name">${esc(card.name)}</b>${status ? `<span class="hc-state ${live.length ? "bad" : ""}">${esc(status)}</span>` : ""}</header>
+      ${rows ? `<div class="hc-camrows">${rows}</div>` : ""}
     </article>`;
   },
 

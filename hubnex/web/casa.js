@@ -17,7 +17,7 @@ const APPLIANCE = /bollitor|kettle|boiler|caldai|scaldabagn|acqua|water|frigo|fr
 const SHOW_AS = [["", t("Come in Home Assistant")], ["light", t("Luce")], ["switch", t("Presa / interruttore")], ["gate", t("Cancello / porta (impulso)")], ["siren", t("Sirena")], ["sensor", t("Solo stato")]];
 const SECTIONS = [
   ["light", t("Luci")], ["gate", t("Cancelli e porte")], ["climate", t("Clima")], ["cover", t("Tapparelle e tende")], ["valve", t("Valvole e irrigazione")], ["media", t("Media")],
-  ["switch", t("Prese e interruttori")], ["people", t("Persone")], ["security", t("Sicurezza")], ["camera", t("Telecamere")], ["sensor", t("Sensori")], ["settings", t("Orari e impostazioni")], ["action", t("Azioni")], ["other", t("Altro")],
+  ["switch", t("Prese e interruttori")], ["people", t("Persone")], ["security", t("Sicurezza")], ["camera", t("Telecamere")], ["sensor", t("Sensori")], ["settings", t("Orari e impostazioni")], ["vacuum", t("Pulizia")], ["action", t("Azioni")], ["other", t("Altro")],
 ];
 
 // Home Assistant's own frontend, when Jarvis is open inside it (same origin): its connection
@@ -51,6 +51,12 @@ export class CasaView {
     this.token = token || (() => "");
     this.camTick = Date.now();
     this.camSrc = {}; // last frame loaded, per camera
+    this.liveImgs = new Map(); // camera -> its live thumbnail (MJPEG), kept across redraws
+    // In the background no stream stays open; back in front, the thumbnails start again.
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) this.stopLive();
+      else if (this.visible) this.render(true);
+    });
     this.editor = new PlanEditor({
       api, token: this.token,
       onSaved: () => { this.toast(t("Piantina salvata")); this.reload(true); },
@@ -234,6 +240,7 @@ export class CasaView {
     if (s.k === "sensor") return "sensor";
     if (s.k === "scene" || s.k === "script" || s.k === "button") return "action";
     if (s.k === "camera") return "camera";
+    if (s.k === "vacuum") return "vacuum";
     if (["datetime", "number", "select", "text"].includes(s.k)) return "settings";
     return "other";
   }
@@ -274,7 +281,7 @@ export class CasaView {
   refreshCameras() {
     if (!this.visible || document.hidden || Date.now() - this.camTick < 5000) return;
     this.camTick = Date.now();
-    const eids = new Set([...document.querySelectorAll("img[data-cam]")].map((i) => i.dataset.cam));
+    const eids = new Set([...document.querySelectorAll("img[data-cam]:not([data-live])")].map((i) => i.dataset.cam));
     for (const eid of eids) {
       const url = this.camURL(eid);
       const next = new Image();
@@ -286,10 +293,55 @@ export class CasaView {
     }
   }
 
+  // Live thumbnails: the camera's MJPEG through the add-on, in an <img> that is moved, not
+  // rebuilt, when the view redraws (so the stream doesn't restart). At most MAX_LIVE at once:
+  // a browser keeps only a few connections open to one address, and the rest of the
+  // dashboard needs them too. The others stay still frames refreshed every 5 seconds.
+  mountLive(root) {
+    if (!root || document.hidden) return;
+    const MAX_LIVE = 3;
+    const placed = new Set();
+    for (const img of root.querySelectorAll("img[data-cam]")) {
+      const eid = img.dataset.cam;
+      if (!eid.startsWith("camera.") || placed.has(eid)) continue;
+      let live = this.liveImgs.get(eid);
+      if (!live && this.liveImgs.size >= MAX_LIVE) continue;
+      if (!live) {
+        live = img.cloneNode();
+        live.dataset.live = "1";
+        live.src = this.camURL(eid, 0, true);
+        live.onerror = () => { // no stream from this camera: back to still frames
+          live.removeAttribute("data-live");
+          live.onerror = null;
+          live.src = this.camSrc[eid] || this.camURL(eid);
+        };
+        this.liveImgs.set(eid, live);
+      }
+      placed.add(eid);
+      if (live !== img) img.replaceWith(live);
+    }
+  }
+
+  // Close the streams of the thumbnails no longer on screen.
+  pruneLive() {
+    for (const [eid, img] of this.liveImgs) {
+      if (img.isConnected) continue;
+      img.src = "";
+      this.liveImgs.delete(eid);
+    }
+  }
+
+  stopLive() {
+    for (const img of this.liveImgs.values()) img.src = "";
+    this.liveImgs.clear();
+  }
+
   // All cameras at a glance (the chip at the top of the house view).
   openCameraGrid() {
     const cams = this.data.areas.flatMap((a) => a.entities.filter((e) => this.st(e)?.k === "camera"));
     const box = this.overlay(t("Telecamere"), `<div class="casa-cams">${cams.map((e) => this.camHTML(e)).join("")}</div>`);
+    this.stopLive(); // the grid has its own streams: the view's are behind it
+    this.mountLive(box);
     box.addEventListener("click", (e) => {
       const cam = e.target.closest("[data-act='cam']");
       if (cam) this.openCamera(cam.dataset.e);
@@ -304,20 +356,34 @@ export class CasaView {
   // if video failed, why.
   async openCamera(eid) {
     const s = this.st(eid);
+    this.stopLive(); // the big view opens its own stream
     const box = this.overlay(s?.n || eid, `<div class="cam-mode">${t("Avvio video…")}</div><div class="cam-stage"><img class="cam-still" src="${this.camSrc[eid] || this.camURL(eid)}" alt=""></div>`, true);
     const stage = box.querySelector(".cam-stage");
     const mode = (text, on = false) => { const m = box.querySelector(".cam-mode"); m.textContent = text; m.classList.toggle("on", on); };
     const live = this.live;
     const why = [];
+    // Live at once: the MJPEG through the add-on, the same as the thumbnail.
+    let mjpeg = false;
+    try {
+      await this.playMJPEG(stage, eid, live);
+      if (this.live !== live) return;
+      stage.querySelector(".cam-still")?.remove();
+      mode("● LIVE", true);
+      mjpeg = true;
+    } catch (err) {
+      why.push(`MJPEG: ${err.message}`);
+      if (live.img) { live.img.src = ""; live.img.remove(); live.img = null; }
+      if (this.live !== live) return;
+    }
+    // Then, inside Home Assistant, its own video (HLS, sharper): it replaces the MJPEG once it plays.
     const hass = haParent();
-    if (!hass) why.push(`HLS: ${t("HubNEX non è aperto dentro Home Assistant")}`);
-    else if (!(Number(s?.a.supported_features) & 2)) why.push(`HLS: ${t("la telecamera non offre un flusso video")}`);
-    else {
+    if (hass && Number(s?.a.supported_features) & 2) {
       try {
         const { url } = await hass.connection.sendMessagePromise({ type: "camera/stream", entity_id: eid, format: "hls" });
         if (this.live !== live) return;
         await this.playHLS(stage, url, live);
-        mode("● LIVE", true);
+        if (live.img) { live.img.src = ""; live.img.remove(); live.img = null; }
+        mode("● LIVE · HD", true);
         return;
       } catch (err) {
         why.push(`HLS: ${err.message || err.code || err}`);
@@ -325,15 +391,7 @@ export class CasaView {
         if (this.live !== live) return;
       }
     }
-    try {
-      await this.playMJPEG(stage, eid, live);
-      mode("● LIVE · MJPEG", true);
-      return;
-    } catch (err) {
-      why.push(`MJPEG: ${err.message}`);
-      if (live.img) { live.img.src = ""; live.img.remove(); live.img = null; }
-      if (this.live !== live) return;
-    }
+    if (mjpeg) return;
     mode(`${t("Istantanee ogni secondo — video non disponibile")} (${why.join("; ")})`);
     const still = stage.querySelector(".cam-still");
     live.timer = setInterval(() => {
@@ -349,6 +407,7 @@ export class CasaView {
     const video = document.createElement("video");
     Object.assign(video, { muted: true, autoplay: true, playsInline: true });
     video.className = "cam-live";
+    if (live.img) video.style.display = "none"; // the MJPEG keeps playing until this one does
     stage.appendChild(video);
     live.video = video;
     // Like Home Assistant: hls.js wherever it works (Android, PC), native HLS only otherwise
@@ -372,6 +431,7 @@ export class CasaView {
     });
     video.play().catch(() => {});
     await playing;
+    video.style.display = "";
     stage.querySelector(".cam-still")?.remove();
   }
 
@@ -398,7 +458,7 @@ export class CasaView {
   }
 
   overlay(title, body, isLive = false) {
-    this.closeCamera();
+    this.closeCamera(false);
     const box = document.createElement("div");
     box.className = "casa-modal casa-overlay";
     box.setAttribute("role", "dialog");
@@ -412,7 +472,7 @@ export class CasaView {
     return box;
   }
 
-  closeCamera() {
+  closeCamera(redraw = true) {
     const live = this.live;
     if (!live) return;
     this.live = null;
@@ -420,6 +480,7 @@ export class CasaView {
     this.stopVideo(live);
     if (live.img) live.img.src = ""; // closes the MJPEG connection
     live.box.remove();
+    if (redraw && this.visible) this.render(true); // the thumbnails go live again
   }
 
   // ---------------------------------------------------------------- alarm
@@ -571,6 +632,10 @@ export class CasaView {
       case "cover": this.call(domain, el.dataset.s, { entity_id: eid }); return;
       case "valve": this.call("valve", el.dataset.s, { entity_id: eid }, eid); return;
       case "media": this.call("media_player", el.dataset.s, { entity_id: eid }, eid); return;
+      case "mshuffle": this.call("media_player", "shuffle_set", { entity_id: eid, shuffle: el.dataset.v === "1" }); return;
+      case "mrepeat": this.call("media_player", "repeat_set", { entity_id: eid, repeat: el.dataset.v }); return;
+      case "mmute": this.call("media_player", "volume_mute", { entity_id: eid, is_volume_muted: el.dataset.v === "1" }); return;
+      case "vac": this.call("vacuum", el.dataset.s, { entity_id: eid }); return;
       case "lock": this.lock(eid); return;
       case "lock-yes": this.lockAsk = null; this.call("lock", "unlock", { entity_id: eid }, eid); this.toast(t("Sblocco {name}…", { name: this.st(eid)?.n || eid })); break;
       case "lock-no": this.lockAsk = null; break;
@@ -711,6 +776,12 @@ export class CasaView {
       const domain = el.dataset.e.split(".")[0];
       this.call(domain, "set_value", { entity_id: el.dataset.e, value: el.value }, el.dataset.e);
       el.blur();
+    } else if (el.dataset.act === "msrc" && el.value) {
+      this.call("media_player", "select_source", { entity_id: el.dataset.e, source: el.value });
+      el.blur();
+    } else if (el.dataset.act === "vfan") {
+      this.call("vacuum", "set_fan_speed", { entity_id: el.dataset.e, fan_speed: el.value });
+      el.blur();
     } else if (el.dataset.act === "volume") {
       this.call("media_player", "volume_set", { entity_id: el.dataset.e, volume_level: Number(el.value) / 100 });
     } else if (el.name === "casa-mode") {
@@ -826,6 +897,10 @@ export class CasaView {
       if (panel) panel.scrollTop = panelScroll;
     }
     this.root.scrollTop = scroll;
+    if (!this.live) {
+      this.mountLive(this.pageEl);
+      this.pruneLive();
+    }
     document.body.classList.toggle("casa-sheet", !!(this.data && !this.page && this.selected && this.area(this.selected)));
     document.body.classList.toggle("casa-modal-open", !!(this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen || this.energyOpen || this.toneOpen));
     if (this.editing && this.cands) {

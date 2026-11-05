@@ -184,6 +184,38 @@ test("luci: la card resta semplice, colore e temperatura nel popup", { timeout: 
   await done(page);
 });
 
+test("card: robot con mappa, telecamera composta live con i sensori, media completo", { timeout: 30000 }, async () => {
+  const page = await open();
+  await casa(page);
+  // the robot: state, battery, map and commands
+  await page.locator("[data-area='corridoio']").first().click();
+  await page.click(".casa-quick [data-act='open']");
+  await page.waitForSelector(".hc-vacuum");
+  assert.match(await page.textContent(".hc-vacuum"), /pulisce/);
+  assert.equal(await page.locator(".hc-vacuum .hc-vmap img[data-cam='image.robot_mappa']").count(), 1, "la mappa");
+  assert.equal(await page.locator(".hc-vacuum [data-act='vac'][data-s='pause']").count(), 1, "pausa mentre pulisce");
+  await page.click("[data-act='home']");
+  // the entrance camera: live picture, the vehicle sensor lit over it
+  await page.locator("[data-area='giardino']").first().click();
+  await page.click(".casa-quick [data-act='open']");
+  await page.waitForSelector(".hc-camcomp");
+  assert.equal(await page.locator(".hc-camcomp .hc-chip.on").count(), 1, "il veicolo in movimento");
+  await page.waitForSelector(".hc-camcomp img[data-live]");
+  await page.click(".hc-camcomp .casa-cam");
+  await page.waitForFunction(() => /LIVE/.test(document.querySelector(".cam-mode")?.textContent || ""));
+  assert.equal(await page.locator("#casa img[data-live]").count(), 0, "la miniatura chiude il suo flusso");
+  await page.click(".casa-overlay .casa-x");
+  await page.waitForSelector(".hc-camcomp img[data-live]");
+  await page.click("[data-act='home']");
+  // the kitchen speaker: shuffle, repeat, source
+  await page.locator("[data-area='cucina']").first().click();
+  await page.click(".casa-quick [data-act='open']");
+  await page.waitForSelector(".hc-media-on");
+  for (const sel of ["[data-act='mshuffle']", "[data-act='mrepeat']", "[data-act='msrc']", "[data-act='mmute']"])
+    assert.equal(await page.locator(`.hc-media-on ${sel}`).count(), 1, sel);
+  await done(page);
+});
+
 test("preferenze: il backup si scarica", { timeout: 30000 }, async () => {
   const page = await open();
   await page.click("#ha-prefs");

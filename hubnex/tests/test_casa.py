@@ -592,3 +592,21 @@ def test_energy_panel_config_and_live_data(settings, make_hq):
         assert live["band"]["name"] in ("F1", "F2", "F3") and len(live["band"]["until"]) == 5
         assert sum(live["day"]["kwh"].values()) > 0 and live["day"]["points"][0][1] == 1000.0
         client.portal.call(lambda: task.cancel())
+
+
+def test_vacuum_map_is_found_on_the_same_device():
+    from types import SimpleNamespace as NS
+
+    from hubnex.casa import Casa
+
+    ha = NS(states={"vacuum.robot": {}, "image.robot_mappa": {}, "camera.ingresso": {}},
+            entities={"vacuum.robot": {"device_id": "d1"}, "image.robot_mappa": {"device_id": "d1"}, "camera.ingresso": {"device_id": "d2"}})
+    casa = Casa.__new__(Casa)
+    casa.ha = ha
+    assert casa.vacuum_map("vacuum.robot") == "image.robot_mappa"
+    # no device: a map whose name says so
+    ha.entities = {}
+    ha.states = {"vacuum.roborock_s8": {}, "camera.roborock_map": {}, "camera.ingresso": {}}
+    assert casa.vacuum_map("vacuum.roborock_s8") == "camera.roborock_map"
+    ha.states = {"vacuum.robot": {}, "camera.ingresso": {}}
+    assert casa.vacuum_map("vacuum.robot") is None

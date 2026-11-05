@@ -212,7 +212,9 @@ The **⌂ Home** button opens Home Assistant's dashboard. At the top the **HUD**
 alarm, average climate, lights on, energy and cameras; below, the scenes. Every entity has its
 **card**: lights (tap the card, brightness bar; when the bulb has them, the dot next
 to the state opens colour temperature and colours), climate with a dial, blinds with the window drawn,
-valves, media with cover art and controls, plugs with their consumption, doors and windows (red
+valves, media with cover art, progress, shuffle/repeat, volume and source, **robot vacuums**
+with their map (where the robot is seen moving), state, battery and commands, plugs with their
+consumption, doors and windows (red
 when open, "for how long"), sensors with the chart of the last 24 hours, people, cameras.
 **Locks** with a code in Home Assistant ask for it on a keypad, the others for a confirmation in
 the card; the **alarm** is disarmed with the keypad. The **rooms are Home Assistant's areas**:
@@ -279,8 +281,11 @@ the entities of an area (or of its device) appear in the room by themselves.
   light, "Show as → Light" in the entity's settings in Home Assistant is even better: Assist and
   the assistant then treat it as a light too.
 - **Media**: on and off, ▶ / ❚❚ and volume.
-- **Cameras**: thumbnails in the rooms and the **Cameras** button at the top; tapping one opens
-  the live video (the same stream Home Assistant uses).
+- **Cameras**: the thumbnails in the rooms are **live** (up to 3 at once, the others refresh
+  every 5 seconds); tapping one opens it large, live at once, and inside Home Assistant it moves
+  to its high-quality video. In a **composed card** with a camera and its sensors (a vehicle, a
+  person, motion), the sensors show over the picture and light up in red when they trigger. The
+  **Cameras** button at the top shows them all.
 - **Alarm**: a button at the top with its state; Home / Away / Night and Disarm with a keypad
   for the code.
 - The Home view's commands go straight to Home Assistant and **use no Claude credit**.

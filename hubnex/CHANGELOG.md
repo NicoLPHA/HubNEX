@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.14.0
+- Card del **robot aspirapolvere**: stato, batteria, la sua **mappa** (dallo stesso dispositivo,
+  si aggiorna ogni 5 secondi e mostra il robot che si muove), Pulisci/Pausa, Base, Trova e
+  potenza di aspirazione. Nelle stanze ha il gruppo "Pulizia".
+- **Telecamere dal vivo**: le miniature sono video (fino a 3 alla volta), toccandole si aprono
+  grandi già dal vivo; dentro Home Assistant si passa al suo video in alta qualità.
+- **Card composta con telecamera**: l'immagine al posto della scritta "idle", i sensori sopra
+  l'immagine (rossi quando scattano, "da quanto" quando sono a riposo), lo stato in chiaro.
+- **Card dei media** più completa: copertina grande con sfondo sfumato, artista e album, app,
+  avanzamento, casuale/ripeti, silenzia, volume e sorgente, secondo quello che il dispositivo
+  supporta.
+
 ## 1.13.2
 - Card delle luci di nuovo minimale: colore e temperatura stanno in un popup, che si apre dal
   piccolo pallino accanto allo stato (solo sulle lampadine che li hanno). Nel popup:
