@@ -227,6 +227,37 @@ test("card: robot con mappa, telecamera composta live con i sensori, media compl
   await done(page);
 });
 
+// Inside Home Assistant (a page that plays its part around the dashboard): the thumbnails play
+// its own video (HLS, a short clip in tests/ui/hls), and the big view takes it over in HD.
+test("telecamere dentro Home Assistant: miniature col suo video, vista grande subito in HD", { timeout: 40000 }, async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page.errors = [];
+  page.on("pageerror", (e) => page.errors.push(e.message));
+  const asked = [];
+  await page.exposeFunction("haAsked", (m) => asked.push(m));
+  await page.route("**/ha-shell", (r) => r.fulfill({ contentType: "text/html", body: `<!doctype html><home-assistant></home-assistant>
+    <iframe src="/" style="position:fixed;inset:0;width:100%;height:100%;border:0"></iframe>
+    <script>document.querySelector("home-assistant").hass = { connection: { sendMessagePromise: async (m) => { haAsked(m.type + " " + m.entity_id); return { url: "/hls-test/index.m3u8" }; } } };</script>` }));
+  await page.route("**/hls-test/*", (r) => r.fulfill({ path: path.join(__dirname, "hls", path.basename(new globalThis.URL(r.request().url()).pathname)) }));
+  await page.goto(URL + "ha-shell");
+  const f = page.frames()[1];
+  await f.waitForSelector("#view-casa");
+  await f.click("#view-casa");
+  await f.waitForSelector(".plan-room[data-area='soggiorno']");
+  await f.locator("[data-area='giardino']").first().click();
+  await f.click(".casa-quick [data-act='open']");
+  await f.waitForSelector(".hc-camcomp video[data-live]", { timeout: 15000 });
+  assert.ok(asked.includes("camera/stream camera.ingresso"), "il video chiesto a Home Assistant");
+  assert.equal(await f.locator(".hc-camcomp img[src*='/stream']").count(), 0, "niente MJPEG dentro Home Assistant");
+  await f.click(".hc-camcomp .casa-cam");
+  await f.waitForFunction(() => /HD/.test(document.querySelector(".cam-mode")?.textContent || ""), null, { timeout: 2000 });
+  assert.equal(await f.locator(".casa-overlay video.cam-live").count(), 1, "il video della miniatura, spostato");
+  await f.click(".casa-overlay .casa-x");
+  await f.waitForSelector(".hc-camcomp video[data-live]", { timeout: 15000 });
+  assert.deepEqual(page.errors, [], "errori JavaScript nella pagina");
+  await page.close();
+});
+
 test("preferenze: il backup si scarica", { timeout: 30000 }, async () => {
   const page = await open();
   await page.click("#ha-prefs");

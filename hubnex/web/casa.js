@@ -53,6 +53,7 @@ export class CasaView {
     this.camSrc = {}; // last frame loaded, per camera
     this.liveImgs = new Map(); // camera -> its live thumbnail (MJPEG), kept across redraws
     this.noLive = new Set(); // cameras whose stream gave no picture: still frames only
+    this.noHLS = new Set(); // cameras whose HA video failed in a thumbnail: MJPEG for them
     // In the background no stream stays open; back in front, the thumbnails start again.
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) this.stopLive();
@@ -294,8 +295,8 @@ export class CasaView {
     }
   }
 
-  // Live thumbnails: the camera's MJPEG through the add-on, in an <img> that is moved, not
-  // rebuilt, when the view redraws (so the stream doesn't restart). At most MAX_LIVE at once:
+  // Live thumbnails: inside Home Assistant its own video (HLS, the same as the big view), else
+  // the camera's MJPEG through the add-on. The element is moved, not rebuilt, when the view redraws (so the stream doesn't restart). At most MAX_LIVE at once:
   // a browser keeps only a few connections open to one address, and the rest of the
   // dashboard needs them too. The others stay still frames refreshed every 5 seconds.
   // The still frame stays on screen until the stream shows a picture, so a thumbnail is never
@@ -317,6 +318,8 @@ export class CasaView {
   }
 
   startLive(holder, eid) {
+    const hass = haParent();
+    if (hass && Number(this.st(eid)?.a.supported_features) & 2 && !this.noHLS.has(eid)) return this.startLiveHLS(holder, eid, hass);
     const live = document.createElement("img");
     live.className = holder.className;
     live.alt = "";
@@ -352,18 +355,63 @@ export class CasaView {
     return live;
   }
 
+  // A muted <video> with Home Assistant's HLS: it takes the still frame's place once it plays.
+  startLiveHLS(holder, eid, hass) {
+    const video = document.createElement("video");
+    Object.assign(video, { muted: true, autoplay: true, playsInline: true });
+    video.className = holder.className;
+    video.dataset.cam = eid;
+    video.holder = holder;
+    this.liveImgs.set(eid, video);
+    (async () => {
+      const { url } = await hass.connection.sendMessagePromise({ type: "camera/stream", entity_id: eid, format: "hls" });
+      if (this.liveImgs.get(eid) !== video) return;
+      await this.hlsPlay(video, url, 15);
+      if (this.liveImgs.get(eid) !== video) return;
+      video.dataset.live = "1";
+      if (video.holder?.isConnected) video.holder.replaceWith(video);
+      video.holder = null;
+    })().catch(() => {
+      if (this.liveImgs.get(eid) !== video) return; // stopped meanwhile
+      this.liveImgs.delete(eid);
+      this.noHLS.add(eid); // next redraw tries MJPEG
+      const still = document.createElement("img");
+      still.className = video.className;
+      still.alt = "";
+      still.dataset.cam = eid;
+      still.src = this.camSrc[eid] || this.camURL(eid);
+      if (video.isConnected) video.replaceWith(still);
+      this.stopThumb(video);
+    });
+    return video;
+  }
+
+  // Closes a live thumbnail's connection (MJPEG image or HLS video).
+  stopThumb(el) {
+    el.dataset.stopped = "1";
+    if (el.tagName === "VIDEO") {
+      el._hls?.destroy();
+      el._hls = null;
+      el.pause();
+      el.removeAttribute("src");
+      el.load();
+    } else {
+      el.onerror = null; // closing it is not the camera's error
+      el.src = "";
+    }
+  }
+
   // Close the streams of the thumbnails no longer on screen.
   pruneLive() {
-    for (const [eid, img] of this.liveImgs) {
-      if ((img.holder || img).isConnected) continue;
-      img.onerror = null; // closing it is not the camera's error
-      img.src = "";
+    for (const [eid, el] of this.liveImgs) {
+      if ((el.holder || el).isConnected) continue;
+      this.stopThumb(el);
       this.liveImgs.delete(eid);
     }
   }
 
   stopLive() {
-    for (const img of this.liveImgs.values()) { img.onerror = null; img.src = ""; }
+    for (const el of this.liveImgs.values()) this.stopThumb(el);
     this.liveImgs.clear();
   }
 
@@ -388,13 +436,23 @@ export class CasaView {
     const s = this.st(eid);
     // The thumbnail already live moves into the big view: no new connection, live at once.
     const thumb = this.liveImgs.get(eid);
-    const reuse = thumb?.dataset.live && thumb.naturalWidth ? thumb : null;
+    const reuse = thumb?.dataset.live && (thumb.naturalWidth || thumb.tagName === "VIDEO") ? thumb : null;
     if (reuse) this.liveImgs.delete(eid);
     this.stopLive(); // the other thumbnails: their connections serve the big view now
     const box = this.overlay(s?.n || eid, `<div class="cam-mode">${t("Avvio video…")}</div><div class="cam-stage"><img class="cam-still" src="${this.camSrc[eid] || this.camURL(eid)}" alt=""></div>`, true);
     const stage = box.querySelector(".cam-stage");
     const mode = (text, on = false) => { const m = box.querySelector(".cam-mode"); m.textContent = text; m.classList.toggle("on", on); };
     const live = this.live;
+    if (reuse?.tagName === "VIDEO") { // already Home Assistant's video: HD at once
+      for (const a of ["data-cam", "data-live"]) reuse.removeAttribute(a);
+      reuse.className = "cam-live";
+      stage.querySelector(".cam-still")?.remove();
+      stage.appendChild(reuse);
+      live.video = reuse;
+      reuse.play().catch(() => {});
+      mode("● LIVE · HD", true);
+      return;
+    }
     const why = [];
     let mjpeg = false;
     let hd = false;
@@ -452,15 +510,23 @@ export class CasaView {
     if (live.img) video.style.display = "none"; // the MJPEG keeps playing until this one does
     stage.appendChild(video);
     live.video = video;
-    // Like Home Assistant: hls.js wherever it works (Android, PC), native HLS only otherwise
-    // (iPhone). Some Android WebViews say they play HLS natively but then don't.
+    await this.hlsPlay(video, url, 12);
+    video.style.display = "";
+    stage.querySelector(".cam-still")?.remove();
+  }
+
+  // Plays an HLS url in a <video>, like Home Assistant: hls.js wherever it works (Android, PC),
+  // native HLS only otherwise (iPhone; some Android WebViews say they play HLS natively but
+  // then don't). Resolves once it really plays; rejects on error or after `secs` of nothing.
+  async hlsPlay(video, url, secs) {
     await loadScript("static/vendor/hls/hls.light.min.js").catch(() => {});
-    const playing = new Promise((ok, fail) => {
-      const timer = setTimeout(() => fail(new Error(t("nessuna immagine dopo {n} secondi", { n: 12 }))), 12000);
+    if (video.dataset.stopped) throw new Error("stopped");
+    await new Promise((ok, fail) => {
+      const timer = setTimeout(() => fail(new Error(t("nessuna immagine dopo {n} secondi", { n: secs }))), secs * 1000);
       video.addEventListener("playing", () => { clearTimeout(timer); ok(); }, { once: true });
       video.addEventListener("error", () => { clearTimeout(timer); fail(new Error(`${t("errore del video")} (${video.error?.code})`)); }, { once: true });
       if (window.Hls?.isSupported()) {
-        const hls = (live.hls = new window.Hls({ backBufferLength: 10, liveSyncDurationCount: 2 }));
+        const hls = (video._hls = new window.Hls({ backBufferLength: 10, liveSyncDurationCount: 2 }));
         hls.on(window.Hls.Events.ERROR, (_, d) => { if (d.fatal) { clearTimeout(timer); fail(new Error(d.details || d.type)); } });
         hls.loadSource(url);
         hls.attachMedia(video);
@@ -470,17 +536,12 @@ export class CasaView {
         clearTimeout(timer);
         fail(new Error(t("il browser non riproduce HLS")));
       }
+      video.play().catch(() => {});
     });
-    video.play().catch(() => {});
-    await playing;
-    video.style.display = "";
-    stage.querySelector(".cam-still")?.remove();
   }
 
   stopVideo(live) {
-    live.hls?.destroy();
-    live.hls = null;
-    if (live.video) { live.video.pause(); live.video.removeAttribute("src"); live.video.load(); live.video.remove(); live.video = null; }
+    if (live.video) { this.stopThumb(live.video); live.video.remove(); live.video = null; }
   }
 
   // MJPEG from the add-on: resolves at the first frame.

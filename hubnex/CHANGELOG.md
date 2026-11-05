@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.14.3
+- Telecamere dentro Home Assistant: le miniature dal vivo usano il video di Home Assistant
+  (lo stesso della vista grande in HD), non più l'MJPEG che con molte telecamere non arriva.
+  Toccando una miniatura la vista grande si apre subito in HD, con lo stesso video. Fuori da
+  Home Assistant resta l'MJPEG; se il video di una telecamera non parte, si torna alle foto.
+
 ## 1.14.2
 - Telecamere: niente più miniature nere. L'ultima foto resta visibile finché il video dal vivo
   non mostra davvero un'immagine. Se dopo 10 secondi il video non è arrivato, la miniatura resta
