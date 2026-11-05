@@ -295,6 +295,7 @@ class REST:
         import asyncio
 
         async def chunks():
+            await asyncio.sleep(2)  # like a real camera: the first frame takes a while
             while True:
                 frame, _ = await self.camera_image(eid)
                 yield b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: " + str(len(frame)).encode() + b"\r\n\r\n" + frame + b"\r\n"

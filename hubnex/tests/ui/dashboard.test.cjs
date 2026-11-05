@@ -200,6 +200,13 @@ test("card: robot con mappa, telecamera composta live con i sensori, media compl
   await page.click(".casa-quick [data-act='open']");
   await page.waitForSelector(".hc-camcomp");
   assert.equal(await page.locator(".hc-camcomp .hc-chip.on").count(), 1, "il veicolo in movimento");
+  // while the stream starts (2 s in the demo) the still frame stays: never a black thumbnail
+  for (let i = 0; i < 8; i++) {
+    const blank = await page.evaluate(() => [...document.querySelectorAll("#casa img[data-cam]")]
+      .filter((i) => i.src.includes("/stream") && !i.naturalWidth).length);
+    assert.equal(blank, 0, "una miniatura nera in attesa del video");
+    await page.waitForTimeout(250);
+  }
   await page.waitForSelector(".hc-camcomp img[data-live]");
   await page.waitForFunction(() => document.querySelector(".hc-camcomp img[data-live]")?.naturalWidth > 0);
   const t0 = Date.now();

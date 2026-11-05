@@ -52,6 +52,7 @@ export class CasaView {
     this.camTick = Date.now();
     this.camSrc = {}; // last frame loaded, per camera
     this.liveImgs = new Map(); // camera -> its live thumbnail (MJPEG), kept across redraws
+    this.noLive = new Set(); // cameras whose stream gave no picture: still frames only
     // In the background no stream stays open; back in front, the thumbnails start again.
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) this.stopLive();
@@ -297,42 +298,72 @@ export class CasaView {
   // rebuilt, when the view redraws (so the stream doesn't restart). At most MAX_LIVE at once:
   // a browser keeps only a few connections open to one address, and the rest of the
   // dashboard needs them too. The others stay still frames refreshed every 5 seconds.
+  // The still frame stays on screen until the stream shows a picture, so a thumbnail is never
+  // black; a stream with no picture after 10 seconds is dropped and the camera stays on stills.
   mountLive(root) {
     if (!root || document.hidden) return;
     const MAX_LIVE = 3;
     const placed = new Set();
     for (const img of root.querySelectorAll("img[data-cam]")) {
       const eid = img.dataset.cam;
-      if (!eid.startsWith("camera.") || placed.has(eid)) continue;
+      if (!eid.startsWith("camera.") || placed.has(eid) || this.noLive.has(eid)) continue;
       let live = this.liveImgs.get(eid);
       if (!live && this.liveImgs.size >= MAX_LIVE) continue;
-      if (!live) {
-        live = img.cloneNode();
-        live.dataset.live = "1";
-        live.src = this.camURL(eid, 0, true);
-        live.onerror = () => { // no stream from this camera: back to still frames
-          live.removeAttribute("data-live");
-          live.onerror = null;
-          live.src = this.camSrc[eid] || this.camURL(eid);
-        };
-        this.liveImgs.set(eid, live);
-      }
       placed.add(eid);
-      if (live !== img) img.replaceWith(live);
+      if (!live) live = this.startLive(img, eid);
+      else if (!live.dataset.live) live.holder = img; // still waiting: it will take this place
+      else if (live !== img) img.replaceWith(live);
     }
+  }
+
+  startLive(holder, eid) {
+    const live = document.createElement("img");
+    live.className = holder.className;
+    live.alt = "";
+    live.dataset.cam = eid;
+    live.holder = holder; // the still frame it will replace
+    const t0 = Date.now();
+    const drop = () => {
+      if (this.liveImgs.get(eid) === live) this.liveImgs.delete(eid);
+      this.noLive.add(eid);
+      live.onerror = null;
+      if (live.isConnected) { // it was playing: back to still frames in the same place
+        live.removeAttribute("data-live");
+        live.src = this.camSrc[eid] || this.camURL(eid);
+      } else {
+        live.src = "";
+      }
+    };
+    const check = () => {
+      if (this.liveImgs.get(eid) !== live) return; // stopped meanwhile
+      if (live.naturalWidth) {
+        live.dataset.live = "1";
+        if (live.holder?.isConnected) live.holder.replaceWith(live);
+        live.holder = null;
+        return;
+      }
+      if (Date.now() - t0 > 10000) return drop();
+      setTimeout(check, 250);
+    };
+    live.onerror = drop;
+    live.src = this.camURL(eid, 0, true);
+    this.liveImgs.set(eid, live);
+    setTimeout(check, 250);
+    return live;
   }
 
   // Close the streams of the thumbnails no longer on screen.
   pruneLive() {
     for (const [eid, img] of this.liveImgs) {
-      if (img.isConnected) continue;
+      if ((img.holder || img).isConnected) continue;
+      img.onerror = null; // closing it is not the camera's error
       img.src = "";
       this.liveImgs.delete(eid);
     }
   }
 
   stopLive() {
-    for (const img of this.liveImgs.values()) img.src = "";
+    for (const img of this.liveImgs.values()) { img.onerror = null; img.src = ""; }
     this.liveImgs.clear();
   }
 

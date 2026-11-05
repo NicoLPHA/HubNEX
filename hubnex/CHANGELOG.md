@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.14.2
+- Telecamere: niente più miniature nere. L'ultima foto resta visibile finché il video dal vivo
+  non mostra davvero un'immagine. Se dopo 10 secondi il video non è arrivato, la miniatura resta
+  sulle foto aggiornate ogni 5 secondi.
+
 ## 1.14.1
 - Telecamere: la vista grande si apre subito. Usa il video già in corso nella miniatura invece
   di aprirne uno nuovo, e dentro Home Assistant il video in alta qualità parte insieme, non più
