@@ -16,7 +16,7 @@ async def test_backup_moves_everything_to_another_installation(tmp_path):
     old_db, old_cfg = tmp_path / "old" / "hubnex.db", tmp_path / "old" / "config"
     old_cfg.mkdir(parents=True)
     store = Store(str(old_db))
-    await store.remember("lavoro", "Cliente", "L'ospedale chiede le verifiche a marzo", "tecnico")
+    await store.remember("lavoro", "Cliente", "Il cliente chiede il preventivo a marzo", "tecnico")
     await store.put("casa_adjust", {"names": {"light.x": "Faretti"}})
     (old_cfg / "agents.yaml").write_text("boss: {name: Jarvis}\n")
     (old_cfg / "casa.yaml").write_text("floors: []\n")
@@ -42,7 +42,7 @@ async def test_backup_moves_everything_to_another_installation(tmp_path):
     assert (new_cfg / "pianta-1.jpg").read_bytes() == b"\xff\xd8jpg"
     restored = Store(str(new_db))
     assert await restored.get("casa_adjust", {}) == {"names": {"light.x": "Faretti"}}
-    assert [m["content"] for m in await restored.memories()] == ["L'ospedale chiede le verifiche a marzo"]
+    assert [m["content"] for m in await restored.memories()] == ["Il cliente chiede il preventivo a marzo"]
     # the copies kept by a restore are not exported again
     assert "config/agents.yaml.prima-del-ripristino" not in zipfile.ZipFile(io.BytesIO(make_backup(str(new_db), new_cfg, "x"))).namelist()
 
