@@ -1,6 +1,6 @@
 # HubNEX
 
-*[English](README.md) · Italiano*
+*[English](README.md) · Italiano · [Nederlands](README.nl.md)*
 
 **Il quartier generale AI per casa e lavoro**, come add-on per Home Assistant.
 

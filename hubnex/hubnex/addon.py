@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import httpx
-from hubnex.i18n import tr_sys
+from hubnex.i18n import LANGS, tr_sys
 
 if TYPE_CHECKING:
     from hubnex.hq import HQ
@@ -67,7 +67,7 @@ async def setup_assist(hq: "HQ") -> None:
     try:
         if s.install_assist_integration and install_integration():
             for _ in range(20):  # Home Assistant's language, to write the notice in it
-                if hq.watcher.language or s.language in ("it", "en"):
+                if hq.watcher.language or s.language in LANGS:
                     break
                 await asyncio.sleep(0.5)
             msg = tr_sys(

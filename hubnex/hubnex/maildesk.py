@@ -205,7 +205,7 @@ class MailDesk:
             "Classifica queste nuove email per il proprietario. Priorità: alta = richiede azione o "
             "risposta rapida, o viene da un cliente importante; media = da vedere; bassa = newsletter, "
             "pubblicità, notifiche automatiche. Riassunto di massimo 15 parole"
-            + ("" if system_lang() == "it" else ", scritto in inglese (English)") + ".\n\n"
+            + {"it": "", "nl": ", scritto in olandese (Nederlands)"}.get(system_lang(), ", scritto in inglese (English)") + ".\n\n"
             f"Contesto sul proprietario e sui clienti importanti:\n{context}\n\n"
             f"Email:\n{json.dumps(emails, ensure_ascii=False)}"
         )

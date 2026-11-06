@@ -195,8 +195,9 @@ class MailClient:
         conn = self._imap()
         try:
             conn.select("INBOX", readonly=True)
+            text = _search_text(text)
             if text.isascii():
-                safe = text.replace('"', "")
+                safe = text
                 typ, data = conn.uid("SEARCH", None, f'OR OR FROM "{safe}" SUBJECT "{safe}" BODY "{safe}"')
             else:
                 conn.literal = text.encode("utf-8")
@@ -316,6 +317,13 @@ class MailClient:
             return f"OK (bozze: {f['drafts']}, inviata: {f['sent']})"
         finally:
             conn.logout()
+
+
+def _search_text(text: str) -> str:
+    """The search term made safe for an IMAP command: no control characters (a CR/LF would start a
+    second IMAP command: imaplib sends it as is), no quotes and no backslashes (they would end or
+    escape the quoted string)."""
+    return re.sub(r'[\x00-\x1f\x7f"\\]', " ", text or "").strip()
 
 
 def _fmt_date(value) -> str:
