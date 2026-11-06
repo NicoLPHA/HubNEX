@@ -171,11 +171,77 @@ open(d + "/casa.yaml", "w").write(open(layout).read() if layout else LAYOUT)
 s = Settings(db_path=d + "/t.db", agents_file=str(ROOT / "config" / ("agents.en.yaml" if EN else "agents.yaml")), language="en" if EN else "it", casa_file=d + "/casa.yaml", ha_url="http://supervisor/core", ha_token="tok")
 
 
+class _SlowStream(_Stream):
+    """A stream that takes its time, as Claude does while it thinks."""
+
+    def __init__(self, resp, delay):
+        super().__init__(resp)
+        self.delay = delay
+
+    async def __aenter__(self):
+        import asyncio
+        await asyncio.sleep(self.delay)
+        return self
+
+
+# The scripted job: a quote, which Jarvis splits between Sales and the Accountant.
+QUOTE_WORDS = ("quote", "preventivo")
+SCRIPT = {
+    "en": {
+        "plan": "The quote is for Sales, the invoice check for the Accountant. I ask both.",
+        "sales_task": "Draft the quote for the Rossi kitchen renovation: lighting, sockets, smart switches.",
+        "acc_task": "Check whether the Rossi family's last invoice has been paid.",
+        "sales_think": "Lighting, sockets and switches for a 14 m2 kitchen: I list the items and the labour.",
+        "sales": "Quote ready: 6 LED spotlights, 8 sockets, 4 smart switches, labour. Total 2,340 EUR + VAT.",
+        "acc_think": "I look for the latest Rossi invoice and its payment.",
+        "acc": "Invoice 112 of 3 October: paid on 18 October, nothing outstanding.",
+        "done": "Done. The Rossi quote is ready: 2,340 EUR + VAT, with LED spotlights, sockets and smart "
+                "switches. Their last invoice is paid, nothing outstanding. Shall I send them the quote?",
+    },
+    "it": {
+        "plan": "Il preventivo è per il Commerciale, la fattura per il Contabile. Li sento entrambi.",
+        "sales_task": "Prepara il preventivo per la cucina dei Rossi: illuminazione, prese, interruttori smart.",
+        "acc_task": "Controlla se l'ultima fattura della famiglia Rossi è stata pagata.",
+        "sales_think": "Luci, prese e interruttori per una cucina di 14 m2: elenco materiali e manodopera.",
+        "sales": "Preventivo pronto: 6 faretti LED, 8 prese, 4 interruttori smart, manodopera. Totale 2.340 EUR + IVA.",
+        "acc_think": "Cerco l'ultima fattura Rossi e il suo pagamento.",
+        "acc": "Fattura 112 del 3 ottobre: pagata il 18 ottobre, nessun sospeso.",
+        "done": "Fatto. Il preventivo Rossi è pronto: 2.340 EUR + IVA, con faretti LED, prese e interruttori "
+                "smart. L'ultima fattura è pagata, nessun sospeso. Vuoi che gli mandi il preventivo?",
+    },
+}
+
+
 class DemoClaude(FakeClient):
-    """Claude stand-in: one polite sentence, whatever is asked."""
+    """Claude stand-in: one polite sentence, whatever is asked; a request for a quote plays the
+    team at work (Jarvis delegates to Sales and the Accountant, then sums up)."""
 
     def _stream(self, **kwargs):
+        from types import SimpleNamespace as NS
+        from hubnex.hq import QUICK_PASS
         self.requests.append(kwargs)
+        sc = SCRIPT["en" if EN else "it"]
+        msgs = kwargs.get("messages") or []
+        tools = {t.get("name") for t in kwargs.get("tools") or [] if isinstance(t, dict)}
+        first = str(msgs[0].get("content")) if msgs else ""
+        last = msgs[-1].get("content") if msgs else ""
+        asked = str(msgs[-1]) if msgs else ""
+        quote = any(w in asked.lower() or w in first.lower() for w in QUOTE_WORDS)
+        think = lambda t: NS(type="thinking", thinking=t)
+        if quote and tools and all(n.startswith("ha_") for n in tools):  # the quick route: this is for Jarvis
+            return _Stream(response([text_block(QUICK_PASS)], "end_turn"))
+        if quote and "delegate" in tools:
+            if isinstance(last, list) and any(getattr(b, "type", None) == "tool_result" or (isinstance(b, dict) and b.get("type") == "tool_result") for b in last):
+                return _SlowStream(response([think(sc["done"][:60]), text_block(sc["done"])], "end_turn"), 1.2)
+            return _SlowStream(response([
+                think(sc["plan"]),
+                NS(type="tool_use", name="delegate", input={"agent_id": "sales" if EN else "commerciale", "task": sc["sales_task"]}, id="toolu_s"),
+                NS(type="tool_use", name="delegate", input={"agent_id": "accountant" if EN else "contabile", "task": sc["acc_task"]}, id="toolu_a"),
+            ], "tool_use"), 1.5)
+        if sc["sales_task"] in first:
+            return _SlowStream(response([think(sc["sales_think"]), text_block(sc["sales"])], "end_turn"), 3.5)
+        if sc["acc_task"] in first:
+            return _SlowStream(response([think(sc["acc_think"]), text_block(sc["acc"])], "end_turn"), 3.0)
         return _Stream(response([text_block("Sono la demo di HubNEX: qui Claude non c'è, ma la casa risponde.")], "end_turn"))
 
 
