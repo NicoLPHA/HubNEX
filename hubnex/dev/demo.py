@@ -129,6 +129,9 @@ NAMES_EN = {
     "Temperatura camera": "Bedroom temperature", "Temperatura cucina": "Kitchen temperature",
     "Temperatura studio": "Study temperature", "Tensione": "Voltage", "Totale bimestrale": "Period total",
     "Umidità bagno": "Bathroom humidity", "Umidità cucina": "Kitchen humidity", "Notte": "Night",
+    "Robot aspirapolvere": "Robot vacuum", "Mappa robot": "Robot map", "Altoparlante cucina": "Kitchen speaker",
+    "Ingresso Veicolo in movimento": "Entrance vehicle moving", "Ingresso Persona": "Entrance person",
+    "Pulisce il soggiorno": "Cleaning the living room", "Silenziosa": "Quiet", "Bilanciata": "Balanced",
 }
 if EN:  # the same house, in English
     for a in T.AREAS:
@@ -136,8 +139,14 @@ if EN:  # the same house, in English
     for st in T.STATES:
         at = st["attributes"]
         at["friendly_name"] = NAMES_EN.get(at.get("friendly_name"), at.get("friendly_name"))
-        if "options" in at:
-            at["options"] = [NAMES_EN.get(o, o) for o in at["options"]]
+        for k in ("options", "fan_speed_list"):
+            if k in at:
+                at[k] = [NAMES_EN.get(o, o) for o in at[k]]
+        for k in ("fan_speed", "status"):
+            if k in at:
+                at[k] = NAMES_EN.get(at[k], at[k])
+    for dv in T.DEVICES:
+        dv["name"] = NAMES_EN.get(dv.get("name"), dv.get("name"))
 
 d = tempfile.mkdtemp()
 layout = sys.argv[2] if len(sys.argv) > 2 else None
@@ -202,7 +211,7 @@ seed_costs()
 def seed_cards() -> None:
     """A composed card: the entrance camera with what it detects."""
     import json
-    card = {"id": "c1", "name": "Ingresso", "entities": ["camera.ingresso", "binary_sensor.ingresso_veicolo", "binary_sensor.ingresso_persona"], "size": "wide"}
+    card = {"id": "c1", "name": NAMES_EN["Ingresso"] if EN else "Ingresso", "entities": ["camera.ingresso", "binary_sensor.ingresso_veicolo", "binary_sensor.ingresso_persona"], "size": "wide"}
     adjust = {"extra": {}, "hidden": {}, "cards": {"giardino": [card]}}
     hq.store._conn.execute("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)", ("casa_adjust", json.dumps(adjust)))
     hq.store._conn.commit()
@@ -320,11 +329,46 @@ class REST:
             b = io.BytesIO()
             im.save(b, "JPEG", quality=85)
             return b.getvalue(), "image/jpeg"
-        im = Image.new("RGB", (640, 360), (24, 44, 38))
+        im = Image.new("RGB", (640, 360))
         dr = ImageDraw.Draw(im)
-        for y in range(0, 360, 6):
-            dr.line([(0, y), (640, y)], fill=(30, 52, 46))
-        dr.text((20, 330), f"{eid} {time.strftime('%H:%M:%S')}", fill=(220, 255, 230))
+        t = time.time()
+        if eid.endswith("ingresso"):  # the drive at dusk, a car going by
+            for y in range(150):
+                dr.line([(0, y), (640, y)], fill=(30 + y // 4, 40 + y // 5, 70 + y // 6))
+            dr.rectangle([0, 150, 640, 360], fill=(34, 52, 36))
+            dr.polygon([(250, 360), (390, 360), (340, 160), (300, 160)], fill=(70, 72, 78))
+            dr.rectangle([420, 70, 640, 220], fill=(92, 84, 76))
+            dr.polygon([(400, 72), (530, 20), (660, 72)], fill=(60, 44, 40))
+            dr.rectangle([470, 120, 520, 165], fill=(255, 214, 140))
+            dr.rectangle([560, 140, 610, 220], fill=(48, 38, 34))
+            for x in range(0, 640, 46):  # the fence
+                dr.rectangle([x, 175, x + 6, 215], fill=(52, 46, 40))
+            dr.rectangle([0, 186, 640, 191], fill=(52, 46, 40))
+            for cx, cy, r in ((90, 120, 55), (170, 135, 40)):  # trees
+                dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(26, 60, 34))
+            x = int((t * 70) % 900) - 160  # the car
+            dr.rounded_rectangle([x, 250, x + 150, 300], 12, fill=(150, 30, 36))
+            dr.rounded_rectangle([x + 30, 222, x + 112, 258], 10, fill=(120, 24, 30))
+            dr.rectangle([x + 40, 228, x + 102, 252], fill=(140, 170, 190))
+            for wx in (x + 30, x + 118):
+                dr.ellipse([wx - 14, 288, wx + 14, 316], fill=(18, 18, 20))
+            dr.rectangle([x + 144, 262, x + 150, 272], fill=(255, 240, 180))
+        else:  # the kitchen
+            dr.rectangle([0, 0, 640, 360], fill=(70, 62, 54))
+            dr.rectangle([0, 0, 640, 110], fill=(96, 86, 74))
+            for x in range(20, 640, 120):
+                dr.rectangle([x, 10, x + 100, 100], outline=(130, 118, 100), width=3)
+            dr.rectangle([0, 210, 640, 230], fill=(200, 196, 188))
+            dr.rectangle([0, 230, 640, 360], fill=(82, 70, 58))
+            for x in range(20, 640, 120):
+                dr.rectangle([x, 245, x + 100, 345], outline=(110, 96, 80), width=3)
+            dr.ellipse([400, 150, 470, 215], fill=(170, 172, 176))
+            dr.rectangle([180, 140, 300, 210], fill=(40, 40, 44))
+            glow = 160 + int(60 * math.sin(t))
+            dr.ellipse([290, 20, 350, 50], fill=(glow, glow - 20, 120))
+        dr.rectangle([0, 0, 640, 24], fill=(0, 0, 0))
+        dr.text((10, 6), time.strftime("%Y-%m-%d %H:%M:%S"), fill=(235, 235, 235))
+        dr.text((580, 6), "CAM 1" if eid.endswith("ingresso") else "CAM 2", fill=(235, 235, 235))
         b = io.BytesIO()
         im.save(b, "JPEG")
         return b.getvalue(), "image/jpeg"
