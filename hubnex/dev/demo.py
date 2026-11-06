@@ -5,13 +5,13 @@ taking screenshots and the browser tests. No real house, no API key, nothing lea
     python dev/demo.py 8765 casa.yaml  # with your own floor plan file
     DEMO_LANG=en python dev/demo.py 8765   # an English house and an English-speaking add-on
 """
-import io, math, os, re, sys, tempfile, time
+import io, math, os, random, re, sys, tempfile, time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import uvicorn
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 from hubnex.config import Settings, load_org
 from hubnex.hq import HQ
@@ -300,7 +300,7 @@ class REST:
         return {"response": {"response_type": "error", "data": {"code": "no_intent_match"}}}
 
     async def camera_stream(self, eid):
-        """MJPEG like Home Assistant's camera_proxy_stream: a new frame twice a second."""
+        """MJPEG like Home Assistant's camera_proxy_stream: four frames a second."""
         import asyncio
 
         async def chunks():
@@ -308,7 +308,7 @@ class REST:
             while True:
                 frame, _ = await self.camera_image(eid)
                 yield b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: " + str(len(frame)).encode() + b"\r\n\r\n" + frame + b"\r\n"
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.25)
 
         return "multipart/x-mixed-replace;boundary=frame", chunks()
 
@@ -329,43 +329,27 @@ class REST:
             b = io.BytesIO()
             im.save(b, "JPEG", quality=85)
             return b.getvalue(), "image/jpeg"
+        # a live mosaic, as when a camera is censored for privacy: blocks that shift slowly
+        t = time.time()
+        rng = random.Random(eid)
+        base = (52, 62, 70) if eid.endswith("ingresso") else (74, 64, 56)
         im = Image.new("RGB", (640, 360))
         dr = ImageDraw.Draw(im)
-        t = time.time()
-        if eid.endswith("ingresso"):  # the drive at dusk, a car going by
-            for y in range(150):
-                dr.line([(0, y), (640, y)], fill=(30 + y // 4, 40 + y // 5, 70 + y // 6))
-            dr.rectangle([0, 150, 640, 360], fill=(34, 52, 36))
-            dr.polygon([(250, 360), (390, 360), (340, 160), (300, 160)], fill=(70, 72, 78))
-            dr.rectangle([420, 70, 640, 220], fill=(92, 84, 76))
-            dr.polygon([(400, 72), (530, 20), (660, 72)], fill=(60, 44, 40))
-            dr.rectangle([470, 120, 520, 165], fill=(255, 214, 140))
-            dr.rectangle([560, 140, 610, 220], fill=(48, 38, 34))
-            for x in range(0, 640, 46):  # the fence
-                dr.rectangle([x, 175, x + 6, 215], fill=(52, 46, 40))
-            dr.rectangle([0, 186, 640, 191], fill=(52, 46, 40))
-            for cx, cy, r in ((90, 120, 55), (170, 135, 40)):  # trees
-                dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(26, 60, 34))
-            x = int((t * 70) % 900) - 160  # the car
-            dr.rounded_rectangle([x, 250, x + 150, 300], 12, fill=(150, 30, 36))
-            dr.rounded_rectangle([x + 30, 222, x + 112, 258], 10, fill=(120, 24, 30))
-            dr.rectangle([x + 40, 228, x + 102, 252], fill=(140, 170, 190))
-            for wx in (x + 30, x + 118):
-                dr.ellipse([wx - 14, 288, wx + 14, 316], fill=(18, 18, 20))
-            dr.rectangle([x + 144, 262, x + 150, 272], fill=(255, 240, 180))
-        else:  # the kitchen
-            dr.rectangle([0, 0, 640, 360], fill=(70, 62, 54))
-            dr.rectangle([0, 0, 640, 110], fill=(96, 86, 74))
-            for x in range(20, 640, 120):
-                dr.rectangle([x, 10, x + 100, 100], outline=(130, 118, 100), width=3)
-            dr.rectangle([0, 210, 640, 230], fill=(200, 196, 188))
-            dr.rectangle([0, 230, 640, 360], fill=(82, 70, 58))
-            for x in range(20, 640, 120):
-                dr.rectangle([x, 245, x + 100, 345], outline=(110, 96, 80), width=3)
-            dr.ellipse([400, 150, 470, 215], fill=(170, 172, 176))
-            dr.rectangle([180, 140, 300, 210], fill=(40, 40, 44))
-            glow = 160 + int(60 * math.sin(t))
-            dr.ellipse([290, 20, 350, 50], fill=(glow, glow - 20, 120))
+        for gy in range(12):
+            for gx in range(20):
+                ph, sp, amp = rng.uniform(0, 6.3), rng.uniform(0.6, 1.8), rng.uniform(10, 34)
+                v = amp * math.sin(t * sp + ph)
+                tint = rng.uniform(-14, 14)
+                c = tuple(max(0, min(255, int(b + v + tint))) for b in base)
+                dr.rectangle([gx * 32, gy * 32, gx * 32 + 31, gy * 32 + 31], fill=c)
+        label = "CENSORED FOR PRIVACY" if EN else "CENSURATO PER PRIVACY"
+        try:
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 30)
+        except OSError:
+            font = ImageFont.load_default(30)
+        w = dr.textlength(label, font=font)
+        dr.rectangle([0, 152, 640, 208], fill=(0, 0, 0))
+        dr.text(((640 - w) / 2, 163), label, fill=(240, 240, 240), font=font)
         dr.rectangle([0, 0, 640, 24], fill=(0, 0, 0))
         dr.text((10, 6), time.strftime("%Y-%m-%d %H:%M:%S"), fill=(235, 235, 235))
         dr.text((580, 6), "CAM 1" if eid.endswith("ingresso") else "CAM 2", fill=(235, 235, 235))
