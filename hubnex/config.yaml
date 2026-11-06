@@ -2,9 +2,10 @@ name: HubNEX
 version: "1.14.3"
 slug: hubnex
 description: Il quartier generale AI per casa e lavoro - un team di agenti Claude, plancia 3D di Home Assistant, Telegram, voce e connettori MCP.
-url: https://github.com/P1pp89/HubNEX
-# Immagini già pronte (GitHub Actions → ghcr.io): Home Assistant le scarica invece di costruirle
-image: ghcr.io/p1pp89/{arch}-addon-hubnex
+url: https://github.com/NicoLPHA/HubNEX
+# Fork: niente immagine già pronta dell'autore originale (ghcr.io/p1pp89/...). Senza `image:` Home Assistant
+# costruisce l'add-on dal Dockerfile di QUESTO repository, quindi gira esattamente il codice che vedi qui.
+# La prima installazione richiede qualche minuto in più.
 arch:
   - amd64
   - aarch64
@@ -97,7 +98,7 @@ schema:
   voice_tts_entity: str?
   voice_tts_voice: str?
   voice_answers: list(completa|riassunto)
-  language: list(auto|it|en)
+  language: list(auto|it|en|nl)
   ha_blocked_services: str?
   install_assist_integration: bool
   non_admin_access: list(casa|completo)

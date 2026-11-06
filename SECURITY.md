@@ -6,7 +6,7 @@ allarme compresi. Una falla va trattata in privato.
 ## Come segnalare un problema
 
 **Non aprire una segnalazione pubblica.** Usa la segnalazione privata di GitHub:
-[Security → Report a vulnerability](https://github.com/P1pp89/HubNEX/security/advisories/new).
+[Security → Report a vulnerability](https://github.com/NicoLPHA/HubNEX/security/advisories/new).
 
 Scrivi la versione di HubNEX, cosa si può fare sfruttando il problema e come riprodurlo.
 Riceverai una risposta entro una settimana; la correzione esce in una nuova versione e la

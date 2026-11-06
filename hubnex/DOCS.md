@@ -1,6 +1,6 @@
 # HubNEX
 
-*Italiano · [English](https://github.com/P1pp89/HubNEX/blob/main/hubnex/DOCS.en.md)*
+*Italiano · [English](https://github.com/NicoLPHA/HubNEX/blob/main/hubnex/DOCS.en.md) · [Nederlands](https://github.com/NicoLPHA/HubNEX/blob/main/hubnex/DOCS.nl.md)*
 
 Il quartier generale AI per casa e lavoro: un assistente (di serie si chiama **Jarvis**) con il
 suo team di agenti Claude, una dashboard 3D nella barra laterale di Home Assistant, la plancia

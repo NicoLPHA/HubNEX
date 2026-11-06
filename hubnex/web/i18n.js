@@ -1,12 +1,16 @@
 // Languages of the dashboard. The Italian text is the key ("gettext style"): t("Salva") is
-// "Salva" in Italian and EN["Salva"] in English. Variables: t("{n} luci accese", { n }).
-// A test (tests/ui/i18n.test.cjs) checks that every t("…") in the code has its English.
+// "Salva" in Italian, EN["Salva"] in English and NL["Salva"] in Dutch. Variables: t("{n} luci accese", { n }).
+// A test (tests/ui/i18n.test.cjs) checks that every t("…") in the code has its English and Dutch.
 import { EN } from "./i18n-en.js";
+import { NL } from "./i18n-nl.js";
 
-export const LANGS = { it: "Italiano", en: "English" };
+export const LANGS = { it: "Italiano", en: "English", nl: "Nederlands" };
+const DICTS = { en: EN, nl: NL };
+const LOCALES = { it: "it-IT", en: "en-GB", nl: "nl-NL" };
 
 // Chosen once, before anything is drawn: the viewer's preference, else the language of their
-// Home Assistant (the page runs inside it), else the browser's. Not Italian means English.
+// Home Assistant (the page runs inside it), else the browser's. Italian and Dutch have their own
+// texts; any other language means English.
 function pick() {
   let lang = "";
   try { lang = localStorage.getItem("hq_lang") || ""; } catch {}
@@ -14,16 +18,18 @@ function pick() {
     try { lang = window.parent.document.querySelector("home-assistant")?.hass?.language || ""; } catch {}
     lang = lang || navigator.language || "it";
   }
-  return String(lang).toLowerCase().startsWith("it") ? "it" : "en";
+  const code = String(lang).toLowerCase();
+  return code.startsWith("it") ? "it" : code.startsWith("nl") ? "nl" : "en";
 }
 
 export const LANG = pick();
-export const LOCALE = LANG === "it" ? "it-IT" : "en-GB";
+export const LOCALE = LOCALES[LANG];
 document.documentElement.lang = LANG;
 
 export function t(text, vars) {
-  let out = LANG === "it" ? text : EN[text] ?? text;
-  if (LANG !== "it" && EN[text] === undefined) (window.__i18nMissing ||= new Set()).add(text);
+  const dict = DICTS[LANG];
+  let out = dict ? dict[text] ?? text : text;
+  if (dict && dict[text] === undefined) (window.__i18nMissing ||= new Set()).add(text);
   if (vars) out = out.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
   return out;
 }

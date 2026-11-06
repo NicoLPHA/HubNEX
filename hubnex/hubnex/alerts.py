@@ -263,7 +263,7 @@ class Alerts:
                 watts = v * 1000 if unit.lower() == "kw" else v
                 if watts >= rules["power"]["watts"]:
                     kw = f"{watts / 1000:.1f}"
-                    kw = kw.replace(".", ",") if system_lang() == "it" else kw
+                    kw = kw.replace(".", ",") if system_lang() in ("it", "nl") else kw
                     out.append(Finding("power", "power", tr_sys("Consumo alto"),
                                        tr_sys("La casa sta usando {kw} kW da più di {m} minuti.", kw=kw, m=rules["power"]["minutes"]),
                                        {e: None}))

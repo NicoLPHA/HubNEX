@@ -16,6 +16,13 @@ from .const import CONF_TOKEN, CONF_URL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+UNREACHABLE = {
+    "it": "Mi scusi, in questo momento non riesco a raggiungere HubNEX.",
+    "nl": "Sorry, ik kan HubNEX op dit moment niet bereiken.",
+    "en": "I'm sorry, I can't reach HubNEX right now.",
+}
+DONE = {"it": "Fatto.", "nl": "Gedaan.", "en": "Done."}
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback
@@ -44,14 +51,14 @@ class HubNEXConversationEntity(conversation.ConversationEntity):
     async def _async_handle_message(
         self, user_input: conversation.ConversationInput, chat_log: conversation.ChatLog
     ) -> conversation.ConversationResult:
-        italian = (user_input.language or "").lower().startswith("it")
+        code = (user_input.language or "").lower()
+        lang = "it" if code.startswith("it") else "nl" if code.startswith("nl") else "en"
         try:
             reply = await self._client.ask(user_input.text, user_input.language)
         except HubNEXError as err:
             _LOGGER.warning("HubNEX unreachable: %s", err)
-            reply = ("Mi scusi, in questo momento non riesco a raggiungere HubNEX." if italian
-                     else "I'm sorry, I can't reach HubNEX right now.")
+            reply = UNREACHABLE[lang]
         chat_log.async_add_assistant_content_without_tools(
-            conversation.AssistantContent(agent_id=user_input.agent_id, content=reply or ("Fatto." if italian else "Done."))
+            conversation.AssistantContent(agent_id=user_input.agent_id, content=reply or DONE[lang])
         )
         return conversation.async_get_result_from_chat_log(user_input, chat_log)

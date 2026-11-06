@@ -1,6 +1,6 @@
 # HubNEX
 
-*[Italiano](DOCS.md) · English*
+*[Italiano](DOCS.md) · English · [Nederlands](DOCS.nl.md)*
 
 The AI headquarters for home and work: an assistant (called **Jarvis** out of the box) with its
 team of Claude agents, a 3D dashboard in Home Assistant's sidebar, the house's dashboard, a

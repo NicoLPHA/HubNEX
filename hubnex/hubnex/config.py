@@ -66,6 +66,7 @@ ADDON_OPTIONS = {
 INGRESS_PROXY_IP = "172.30.32.2"
 DEFAULT_AGENTS = Path(__file__).resolve().parent.parent / "config" / "agents.yaml"
 DEFAULT_AGENTS_EN = DEFAULT_AGENTS.with_name("agents.en.yaml")
+DEFAULT_AGENTS_NL = DEFAULT_AGENTS.with_name("agents.nl.yaml")
 
 
 def ha_language(storage: str = "/homeassistant/.storage/core.config") -> str | None:
@@ -110,9 +111,10 @@ def _load_addon_options(options_file: str = "/data/options.json", config_dir: st
     if Path(config_dir).is_dir() and not agents.exists():
         # The example team in the owner's language: the option, else Home Assistant's.
         lang = os.environ.get("HUBNEX_LANGUAGE", "auto")
-        if lang not in ("it", "en"):
+        if lang not in ("it", "en", "nl"):
             lang = ha_language() or "it"
-        shutil.copy(DEFAULT_AGENTS if lang.startswith("it") else DEFAULT_AGENTS_EN, agents)
+        example = DEFAULT_AGENTS if lang.startswith("it") else DEFAULT_AGENTS_NL if lang.startswith("nl") else DEFAULT_AGENTS_EN
+        shutil.copy(example, agents)
     os.environ.setdefault("HUBNEX_AGENTS_FILE", str(agents if agents.exists() else DEFAULT_AGENTS))
     if Path(config_dir).is_dir():  # the floor plan must survive updates: keep it in /config
         os.environ.setdefault("HUBNEX_CASA_FILE", str(Path(config_dir) / "casa.yaml"))
@@ -169,7 +171,7 @@ class Settings:
     mail: MailSettings = field(default_factory=MailSettings)
     # Voice from Home Assistant's own text-to-speech (Piper, HA Cloud, Google…) instead of ElevenLabs
     voice_tts_entity: str = ""  # e.g. tts.piper
-    language: str = "auto"  # auto (Home Assistant's) | it | en
+    language: str = "auto"  # auto (Home Assistant's) | it | en | nl
     voice_answers: str = "completa"  # completa | riassunto: what the voice reads of a long answer
     voice_tts_voice: str = ""  # that engine's voice by name, e.g. Rinaldo (empty: its default)
     elevenlabs_key: str = ""

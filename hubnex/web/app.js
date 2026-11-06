@@ -1223,7 +1223,7 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SR) $("mic").classList.add("hidden");
 else {
   const rec = new SR();
-  rec.lang = LANG === "it" ? "it-IT" : (navigator.language || "en-GB");
+  rec.lang = LANG === "en" ? (navigator.language || "en-GB") : LOCALE;
   rec.interimResults = true; // your words appear under the orb while you speak
   let heard = "";
   const pulse = () => {

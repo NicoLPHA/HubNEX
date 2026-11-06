@@ -49,7 +49,17 @@ VOICE_DOMAINS = {
 }
 QUICK_PASS = "[[JARVIS]]"  # the quick route hands the request to Jarvis
 # Never through Home Assistant's own sentences or the quick route: Jarvis asks for confirmation.
-SENSITIVE = re.compile(r"sblocc|disinser|disattiv\w*\s+(l'|l |il |la )?allarm|\bapri\w*\s+(la |il |l')?(porta|portone|cancell|serratur|garage)", re.I)
+SENSITIVE = re.compile(
+    # Italiano
+    r"sblocc|disinser|disattiv\w*\s+(l'|l |il |la )?allarm|\bapri\w*\s+(la |il |l')?(porta|portone|cancell|serratur|garage)"
+    # Nederlands: ontgrendelen, deur/poort/garage openen, alarm uitzetten
+    r"|ontgrendel|ontsluit|\b(?:voordeur|achterdeur|garagedeur|garagepoort|poort|slot|deur)\w*\s+open\b"
+    r"|\bopen\w*\s+(?:de |het )?(?:voordeur|achterdeur|garage\w*|poort|slot|deur)\b"
+    r"|\balarm\w*\s+(?:uit|af|deactiv)|\b(?:zet|schakel|doe)\w*\s+(?:het |de )?alarm\w*\s+(?:uit|af)"
+    # English: the default blocked services only cover exact service names
+    r"|\bunlock|\bdisarm|\bopen\w*\s+(?:the )?(?:front |back )?(?:door|gate|garage)",
+    re.I,
+)
 
 
 def fill_history(history: list[dict], text: str | list[dict]) -> list[dict]:
@@ -487,8 +497,12 @@ class HQ:
     @staticmethod
     def _speak() -> str:
         """The language Jarvis and the agents answer in (the instructions stay as written)."""
-        return "Parli in italiano" if lang() == "it" else (
-            "Rispondi sempre in inglese (English), anche se queste istruzioni sono in italiano; "
+        code = lang()
+        if code == "it":
+            return "Parli in italiano"
+        language = "olandese (Nederlands)" if code == "nl" else "inglese (English)"
+        return (
+            f"Rispondi sempre in {language}, anche se queste istruzioni sono in italiano; "
             "nomi propri, entità e citazioni restano come sono"
         )
 
