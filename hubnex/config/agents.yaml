@@ -14,7 +14,8 @@
 #  Sempre inclusi: memory_save, memory_search, deadline_add, deadline_list
 #
 #  Modelli: tutti usano "model_jarvis" della configurazione, l'agente con id "mail" usa
-#  "model_mail". Per un singolo agente: model: claude-...
+#  "model_mail". Per un singolo agente: model: claude-...  oppure con un altro fornitore:
+#  model: openai:gpt-5-mini | ollama:qwen3:14b | compat:nome-modello  (vedi la documentazione)
 #  effort: low | medium | high | xhigh | max   (più alto = più ragionamento, più costo)
 #
 #  Routine: { every: "6h", task: "..." }  oppure  { at: "09:00", days: [mon,tue,wed,thu,fri], task: "..." }

@@ -398,6 +398,44 @@ rest_command:
 - Le chiavi stanno solo nella configurazione dell'add-on e in `agents.yaml`, sul tuo Home
   Assistant.
 
+## Altri fornitori AI: OpenAI e modelli locali
+
+Claude resta il consigliato, ma Jarvis e ogni agente possono usare anche **OpenAI** o un
+**modello locale** (Ollama, LM Studio), gratis e senza cloud. Il modello si sceglie per nome,
+con il prefisso del fornitore:
+
+| Scrivi | Fornitore | Opzioni da compilare |
+|---|---|---|
+| `claude-sonnet-5-5` | Anthropic (come prima) | Chiave API Anthropic |
+| `openai:gpt-5-mini` | OpenAI | Chiave API OpenAI |
+| `ollama:qwen3:14b` | Ollama, sul tuo computer o server | Indirizzo di Ollama, es. `http://192.168.1.20:11434` |
+| `compat:nome-modello` | Qualsiasi servizio compatibile con OpenAI: LM Studio, OpenRouter, Gemini, Mistral, DeepSeek, Groq | Indirizzo (fino a `/v1`) e, se serve, chiave |
+
+Si scrive in **Modello di Jarvis**, **Modello di Jarvis Mail** e **Modello per i comandi
+rapidi**, oppure per un singolo agente in `agents.yaml` con `model: ollama:qwen3:14b`. Si
+possono mescolare: per esempio Jarvis su Claude e la posta su un modello locale gratuito. Se
+usi solo altri fornitori, la chiave Anthropic può restare vuota.
+
+Esempi di indirizzi per `compat`:
+
+- LM Studio: `http://IP-DEL-PC:1234/v1`
+- OpenRouter: `https://openrouter.ai/api/v1` (modelli come `compat:openai/gpt-5-mini`)
+- Gemini: `https://generativelanguage.googleapis.com/v1beta/openai` (modelli come `compat:gemini-2.5-flash`)
+
+**Cosa cambia rispetto a Claude**
+
+- La **ricerca web** c'è solo con Claude. La **lettura di una pagina** da un link (`web_fetch`)
+  la fa HubNEX stesso e funziona con tutti, solo su indirizzi pubblici.
+- Le **foto** arrivano ai modelli che le vedono; i **PDF** arrivano come testo.
+- I **pensieri** di Jarvis nella vista 3D compaiono solo con Claude.
+- **Spesa**: i modelli di Ollama costano zero. Per quelli `openai` e `compat` scrivi il prezzo
+  del listino in **Prezzo input/output altri modelli** ($ per milione di token), altrimenti non
+  vengono contati. Il **credito Anthropic** scala solo le chiamate a Claude.
+- **Qualità**: Jarvis usa molti strumenti (casa, memoria, team). I modelli locali piccoli li
+  usano peggio: per un uso vero servono modelli da almeno 14 miliardi di parametri che
+  supportano gli strumenti (qwen3, llama3.1, mistral-small). Con quelli più piccoli, meglio
+  affidargli solo agenti semplici, come la posta.
+
 ## Credito Anthropic
 
 Il riquadro **Credito Claude** è una **stima**: in `anthropic_credit_usd` scrivi il saldo che

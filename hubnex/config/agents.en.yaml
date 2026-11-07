@@ -14,7 +14,8 @@
 #  Always included: memory_save, memory_search, deadline_add, deadline_list
 #
 #  Models: everybody uses "model_jarvis" from the configuration; the agent with id "mail" uses
-#  "model_mail". For a single agent: model: claude-...
+#  "model_mail". For a single agent: model: claude-...  or with another provider:
+#  model: openai:gpt-5-mini | ollama:qwen3:14b | compat:model-name  (see the documentation)
 #  effort: low | medium | high | xhigh | max   (higher = more reasoning, more cost)
 #
 #  Routines: { every: "6h", task: "..." }  or  { at: "09:00", days: [mon,tue,wed,thu,fri], task: "..." }

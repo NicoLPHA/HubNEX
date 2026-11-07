@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.15.0
+- **Altri fornitori AI**: Jarvis e ogni agente possono usare anche **OpenAI**, un **modello
+  locale** con Ollama o LM Studio (gratis, senza cloud) o qualsiasi servizio compatibile con
+  OpenAI (OpenRouter, Gemini, Mistral, DeepSeek, Groq). Il modello si scrive con il prefisso:
+  `openai:gpt-5-mini`, `ollama:qwen3:14b`, `compat:nome-modello`; senza prefisso è Claude,
+  come prima. Si possono mescolare, per esempio Jarvis su Claude e la posta su un modello
+  locale. Nuove opzioni per chiavi e indirizzi; la chiave Anthropic diventa facoltativa.
+- Con gli altri modelli la lettura delle pagine web la fa HubNEX (solo indirizzi pubblici), i
+  PDF arrivano come testo; la ricerca web e i pensieri visibili restano solo con Claude.
+- Spesa: i modelli di Ollama costano zero, per OpenAI e gli altri si inserisce il prezzo di
+  listino. Il credito Anthropic scala solo le chiamate a Claude.
+
 ## 1.14.3
 - Telecamere dentro Home Assistant: le miniature dal vivo usano il video di Home Assistant
   (lo stesso della vista grande in HD), non più l'MJPEG che con molte telecamere non arriva.

@@ -1,5 +1,5 @@
 name: HubNEX
-version: "1.14.3"
+version: "1.15.0"
 slug: hubnex
 description: Il quartier generale AI per casa e lavoro - un team di agenti Claude, plancia 3D di Home Assistant, Telegram, voce e connettori MCP.
 url: https://github.com/P1pp89/HubNEX
@@ -40,6 +40,13 @@ options:
   model_voice: claude-haiku-5-5
   anthropic_credit_usd: 0
   monthly_budget_usd: 0
+  openai_api_key: ""
+  openai_base_url: ""
+  ollama_url: ""
+  compat_base_url: ""
+  compat_api_key: ""
+  other_price_input: 0
+  other_price_output: 0
   telegram_token_jarvis: ""
   telegram_token_mail: ""
   allowed_chat_id: ""
@@ -68,12 +75,19 @@ options:
   install_assist_integration: true
   non_admin_access: casa
 schema:
-  anthropic_api_key: password
+  anthropic_api_key: password?
   model_jarvis: str
   model_mail: str
   model_voice: str?
   anthropic_credit_usd: float(0,)
   monthly_budget_usd: float(0,)
+  openai_api_key: password?
+  openai_base_url: str?
+  ollama_url: str?
+  compat_base_url: str?
+  compat_api_key: password?
+  other_price_input: float(0,)
+  other_price_output: float(0,)
   telegram_token_jarvis: password?
   telegram_token_mail: password?
   allowed_chat_id: str?

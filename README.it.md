@@ -43,6 +43,12 @@ Serve un account Anthropic con credito: HubNEX usa Claude Sonnet per l'assistent
 Claude Haiku per la posta. I comandi della vista Casa e, con Assist, i comandi semplici di Home
 Assistant non consumano credito.
 
+**Altri fornitori AI.** Ogni agente può usare anche **OpenAI** o un **modello locale** con Ollama
+o LM Studio (gratis, senza cloud), oppure qualsiasi servizio compatibile con OpenAI
+(OpenRouter, Gemini, Mistral…): scrivi il modello come `openai:gpt-5-mini` o
+`ollama:qwen3:14b`. Claude resta il consigliato: la ricerca web e i pensieri visibili di Jarvis
+ci sono solo con lui. Dettagli nella documentazione.
+
 ## Senza Home Assistant (Docker)
 
 ```bash

@@ -29,6 +29,13 @@ def _load_dotenv(path: str = ".env") -> None:
 # Option names match the original Jarvis add-on, so its configuration can be copied over.
 ADDON_OPTIONS = {
     "anthropic_api_key": "ANTHROPIC_API_KEY",
+    "openai_api_key": "OPENAI_API_KEY",
+    "openai_base_url": "OPENAI_BASE_URL",
+    "ollama_url": "OLLAMA_URL",
+    "compat_base_url": "COMPAT_BASE_URL",
+    "compat_api_key": "COMPAT_API_KEY",
+    "other_price_input": "HUBNEX_OTHER_PRICE_INPUT",
+    "other_price_output": "HUBNEX_OTHER_PRICE_OUTPUT",
     "model_jarvis": "HUBNEX_MODEL",
     "model_mail": "HUBNEX_MODEL_MAIL",
     "model_voice": "HUBNEX_MODEL_VOICE",
@@ -153,6 +160,14 @@ class Settings:
     model_voice: str = DEFAULT_VOICE_MODEL  # Jarvis answering Assist (voice commands)
     anthropic_credit_usd: float = 0.0  # prepaid credit to count down from (0 = just show spend)
     monthly_budget_usd: float = 0.0  # warn at 80% and 100% of this monthly Claude spend (0 = off)
+    # Other providers, for models written as openai:…, ollama:…, compat:… (see providers.py)
+    openai_api_key: str = ""
+    openai_base_url: str = ""  # empty: OpenAI's own
+    ollama_url: str = ""  # e.g. http://192.168.1.20:11434
+    compat_base_url: str = ""  # any OpenAI-compatible server, up to /v1
+    compat_api_key: str = ""
+    other_price_input: float = 0.0  # USD per million tokens, for openai:/compat: models (0 = not counted)
+    other_price_output: float = 0.0
     hq_token: str = ""
     internal_token: str = ""  # used by the Assist integration (add-on only)
     install_assist_integration: bool = False
@@ -195,6 +210,13 @@ class Settings:
             model_voice=e("HUBNEX_MODEL_VOICE") or DEFAULT_VOICE_MODEL,
             anthropic_credit_usd=float(e("ANTHROPIC_CREDIT_USD") or 0),
             monthly_budget_usd=float(e("HUBNEX_MONTHLY_BUDGET_USD") or 0),
+            openai_api_key=e("OPENAI_API_KEY", ""),
+            openai_base_url=e("OPENAI_BASE_URL", ""),
+            ollama_url=e("OLLAMA_URL", ""),
+            compat_base_url=e("COMPAT_BASE_URL", ""),
+            compat_api_key=e("COMPAT_API_KEY", ""),
+            other_price_input=float(e("HUBNEX_OTHER_PRICE_INPUT") or 0),
+            other_price_output=float(e("HUBNEX_OTHER_PRICE_OUTPUT") or 0),
             hq_token=e("HQ_TOKEN", ""),
             internal_token=e("HUBNEX_INTERNAL_TOKEN", ""),
             install_assist_integration=addon and _bool(e("HUBNEX_INSTALL_ASSIST"), True),

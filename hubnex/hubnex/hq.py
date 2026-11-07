@@ -32,6 +32,7 @@ from hubnex.llm import run_agent_loop
 from hubnex.maildesk import MAIL_AGENT_ID, MailDesk
 from hubnex.pricing import call_cost
 from hubnex.store import Store
+from hubnex.providers import ProviderRouter, is_claude
 from hubnex.tools import REGISTRY, SERVER_TOOLS, ToolContext, server_tool, to_text
 
 log = logging.getLogger("hubnex.hq")
@@ -115,7 +116,8 @@ class HQ:
         self.settings = settings
         self.org = org
         self.store = store
-        self.client = client or anthropic.AsyncAnthropic()
+        # Claude by default; models written as openai:…, ollama:…, compat:… go to that provider.
+        self.client = ProviderRouter(client or anthropic.AsyncAnthropic(), settings)
         self.tz = ZoneInfo(settings.timezone)
         self.ha = HomeAssistant(settings.ha_url, settings.ha_token, settings.ha_blocked_services)
         self.watcher = HAWatcher(settings.ha_url, settings.ha_token, self._ha_event)
@@ -335,8 +337,11 @@ class HQ:
         tokens_out = usage.output_tokens or 0
         self.tokens["input"] += tokens_in
         self.tokens["output"] += tokens_out
-        cost = call_cost(model, usage)
+        cost = call_cost(model, usage, (self.settings.other_price_input, self.settings.other_price_output))
         await self.store.usage_add(self.now().strftime("%Y-%m-%d"), agent_id, model, tokens_in, tokens_out, cost)
+        if not is_claude(model):  # the Anthropic credit counts down Claude's calls only
+            await self._check_budget()
+            return
         spent = await self.store.get("credit_spent_usd", 0.0) + cost
         await self.store.put("credit_spent_usd", spent)
         credit = self.settings.anthropic_credit_usd
@@ -428,10 +433,12 @@ class HQ:
     def _tool_defs(self, names: list[str], model: str) -> list[dict]:
         defs = []
         for n in names:
-            if n in SERVER_TOOLS:
-                defs.append(server_tool(n, model))
+            if n in SERVER_TOOLS and is_claude(model):
+                defs.append(server_tool(n, model))  # run by Anthropic
             elif n in REGISTRY:
-                defs.append(REGISTRY[n].definition())
+                defs.append(REGISTRY[n].definition())  # web_fetch here is HubNEX's own
+            elif n in SERVER_TOOLS:
+                continue  # web search exists only with Claude
             else:
                 log.warning("tool sconosciuto in agents.yaml: %s", n)
         return defs
