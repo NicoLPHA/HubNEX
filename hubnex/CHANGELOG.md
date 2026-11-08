@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.16.2
+- HQ: il fascio di luce da Jarvis a un agente resta acceso **per tutto il lavoro**, pulsando,
+  con dei punti luminosi che scorrono verso l'agente; quando l'agente ha finito sfuma. Prima
+  durava un secondo e mezzo all'inizio. Tornando sull'HQ, o cambiando sede, mentre un agente
+  lavora, il suo fascio c'è subito.
+
 ## 1.16.1
 - Chat: niente più "Failed to fetch" con le richieste lunghe (agenti che cercano e verificano
   sul web). La dashboard non tiene aperta una sola richiesta per tutta la risposta, che un

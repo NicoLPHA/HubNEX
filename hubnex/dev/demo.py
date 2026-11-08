@@ -176,11 +176,11 @@ s = Settings(db_path=d + "/t.db", agents_file=str(ROOT / "config" / ("agents.en.
 
 
 class _SlowStream(_Stream):
-    """A stream that takes its time, as Claude does while it thinks."""
+    """A stream that takes its time, as Claude does while it thinks (DEMO_WORK=4: four times longer)."""
 
     def __init__(self, resp, delay):
         super().__init__(resp)
-        self.delay = delay
+        self.delay = delay * float(os.environ.get("DEMO_WORK") or 1)
 
     async def __aenter__(self):
         import asyncio

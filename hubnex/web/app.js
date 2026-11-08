@@ -115,7 +115,7 @@ scene.add(keyLight);
 let arena = new THREE.Group();
 scene.add(arena);
 const agentObjs = new Map();   // id -> {group, body, ring, halo, label, color, home}
-const beams = [];
+const beams = new Map(); // agent id -> the beam from Jarvis, alive while that agent works
 let hub = null;
 
 const ARENA_R = 10, INNER_R = 3.2;
@@ -126,6 +126,7 @@ function clearArena() {
   arena = new THREE.Group();
   scene.add(arena);
   agentObjs.clear();
+  beams.clear(); // their meshes left with the old arena
 }
 
 function ring(r, color, opacity = 0.6, width = 0.04) {
@@ -232,6 +233,8 @@ function buildArena() {
 
   renderCompanies();
   if (S.selected) renderCard();
+  // Back on the HQ (or on another office) while someone works: their beam is there at once.
+  for (const a of d.agents) if (a.id !== d.boss.id && a.status !== "sleeping" && a.status !== "error") fireBeam(a.id);
 }
 
 function agentLabelHtml(a) {
@@ -275,9 +278,13 @@ function addAgent(a, colorHex, pos) {
   agentObjs.set(a.id, { group, body, ring: spin, halo, label: lbl, color, home: pos.clone() });
 }
 
+// A beam from Jarvis to an agent at work: it stays, pulsing, with dots running along it towards
+// the agent, for as long as the agent works; when it is done the beam fades.
 function fireBeam(agentId) {
   const target = agentObjs.get(agentId);
   if (!target || target.isHub) return;
+  const old = beams.get(agentId);
+  if (old) { old.dying = null; return; }
   const from = new THREE.Vector3(0, 2.2, 0);
   const to = target.group.position.clone().add(new THREE.Vector3(0, 0.9, 0));
   const mid = from.clone().lerp(to, 0.5).add(new THREE.Vector3(0, 3, 0));
@@ -287,7 +294,17 @@ function fireBeam(agentId) {
     new THREE.MeshBasicMaterial({ color: target.color, transparent: true, opacity: 1 }),
   );
   arena.add(mesh);
-  beams.push({ mesh, born: performance.now() });
+  const dots = [0, 1, 2].map(() => {
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
+    arena.add(dot);
+    return dot;
+  });
+  beams.set(agentId, { mesh, dots, curve, born: performance.now(), dying: null });
+}
+
+function stopBeam(agentId) {
+  const b = beams.get(agentId);
+  if (b && !b.dying) b.dying = performance.now();
 }
 
 // Click on 3D bodies
@@ -331,10 +348,21 @@ function animate() {
       o.group.scale.setScalar(S.selected === id ? 1.15 : 1);
     }
   }
-  for (let i = beams.length - 1; i >= 0; i--) {
-    const b = beams[i], age = (performance.now() - b.born) / 1000;
-    b.mesh.material.opacity = Math.max(0, 1 - age / 1.6);
-    if (age > 1.6) { arena.remove(b.mesh); b.mesh.geometry.dispose(); beams.splice(i, 1); }
+  const now = performance.now();
+  for (const [id, b] of beams) {
+    const age = (now - b.born) / 1000;
+    // a bright start, then a steady pulse; a fade of one second once the agent is done
+    let o = age < 0.5 ? 1 : 0.55 + 0.3 * Math.sin(t * 4);
+    if (b.dying) o *= Math.max(0, 1 - (now - b.dying) / 1000);
+    b.mesh.material.opacity = o;
+    b.dots.forEach((dot, k) => {
+      dot.position.copy(b.curve.getPoint((t * 0.45 + k / 3) % 1));
+      dot.material.opacity = Math.min(1, o * 1.4);
+    });
+    if (b.dying && now - b.dying > 1000) {
+      for (const m of [b.mesh, ...b.dots]) { arena.remove(m); m.geometry.dispose(); m.material.dispose(); }
+      beams.delete(id);
+    }
   }
   if (S.view === "casa") return; // the house view is plain HTML: let the GPU rest
   if (S.view === "map") {
@@ -1321,7 +1349,9 @@ function handle(ev) {
       if (!S.data) return;
       const i = S.data.agents.findIndex((a) => a.id === ev.agent.id);
       const prev = S.data.agents[i];
-      if (prev && prev.status === "sleeping" && ev.agent.status !== "sleeping") fireBeam(ev.agent.id);
+      const busy = ev.agent.status !== "sleeping" && ev.agent.status !== "error";
+      if (busy) fireBeam(ev.agent.id);
+      else if (prev && prev.status !== ev.agent.status) stopBeam(ev.agent.id);
       S.data.agents[i] = ev.agent;
       const o = agentObjs.get(ev.agent.id);
       if (o?.label) o.label.element.className = `agent-label ${ev.agent.status}${S.selected === ev.agent.id ? " selected" : ""}`;
