@@ -246,6 +246,20 @@ ricerca propone solo quelle adatte), un'etichetta, la dimensione (da 1×1 a 4×2
 barra, minimo e massimo; **Prima/Dopo** lo spostano. La card ha un nome e un colore; al centro
 dell'editor vedi l'anteprima con i valori veri. Si riapre con **Modifica**.
 
+Altri blocchi: **media** (copertina, titolo, comandi e volume), **telecamera** (dal vivo, un tocco
+la apre in grande) e **Domanda a Jarvis** (una domanda pronta: un tocco la manda in chat). Per
+ogni blocco puoi anche impostare:
+
+- **Colore secondo il valore**: fino a 4 regole, es. "sopra 23 → rosso", "sotto 19 → azzurro",
+  "uguale a open → arancio";
+- **Mostra solo se**: il blocco compare solo quando un'entità vale qualcosa (es. la TV "uguale a
+  playing"); nell'editor resta visibile, sbiadito;
+- **Al tocco**: accendi/spegni, avvia una scena o uno script, chiedi a Jarvis, apri un'altra stanza.
+
+I valori sono quelli di Home Assistant: `on`, `off`, `open`, `playing`… oppure un numero. Per
+partire veloce ci sono i **modelli** (Stufa, Ingresso, Lavanderia, Clima stanza, Energia, Musica),
+che prendono le entità adatte della stanza; i blocchi si spostano anche **trascinandoli**.
+
 **Aggiungere entità.** Con **Modifica stanza → Aggiungi entità** puoi mettere in una stanza
 qualsiasi entità di Home Assistant, anche senza area o di un tipo che HubNEX non disegna
 (compare con il suo stato). Gli aiutanti nascono senza area: assegnala in Home Assistant oppure

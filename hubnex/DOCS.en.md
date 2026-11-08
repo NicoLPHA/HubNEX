@@ -251,6 +251,20 @@ the size (1×1 to 4×2) and, for ring and bar, minimum and maximum; **Before/Aft
 card has a name and a colour; in the middle of the editor you see the preview with the real
 values. **Edit** opens it again.
 
+More blocks: **media** (cover art, title, controls and volume), **camera** (live; a tap opens it
+big) and **Question for Jarvis** (a ready question: a tap sends it to the chat). For each block you
+can also set:
+
+- **Colour by value**: up to 4 rules, e.g. "above 23 → red", "below 19 → blue", "equal to open →
+  orange";
+- **Show only if**: the block appears only while an entity has a value (e.g. the TV "equal to
+  playing"); in the editor it stays visible, dimmed;
+- **On tap**: turn on/off, run a scene or script, ask Jarvis, open another room.
+
+Values are Home Assistant's: `on`, `off`, `open`, `playing`… or a number. To start quickly there
+are **templates** (Stove, Entrance, Laundry, Room climate, Energy, Music), which take the room's
+suitable entities; blocks can also be moved by **dragging** them.
+
 **Adding entities.** With **Edit room → Add entity** you can put any Home Assistant entity in a
 room, also one without an area or of a kind HubNEX doesn't draw (it shows its state). Helpers are
 born without an area: set it in Home Assistant or add them from here.

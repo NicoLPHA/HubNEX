@@ -549,6 +549,25 @@ def test_cards_composed_in_a_room_and_helpers_set_from_the_dashboard(settings, m
         assert client.post("/api/casa/rooms/soggiorno/cards", json={**free, "blocks": [{"kind": "razzo", "entity": "x.y"}]}).status_code == 422
         assert client.post("/api/casa/rooms/soggiorno/cards", json={**free, "blocks": [{"kind": "value", "entity": "light.inesistente"}]}).status_code == 422
         assert client.post("/api/casa/rooms/soggiorno/cards", json={**free, "blocks": [{"kind": "value", "entity": "input_datetime.stufa_accensione", "w": 5}]}).status_code == 422
+        # part two: colour rules, a condition, a tap; their entities belong to the card too
+        w.states["light.lampada"] = st("light.lampada", "on", friendly_name="Lampada")
+        smart = {"name": "Regole", "kind": "free", "blocks": [
+            {"kind": "value", "entity": "input_datetime.stufa_accensione", "rules": [{"op": ">", "v": "21", "c": "red"}],
+             "show": {"e": "light.lampada", "op": "=", "v": "on"}, "tap": {"do": "ask", "text": "Quanto pellet mi resta?"}},
+            {"kind": "ask", "label": "Che tempo fa?"},
+            {"kind": "state", "entity": "input_datetime.stufa_spegnimento", "tap": {"do": "toggle", "e": "light.lampada"}},
+        ]}
+        r = client.post("/api/casa/rooms/soggiorno/cards", json=smart)
+        assert r.status_code == 200, r.text
+        bad_rule = {**smart, "blocks": [{"kind": "value", "entity": "light.lampada", "rules": [{"op": "~", "v": "1", "c": "red"}]}]}
+        assert client.post("/api/casa/rooms/soggiorno/cards", json=bad_rule).status_code == 422
+        bad_tap = {**smart, "blocks": [{"kind": "value", "entity": "light.lampada", "tap": {"do": "explode"}}]}
+        assert client.post("/api/casa/rooms/soggiorno/cards", json=bad_tap).status_code == 422
+        got = next(c for c in next(a for a in client.get("/api/casa").json()["areas"] if a["id"] == "soggiorno")["cards"] if c["id"] == r.json()["id"])
+        assert got["entities"] == ["input_datetime.stufa_accensione", "light.lampada", "input_datetime.stufa_spegnimento"]
+        assert got["blocks"][0]["rules"] == [{"op": ">", "v": "21", "c": "red"}] and got["blocks"][0]["show"]["e"] == "light.lampada"
+        assert "rules" not in got["blocks"][1] and got["blocks"][1]["label"] == "Che tempo fa?"
+        client.post(f"/api/casa/rooms/soggiorno/cards/{r.json()['id']}/remove")
         view = client.get("/api/casa").json()
         sogg = next(a for a in view["areas"] if a["id"] == "soggiorno")
         card = sogg["cards"][1]

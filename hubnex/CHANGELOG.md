@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.19.0
+- **Card libera**, seconda parte:
+  - blocchi **media** (copertina, titolo, comandi, volume), **telecamera** (dal vivo) e
+    **Domanda a Jarvis** (una domanda pronta che parte in chat con un tocco);
+  - per ogni blocco: **colore secondo il valore** (fino a 4 regole), **mostra solo se**
+    (un'entità vale qualcosa) e **azione al tocco** (accendi/spegni, scena o script, chiedi a
+    Jarvis, apri una stanza);
+  - **modelli pronti**: Stufa, Ingresso, Lavanderia, Clima stanza, Energia, Musica, riempiti
+    con le entità della stanza;
+  - i blocchi si spostano **trascinandoli**, con il dito o con il mouse.
+
 ## 1.18.0
 - **Card libera** (prima parte): una card a blocchi su una griglia da 4 colonne, 2 sul
   telefono. Blocchi: valore grande, anello, interruttore, pulsante, cursore, grafico, barra,

@@ -1168,6 +1168,9 @@ async function chatAnswer(job) {
   }
 }
 
+// A question from a card of the house ("Domanda a Jarvis"): as if typed in the chat.
+window.addEventListener("hubnex-ask", (e) => sendChat(e.detail));
+
 async function sendChat(text, sent = []) {
   stopTalk();
   const voice = S.speak && S.data?.integrations?.voice;

@@ -259,6 +259,51 @@ test("card libera: si costruisce a blocchi e funziona", { timeout: 40000 }, asyn
   await done(page);
 });
 
+test("card libera: modello, colore secondo il valore, mostra solo se, domanda a Jarvis", { timeout: 40000 }, async () => {
+  const page = await open();
+  await casa(page);
+  await page.locator(".plan-room[data-area='soggiorno']").click();
+  await page.click(".casa-quick [data-act='open']");
+  await page.click("[data-act='edit']");
+  await page.click("[data-act='card-free']");
+  await page.click("[data-act='fb-tpl'][data-t='stufa']");
+  assert.ok(await page.locator(".fe-prev .fb").count() >= 3, "il modello ha messo i blocchi della stanza");
+  assert.equal(await page.inputValue("#fb-name"), "Stufa");
+  // above 21 the temperature turns red
+  await page.click(".fe-prev .k-value");
+  await page.click("[data-act='fb-rule-add']");
+  await page.selectOption("[data-fb='rules.0.op']", ">");
+  await page.fill("[data-fb='rules.0.v']", "21");
+  await page.selectOption("[data-fb='rules.0.c']", "red");
+  assert.equal(await page.locator(".fe-prev .k-value.tone-red").count(), 1);
+  // a block shown only while the kitchen speaker is off: hidden now, dimmed in the editor
+  await page.click("[data-act='fb-add'][data-k='media']");
+  await page.fill("#fb-find", "altoparlante");
+  await page.click("[data-act='fb-pick'][data-e='media_player.cucina']");
+  await page.click("[data-act='fb-show-add']");
+  await page.click("[data-act='fb-pick'][data-e='media_player.cucina']");
+  await page.fill("[data-fb='show.v']", "off");
+  assert.equal(await page.locator(".fe-prev .k-media.hid").count(), 1);
+  await page.click("[data-act='fb-add'][data-k='ask']");
+  await page.fill("#fb-label", "Quanto pellet mi resta?");
+  await page.click("[data-act='fb-save']");
+  await page.waitForSelector(".fe-panel", { state: "detached" });
+  const card = page.locator(".hc-free:has-text('Stufa')");
+  await card.waitFor();
+  assert.equal(await card.locator(".k-media").count(), 0, "nascosto: l'altoparlante sta suonando");
+  assert.equal(await card.locator(".k-value.tone-red").count(), 1);
+  await card.locator(".fb-ask").click();
+  await page.waitForFunction(() => /Quanto pellet mi resta\?/.test(document.querySelector("#chat-log")?.textContent || ""));
+  // the card goes away: its entities (the pellet) belong to the room again for the next tests
+  await page.evaluate(async () => {
+    const view = await (await fetch("api/casa")).json();
+    for (const c of view.areas.find((a) => a.id === "soggiorno").cards.filter((c) => c.kind === "free")) {
+      await fetch(`api/casa/rooms/soggiorno/cards/${c.id}/remove`, { method: "POST" });
+    }
+  });
+  await done(page);
+});
+
 test("card scorta: pellet con giorni rimasti, −1 caricato, consegna e soglia", { timeout: 30000 }, async () => {
   const page = await open();
   await casa(page);

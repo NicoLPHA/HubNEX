@@ -109,7 +109,31 @@ class StockIn(BaseModel):
     low: int = Field(ge=0, le=1000)  # warn below this
 
 
-BLOCK_KINDS = Literal["value", "ring", "toggle", "button", "slider", "chart", "bar", "band", "select", "state", "text"]
+BLOCK_KINDS = Literal["value", "ring", "toggle", "button", "slider", "chart", "bar", "band", "select", "state", "text", "camera", "media", "ask"]
+CARD_COLOR = Literal["", "warm", "cool", "green", "violet", "red"]
+COMPARE = Literal["<", ">", "=", "!="]
+
+
+class RuleIn(BaseModel):
+    """A colour by value: when the block's entity is below / above / equal to `v`."""
+    op: COMPARE
+    v: str = Field(max_length=60)
+    c: CARD_COLOR
+
+
+class ShowIn(BaseModel):
+    """The block is shown only when this entity compares so."""
+    e: str = Field(max_length=255)
+    op: COMPARE = "="
+    v: str = Field(default="on", max_length=60)
+
+
+class TapIn(BaseModel):
+    """What a tap on the block does."""
+    do: Literal["toggle", "run", "ask", "room"]
+    e: str = Field(default="", max_length=255)  # toggle / run: which entity (empty: the block's)
+    text: str = Field(default="", max_length=300)  # ask: the question for Jarvis
+    area: str = Field(default="", max_length=100)  # room: which one
 
 
 class BlockIn(BaseModel):
@@ -122,6 +146,9 @@ class BlockIn(BaseModel):
     h: int = Field(default=1, ge=1, le=2)
     min: float | None = None  # ring and bar: their scale
     max: float | None = None
+    rules: list[RuleIn] = Field(default_factory=list, max_length=4)
+    show: ShowIn | None = None
+    tap: TapIn | None = None
 
 
 class CardIn(BaseModel):
@@ -130,7 +157,7 @@ class CardIn(BaseModel):
     entities: list[str] = Field(default_factory=list, max_length=24)
     kind: Literal["composed", "free"] = "composed"
     blocks: list[BlockIn] = Field(default_factory=list, max_length=24)
-    color: Literal["", "warm", "cool", "green", "violet", "red"] = ""
+    color: CARD_COLOR = ""
     size: Literal["small", "wide"] = "wide"
     group: str | None = Field(default=None, pattern=r"^[a-z]{1,20}$")  # the room's group it sits in (None: of its first entity)
     enable: str | None = Field(default=None, max_length=255)  # the switch that turns the card's times on ("automatica"); "" = none
@@ -725,7 +752,10 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             if not body.blocks:
                 raise HTTPException(422, tr("aggiungi almeno un blocco"))
             # its entities are those of its blocks (a text block has none)
-            body.entities = list(dict.fromkeys(e for b in body.blocks for e in (b.entity, b.entity2) if e))
+            body.entities = list(dict.fromkeys(
+                e for b in body.blocks
+                for e in (b.entity, b.entity2, b.show.e if b.show else "", b.tap.e if b.tap else "") if e
+            ))
         elif not body.entities:
             raise HTTPException(422, tr("aggiungi almeno un'entità"))
         unknown = [e for e in body.entities if e not in hq.watcher.states]
@@ -735,7 +765,8 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             raise HTTPException(422, tr("l'interruttore degli orari deve essere nella card"))
         card_id = await hq.casa.save_card(
             area_id, body.id, body.name, body.entities, body.size, body.group, body.enable, body.nochart,
-            blocks=[b.model_dump(exclude_none=True) for b in body.blocks] if body.kind == "free" else None, color=body.color,
+            blocks=[{k: v for k, v in b.model_dump(exclude_none=True).items() if v != []} for b in body.blocks] if body.kind == "free" else None,
+            color=body.color,
         )
         hq.emit({"type": "casa_changed"})
         return {"ok": True, "id": card_id}

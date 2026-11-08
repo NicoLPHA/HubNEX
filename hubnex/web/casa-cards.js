@@ -68,6 +68,15 @@ const WX = {
 // Appliances worth a line while they run (and just after they finish), by name.
 const APPLIANCE = /lavatric|lavastovigl|asciugatric|forno|bollitore|washing|dishwash|dryer|oven|kettle/i;
 const LAUNDRY = /lavatric|lavastovigl|asciugatric|washing|dishwash|dryer/i; // the ones with an icon on the plan
+// A block's condition: the entity's state below / above / equal to a value (numbers as numbers).
+export function compare(s, op, v) {
+  if (!s) return false;
+  const a = parseFloat(s.k === "climate" ? s.a.current_temperature : s.s), b = parseFloat(v);
+  if (op === "<" || op === ">") return !isNaN(a) && !isNaN(b) && (op === "<" ? a < b : a > b);
+  const eq = String(s.s).toLowerCase() === String(v).trim().toLowerCase() || (!isNaN(a) && !isNaN(b) && a === b);
+  return op === "!=" ? !eq : eq;
+}
+
 export function ago(iso) {
   if (!iso) return "";
   const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
@@ -575,9 +584,14 @@ export const Cards = {
   // preview, where a tap selects the block instead of acting.
   freeCard(card, edit = null) {
     const blocks = (card.blocks || []).map((b, i) => {
-      const cls = `fb k-${b.kind}${edit && edit.sel === i ? " sel" : ""}`;
-      const at = edit ? ` data-act="fb-sel" data-i="${i}" role="button" tabindex="0"` : "";
-      return `<div class="${cls}" data-w="${b.w || 1}" data-h="${b.h || 1}"${at}>${this.blockHTML(b, !!edit)}</div>`;
+      // "Mostra solo se": hidden when false (the editor shows it, dimmed)
+      const shown = !b.show?.e || compare(this.st(b.show.e), b.show.op, b.show.v);
+      if (!shown && !edit) return "";
+      const tone = (b.rules || []).find((r) => r.v !== "" && compare(this.st(b.entity), r.op, r.v))?.c;
+      const cls = `fb k-${b.kind}${tone ? ` tone-${tone}` : ""}${edit && edit.sel === i ? " sel" : ""}${shown ? "" : " hid"}${!edit && b.tap?.do ? " tap" : ""}`;
+      const at = edit ? ` data-act="fb-sel" data-i="${i}" role="button" tabindex="0"`
+        : b.tap?.do ? ` data-act="fb-tap" data-card="${esc(card.id)}" data-i="${i}" role="button" tabindex="0"` : "";
+      return `<div class="${cls}" data-w="${b.w || 1}" data-h="${b.h || 1}"${at}>${this.blockHTML(b, !!edit)}${edit && !shown ? `<span class="fb-hidtag">${t("ora nascosto")}</span>` : ""}</div>`;
     }).join("");
     const empty = edit && !blocks ? `<p class="casa-muted fb-empty">${t("Aggiungi un blocco dalla colonna a sinistra.")}</p>` : "";
     return `<article class="hc hc-free wide ${card.color ? `fc-${card.color}` : ""}">
@@ -588,6 +602,10 @@ export const Cards = {
   blockHTML(b, editing = false) {
     const label = (s) => `<span class="fb-l">${esc(b.label || s?.n || "")}</span>`;
     if (b.kind === "text") return `<span class="fb-txt">${esc(b.label || t("Testo"))}</span>`;
+    if (b.kind === "ask") {
+      const q = b.label || t("Fai una domanda");
+      return `<span class="fb-l">Jarvis</span><button class="fb-ask" data-act="fb-ask" data-q="${esc(b.label || "")}">${esc(q)}</button>`;
+    }
     const e = b.entity, s = this.st(e);
     if (!s) return `${label()}<span class="casa-muted">${e ? t("non disponibile") : t("scegli un'entità")}</span>`;
     const v = parseFloat(s.k === "climate" ? s.a.current_temperature : s.s);
@@ -638,6 +656,21 @@ export const Cards = {
         const wrap = on + width * 14.4 > 1440 ? `<i style="left:0;width:${(on + width * 14.4 - 1440) / 14.4}%"></i>` : "";
         return `${label(s)}<span class="fb-sub ${inside ? "on" : ""}">${a} – ${z} · ${inside ? t("ora attivo") : t("non attivo")}</span>
           <div class="hc-band" aria-hidden="true"><i style="left:${on / 14.4}%;width:${width}%"></i>${wrap}<b style="left:${now / 14.4}%"></b><span><em>0</em><em>6</em><em>12</em><em>18</em><em>24</em></span></div>`;
+      }
+      case "camera":
+        return `<div class="fb-cam">${this.camHTML(e)}</div>`;
+      case "media": {
+        const f = Number(s.a.supported_features) || 0, playing = s.s === "playing";
+        const active = ["playing", "paused", "buffering"].includes(s.s);
+        const pic = s.a.entity_picture ? esc(s.a.entity_picture) : "";
+        const art = pic ? `<img src="${pic}" alt="" onerror="this.remove()">` : icon("media", "hc-ico");
+        const title = active ? s.a.media_title || t("In riproduzione") : ({ off: t("spento"), idle: t("inattivo"), standby: t("in standby") }[s.s] || s.s);
+        const who = active ? [s.a.media_artist || s.a.media_series_title, s.a.app_name].filter(Boolean).join(" · ") : "";
+        const btn = (svc, ic, lab, cls = "") => `<button class="hc-round ${cls}" data-act="media" data-s="${svc}" data-e="${e}" aria-label="${lab}">${icon(ic, cls ? "hc-ico" : "hc-ico sm")}</button>`;
+        const vol = s.a.volume_level != null && (b.w || 1) >= 2
+          ? `<input class="hc-range fb-vol" type="range" min="0" max="100" value="${Math.round(s.a.volume_level * 100)}" data-act="volume" data-e="${e}" aria-label="Volume ${esc(s.n)}">` : "";
+        return `${label(s)}<div class="fb-media"><div class="hc-art">${art}</div><div class="fb-mtxt"><b>${esc(title)}</b>${who ? `<span class="fb-sub">${esc(who)}</span>` : ""}</div></div>
+          <div class="fb-mctl">${f & 16 ? btn("media_previous_track", "prev", t("Precedente")) : ""}${btn("media_play_pause", playing ? "pause" : "play", playing ? t("Pausa") : t("Riproduci"), "big")}${f & 32 ? btn("media_next_track", "next", t("Successivo")) : ""}${vol}</div>`;
       }
       case "select": {
         const opts = s.a.options || [];
