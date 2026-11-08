@@ -17,6 +17,8 @@
 #  "model_mail". For a single agent: model: claude-...  or with another provider:
 #  model: openai:gpt-5-mini | ollama:qwen3:14b | compat:model-name  (see the documentation)
 #  effort: low | medium | high | xhigh | max   (higher = more reasoning, more cost)
+#  max_searches: 3   web searches per request (1 to 20, 5 if missing): each brings pages to
+#                    read and costs, 2-3 is usually enough
 #
 #  Routines: { every: "6h", task: "..." }  or  { at: "09:00", days: [mon,tue,wed,thu,fri], task: "..." }
 #  They are OFF until you add  enabled: true. A routine can only look and report: it changes

@@ -62,6 +62,32 @@ def test_mail_agent_uses_mail_model_and_haiku_rules(make_hq):
     assert hq._tool_defs(["web_search"], "claude-sonnet-5-5")[0]["type"] == "web_search_20260209"
 
 
+async def test_web_searches_per_request_are_set_per_agent(make_hq, tmp_path):
+    import pytest
+    import yaml
+
+    from hubnex.config import load_org
+
+    data = yaml.safe_load(open("config/agents.yaml"))
+    data["boss"]["max_searches"] = 2
+    tecnico = next(a for c in data["companies"] for a in c["agents"] if a["id"] == "tecnico")
+    tecnico["max_searches"] = 3
+    path = tmp_path / "agents.yaml"
+    path.write_text(yaml.safe_dump(data, allow_unicode=True))
+    hq = make_hq([response([text_block("ok")], "end_turn")] * 2)
+    hq.org = load_org(str(path))
+    assert await hq.run_agent("tecnico", "cerca") == "ok"
+    tools = {t["name"]: t for t in hq.client.requests[0]["tools"]}
+    assert tools["web_search"]["max_uses"] == 3 and tools["web_fetch"]["max_uses"] == 5
+    await hq.chat("dashboard", "cerca")
+    assert next(t for t in hq.client.requests[1]["tools"] if t["name"] == "web_search")["max_uses"] == 2
+    assert hq.org.agent("mail").max_searches == 5  # not set: as before
+    tecnico["max_searches"] = 0
+    path.write_text(yaml.safe_dump(data, allow_unicode=True))
+    with pytest.raises(ValueError, match="max_searches"):
+        load_org(str(path))
+
+
 async def test_haiku_requests_have_no_server_fallback(make_hq):
     hq = make_hq([response([text_block("ok")], "end_turn"), response([text_block("ok")], "end_turn")])
     await hq.run_agent("mail", "Ci sono email?")

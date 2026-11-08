@@ -286,6 +286,7 @@ class AgentSpec:
     tools: list[str] = field(default_factory=list)
     model: str | None = None
     effort: str = "medium"
+    max_searches: int = 5  # web searches per request (each one brings pages to read: it costs)
     color: str | None = None
     routines: list[Routine] = field(default_factory=list)
 
@@ -331,6 +332,13 @@ class ConnectorSpec:
         return agent_id in self.agents or (agent_id == "jarvis" and "boss" in self.agents)
 
 
+def _searches(raw: dict, who: str) -> int:
+    n = raw.get("max_searches", 5)
+    if not isinstance(n, int) or isinstance(n, bool) or not 1 <= n <= 20:
+        raise ValueError(f"{who}: max_searches deve essere un numero da 1 a 20")
+    return n
+
+
 def _connectors(raw) -> list[ConnectorSpec]:
     out = []
     for i, c in enumerate(raw or [], 1):
@@ -362,6 +370,7 @@ class OrgChart:
     companies: list[Company]
     agents: list[AgentSpec]
     connectors: list["ConnectorSpec"] = field(default_factory=list)
+    boss_max_searches: int = 5
 
     def agent(self, agent_id: str) -> AgentSpec | None:
         return next((a for a in self.agents if a.id == agent_id), None)
@@ -405,6 +414,7 @@ def load_org(path: str) -> OrgChart:
                     tools=list(a.get("tools", [])),
                     model=a.get("model"),
                     effort=a.get("effort", "medium"),
+                    max_searches=_searches(a, a["id"]),
                     color=a.get("color"),
                     routines=[Routine(**r) for r in a.get("routines", [])],
                 )
@@ -415,6 +425,7 @@ def load_org(path: str) -> OrgChart:
         boss_instructions=boss.get("instructions", ""),
         boss_tools=list(boss.get("tools", [])),
         boss_effort=boss.get("effort", "medium"),
+        boss_max_searches=_searches(boss, "boss"),
         companies=companies,
         agents=agents,
     )

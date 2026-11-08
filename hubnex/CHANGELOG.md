@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.15.1
+- **Ricerche web regolabili per agente**: in `agents.yaml`, `max_searches: 3` limita le ricerche
+  web di Jarvis o di un agente per ogni richiesta (da 1 a 20; se manca restano 5, come prima).
+  Ogni ricerca porta pagine da leggere: con meno ricerche la spesa scende, soprattutto per gli
+  agenti tecnici. Nella documentazione, i consigli per spendere meno.
+
 ## 1.15.0
 - **Altri fornitori AI**: Jarvis e ogni agente possono usare anche **OpenAI**, un **modello
   locale** con Ollama o LM Studio (gratis, senza cloud) o qualsiasi servizio compatibile con

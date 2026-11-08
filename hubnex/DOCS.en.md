@@ -462,7 +462,14 @@ The figures are HubNEX's estimate at list price for every call: the exact bill i
 console.anthropic.com.
 
 To spend little: the mail agent uses the cheap model; with Assist simple commands are done by
-Home Assistant; routines and web searches cost credit, use them when needed.
+Home Assistant; routines and web searches cost credit, use them when needed. In
+`agents.yaml`, for Jarvis and for each agent:
+
+- `effort: medium` instead of `high`: it still reasons, but at less length;
+- `max_searches: 3`: at most 3 web searches per request instead of 5. Each search brings in
+  result pages, which are then read again at every step;
+- when you change topic in the chat, close the conversation (×): new questions don't drag the
+  last exchanges along.
 
 ## Data and backup
 

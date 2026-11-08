@@ -461,7 +461,14 @@ Le cifre sono la stima di HubNEX con i prezzi di listino di ogni chiamata: il co
 console.anthropic.com.
 
 Per spendere poco: l'agente della posta usa il modello economico; con Assist i comandi semplici
-li fa Home Assistant; le routine e le ricerche web consumano, usale quando servono.
+li fa Home Assistant; le routine e le ricerche web consumano, usale quando servono. In
+`agents.yaml`, per Jarvis e per ogni agente:
+
+- `effort: medium` invece di `high`: ragiona ancora, ma si dilunga meno;
+- `max_searches: 3`: al massimo 3 ricerche web per richiesta invece di 5. Ogni ricerca porta
+  dentro pagine di risultati, che poi vengono rilette a ogni passaggio;
+- quando cambi argomento in chat, chiudi la conversazione (×): le domande nuove non si
+  trascinano dietro gli ultimi scambi.
 
 ## Dati e backup
 

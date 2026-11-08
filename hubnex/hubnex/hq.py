@@ -430,11 +430,11 @@ class HQ:
             return spec.model
         return self.settings.model_mail if spec.id == MAIL_AGENT_ID else self.settings.model
 
-    def _tool_defs(self, names: list[str], model: str) -> list[dict]:
+    def _tool_defs(self, names: list[str], model: str, searches: int = 5) -> list[dict]:
         defs = []
         for n in names:
-            if n in SERVER_TOOLS and is_claude(model):
-                defs.append(server_tool(n, model))  # run by Anthropic
+            if n in SERVER_TOOLS and is_claude(model):  # run by Anthropic
+                defs.append(server_tool(n, model, searches if n == "web_search" else 5))
             elif n in REGISTRY:
                 defs.append(REGISTRY[n].definition())  # web_fetch here is HubNEX's own
             elif n in SERVER_TOOLS:
@@ -446,7 +446,9 @@ class HQ:
     async def _toolbox(self, agent_id: str, names: list[str], model: str) -> tuple[list[dict], dict]:
         """The agent's tools: those from agents.yaml plus its connectors' (MCP)."""
         extra = await self.connectors.tools_for(agent_id) if self.connectors.enabled else {}
-        return self._tool_defs(names, model) + [self.connectors.definition(t) for t in extra.values()], extra
+        spec = self.org.agent(agent_id)
+        searches = spec.max_searches if spec else self.org.boss_max_searches
+        return self._tool_defs(names, model, searches) + [self.connectors.definition(t) for t in extra.values()], extra
 
     def _executor(self, agent_id: str, company: str | None, allowed: set[str], extra: dict | None = None):
         ctx = ToolContext(self, agent_id, company)

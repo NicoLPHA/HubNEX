@@ -39,9 +39,9 @@ SERVER_TOOLS: dict[str, tuple[str, str]] = {
 }
 
 
-def server_tool(name: str, model: str) -> dict:
+def server_tool(name: str, model: str, max_uses: int = 5) -> dict:
     current, basic = SERVER_TOOLS[name]
-    return {"type": basic if "haiku" in model else current, "name": name, "max_uses": 5}
+    return {"type": basic if "haiku" in model else current, "name": name, "max_uses": max_uses}
 
 REGISTRY: dict[str, Tool] = {}
 
