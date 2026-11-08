@@ -266,6 +266,10 @@ Values are Home Assistant's: `on`, `off`, `open`, `playing`… or a number. To s
 are **templates** (Stove, Entrance, Laundry, Room climate, Energy, Music), which take the room's
 suitable entities; blocks can also be moved by **dragging** them.
 
+The **line on top** of every card (free or composed) lights up by itself: amber while something is
+on or a sensor detects, red for an alarm (door or window open, water, smoke, gas). In a card with a
+main switch, like the stove, that switch decides; the colour rules set by hand add to these.
+
 **Describe it to Jarvis**: at the top of the editor write what you want ("the stove with
 temperature, power, times and pellet; red above 23 degrees") and tap **Create**: Jarvis composes
 the card with the house's real entities (made-up ones are left out) and opens it in the editor, to

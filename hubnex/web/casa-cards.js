@@ -583,20 +583,52 @@ export const Cards = {
   // Four columns (two on a phone); each block shows one entity its own way. `edit`: the editor's
   // preview, where a tap selects the block instead of acting.
   freeCard(card, edit = null) {
+    let anyOn = false, anyAlarm = false;
     const blocks = (card.blocks || []).map((b, i) => {
       // "Mostra solo se": hidden when false (the editor shows it, dimmed)
       const shown = !b.show?.e || compare(this.st(b.show.e), b.show.op, b.show.v);
       if (!shown && !edit) return "";
       const tone = (b.rules || []).find((r) => r.v !== "" && compare(this.st(b.entity), r.op, r.v))?.c;
-      const cls = `fb k-${b.kind}${tone ? ` tone-${tone}` : ""}${edit && edit.sel === i ? " sel" : ""}${shown ? "" : " hid"}${!edit && b.tap?.do ? " tap" : ""}`;
+      // like the composed cards' slots: the line over a block lights up while it is on (red: an alarm)
+      const s = this.st(b.entity);
+      const alarm = s?.k === "binary" && s.s === "on" && (OPENING.has(s.a.device_class) || DANGER.has(s.a.device_class));
+      const active = !alarm && !!s && (s.k === "binary" ? s.s === "on" : s.k === "climate" ? s.a.hvac_action === "heating" || s.a.hvac_action === "cooling"
+        : ["light", "switch", "media"].includes(s.k) && this.isOn(b.entity));
+      if (shown) { anyOn ||= active; anyAlarm ||= alarm; }
+      const cls = `fb k-${b.kind}${tone ? ` tone-${tone}` : ""}${alarm ? " alert" : active ? " on" : ""}${edit && edit.sel === i ? " sel" : ""}${shown ? "" : " hid"}${!edit && b.tap?.do ? " tap" : ""}`;
       const at = edit ? ` data-act="fb-sel" data-i="${i}" role="button" tabindex="0"`
         : b.tap?.do ? ` data-act="fb-tap" data-card="${esc(card.id)}" data-i="${i}" role="button" tabindex="0"` : "";
       return `<div class="${cls}" data-w="${b.w || 1}" data-h="${b.h || 1}"${at}>${this.blockHTML(b, !!edit)}${edit && !shown ? `<span class="fb-hidtag">${t("ora nascosto")}</span>` : ""}</div>`;
     }).join("");
     const empty = edit && !blocks ? `<p class="casa-muted fb-empty">${t("Aggiungi un blocco dalla colonna a sinistra.")}</p>` : "";
-    return `<article class="hc hc-free wide ${card.color ? `fc-${card.color}` : ""} ${card.style === "flat" ? "flat" : ""}">
-      <header class="hc-head"><b class="hc-name">${esc(card.name || t("Card"))}</b></header>
+    const [status, lit, hasPower] = this.freeStatus(card);
+    // The line on top: red for an alarm; amber while it works (its main switch decides, if it has one)
+    const glow = anyAlarm ? "alert" : (hasPower ? lit : lit || anyOn) ? "on" : "";
+    return `<article class="hc hc-free wide ${card.color ? `fc-${card.color}` : ""} ${card.style === "flat" ? "flat" : ""} ${glow}">
+      <header class="hc-head"><b class="hc-name">${esc(card.name || t("Card"))}</b>${status ? `<span class="hc-state">${esc(status)}</span>` : ""}</header>
       <div class="fgrid">${blocks}</div>${empty}</article>`;
+  },
+
+  // The card's state in its header, as a composed card says it: its first switch on or off, and
+  // its time band (active until…, starts at…).
+  freeStatus(card) {
+    const blocks = card.blocks || [];
+    const sw = blocks.find((b) => b.kind === "toggle" && this.st(b.entity));
+    const band = blocks.find((b) => b.kind === "band" && this.st(b.entity) && this.st(b.entity2));
+    const parts = [];
+    let lit = false;
+    if (sw) { lit = this.isOn(sw.entity); parts.push(lit ? t("accesa") : t("spenta")); }
+    if (band) {
+      const a = this.dtParts(band.entity, this.st(band.entity)).time, z = this.dtParts(band.entity2, this.st(band.entity2)).time;
+      if (a && z) {
+        const m = (x) => Number(x.slice(0, 2)) * 60 + Number(x.slice(3, 5));
+        const on = m(a), off = m(z), d = new Date(), now = d.getHours() * 60 + d.getMinutes();
+        const inside = on <= off ? now >= on && now < off : now >= on || now < off;
+        parts.push(inside ? t("attiva fino alle {time}", { time: z }) : t("si attiva alle {time}", { time: a }));
+        if (!sw) lit = inside;
+      }
+    }
+    return [parts.join(" · "), lit, !!sw];
   },
 
   blockHTML(b, editing = false) {
@@ -616,6 +648,7 @@ export const Cards = {
     };
     switch (b.kind) {
       case "value": {
+        if (s.k === "datetime") return `${label(s)}${this.dtValueHTML(e, s, false)}`; // the time, with its −15 / +15
         const doing = (ACTION[s.a.hvac_action] || HVAC[s.s] || s.s || "").toLowerCase();
         const sub = s.k === "climate" && s.a.temperature != null ? `${t("obiettivo")} ${num(s.a.temperature)}°${doing ? ` · ${doing}` : ""}` : "";
         const big = isNaN(v) ? `<span class="fb-word ${this.valueClass(e)}">${esc(this.value(e))}</span>` : `<span class="fb-big">${num(v)}<small>${esc(unit)}</small></span>`;
@@ -717,7 +750,10 @@ export const Cards = {
       running = false;
       band = band.replace('class="hc-band"', 'class="hc-band off"');
     }
-    const lit = power ? this.isOn(power) : running;
+    const slotAlarm = (s) => s.k === "binary" && s.s === "on" && (OPENING.has(s.a.device_class) || DANGER.has(s.a.device_class));
+    const anyAlarm = eids.some((e) => slotAlarm(this.st(e)));
+    const anyOn = eids.some((e) => { const s = this.st(e); return !slotAlarm(s) && (s.k === "binary" ? s.s === "on" : ["light", "switch", "media"].includes(s.k) && this.isOn(e)); });
+    const lit = power ? this.isOn(power) : running || anyOn;
     if (power) status = `${this.isOn(power) ? t("accesa") : t("spenta")}${status ? ` · ${status}` : ""}`;
     const slot = (e) => {
       const s = this.st(e);
@@ -741,7 +777,7 @@ export const Cards = {
     const toggleCol = toggles.length
       ? `<div class="hc-slot hc-toggles">${toggles.map((e) => `<div class="hc-toggle-row"><span class="hc-state">${esc(label(e))}</span>${this.switchHTML(e)}</div>`).join("")}</div>`
       : "";
-    return `<article class="hc hc-composed ${card.size === "wide" ? "wide" : ""} ${lit ? "on" : ""}" data-card="${card.id}">
+    return `<article class="hc hc-composed ${card.size === "wide" ? "wide" : ""} ${anyAlarm ? "alert" : lit ? "on" : ""}" data-card="${card.id}">
       <header class="hc-head"><b class="hc-name">${esc(card.name)}</b>${status ? `<span class="hc-state">${esc(status)}</span>` : ""}</header>
       <div class="hc-slots">${eids.filter((e) => !isToggle(e)).map(slot).join("")}${toggleCol}${eids.length ? "" : `<span class="hc-state">${t("entità non disponibili")}</span>`}</div>
       ${band}

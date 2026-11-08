@@ -1310,3 +1310,27 @@ body.casa-modal-open #chat, body.casa-modal-open #orb { display: none !important
 .fe-style { display: inline-flex; border: 1px solid rgba(79, 209, 255, 0.25); border-radius: 6px; overflow: hidden; }
 .fe-style button { padding: 7px 12px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
 .fe-style button.on { background: rgba(79, 209, 255, 0.14); color: var(--accent); }
+
+/* Clean free cards look like the composed ones: small labels, middle-size values, a line over
+   each block that lights up while it is on */
+.hc-free.flat .fgrid { gap: 14px 16px; }
+.hc-free.flat .fb { position: relative; min-height: 0; padding: 8px 0 0; gap: 4px; border: 0; border-top: 1px solid rgba(79, 209, 255, 0.12); border-radius: 0; background: transparent; }
+.hc-free.flat .fb.on { border-top-color: var(--warn); }
+.hc-free.flat .fb.on::before, .hc-free.flat .fb.alert::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 1px; background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+.hc-free.flat .fb.alert { border-top-color: var(--danger); }
+.hc-free.flat .fb.alert::before { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+.hc-free.flat .fb-l { font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.hc-free.flat .fb.on > .fb-l { color: #f3c98a; }
+.hc-free.flat .fb-big { font-size: 30px; }
+.hc-free.flat .fb[data-h="2"] .fb-big { font-size: 44px; margin: 6px 0 2px; }
+.hc-free.flat .fb-mid { font-size: 20px; }
+.hc-free.flat .fb-word { font-size: 16px; }
+.hc-free.flat .fb[class*="tone-"] { padding: 8px 10px 6px; border-radius: 6px; border-top-color: transparent; }
+.hc-free.flat .fb.k-text { border-top: 0; }
+.hc-free.flat .k-camera { padding: 0; border-top: 0; }
+.hc-free.flat .fb-ring { justify-content: flex-start; }
+.hc-free.flat .k-toggle { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+.hc-free.flat .k-toggle .fb-sub { display: none; }
+.hc-free.flat .k-toggle .fb-switch { margin: 0; }
+.hc-free .hc-dt { flex-wrap: nowrap; }
+.hc-free .hc-dt .hc-nudge { flex: none; }

@@ -261,6 +261,11 @@ I valori sono quelli di Home Assistant: `on`, `off`, `open`, `playing`… oppure
 partire veloce ci sono i **modelli** (Stufa, Ingresso, Lavanderia, Clima stanza, Energia, Musica),
 che prendono le entità adatte della stanza; i blocchi si spostano anche **trascinandoli**.
 
+La **linea in alto** di ogni card (libera o composta) si accende da sola: arancione quando qualcosa
+è acceso o un sensore rileva, rossa per un allarme (porta o finestra aperta, acqua, fumo, gas). In
+una card con un interruttore principale, come la stufa, decide lui; le regole di colore impostate
+a mano si aggiungono a queste.
+
 **Descrivila a Jarvis**: in cima all'editor scrivi cosa vuoi ("la stufa con temperatura,
 accensione, orari e pellet; rossa sopra 23 gradi") e tocca **Crea**: Jarvis compone la card con
 le entità vere della casa (quelle che non esistono vengono scartate) e la apre nell'editor, da

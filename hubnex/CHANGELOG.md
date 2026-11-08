@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.20.2
+- Card libera, stile **Pulito** come le card composte: etichette piccole, valori di misura
+  media, una linea sopra ogni blocco che si accende quando l'entità è attiva, orari con −15/+15
+  accanto, interruttori con il nome sulla stessa riga, lo stato della card nell'intestazione
+  (accesa · attiva fino alle…).
+- **La linea in alto** di tutte le card (libere e composte) segue le stesse regole: arancione
+  quando qualcosa è acceso o un sensore rileva, rossa per un allarme (porta o finestra aperta,
+  acqua, fumo, gas); in una card con un interruttore principale, come la stufa, decide lui.
+
 ## 1.20.1
 - Card libera: **stile Pulito**, senza riquadri, come le card composte, e di partenza per le
   card nuove; **Riquadri** resta da scegliere nell'editor. Le card già create restano come

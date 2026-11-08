@@ -337,6 +337,26 @@ test("card libera: Jarvis la compone, si esporta e si importa, valori da un elen
   await done(page);
 });
 
+test("le card si accendono in alto: arancione se qualcosa è acceso, rosso per un allarme", { timeout: 30000 }, async () => {
+  const page = await open();
+  await casa(page);
+  await page.evaluate(async () => {
+    const post = (body) => fetch("api/casa/rooms/camera_da_letto/cards", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    await post({ name: "Finestra", kind: "free", style: "flat", blocks: [{ kind: "state", entity: "binary_sensor.finestra_camera", w: 2, h: 1 }] });
+    await post({ name: "Lampada", kind: "free", style: "flat", blocks: [{ kind: "state", entity: "light.lampada_terra", w: 2, h: 1 }] });
+  });
+  await page.locator(".plan-room[data-area='camera_da_letto']").click();
+  await page.click(".casa-quick [data-act='open']");
+  await page.waitForSelector(".hc-free:has-text('Lampada')");
+  assert.equal(await page.locator(".hc-free.alert:has-text('Finestra')").count(), 1, "la finestra aperta: linea rossa");
+  assert.equal(await page.locator(".hc-free.on:has-text('Lampada')").count(), 1, "la lampada accesa: linea arancione");
+  await page.evaluate(async () => {
+    const view = await (await fetch("api/casa")).json();
+    for (const c of view.areas.find((a) => a.id === "camera_da_letto").cards) await fetch(`api/casa/rooms/camera_da_letto/cards/${c.id}/remove`, { method: "POST" });
+  });
+  await done(page);
+});
+
 test("card scorta: pellet con giorni rimasti, −1 caricato, consegna e soglia", { timeout: 30000 }, async () => {
   const page = await open();
   await casa(page);
