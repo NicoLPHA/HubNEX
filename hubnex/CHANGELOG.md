@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.16.0
+- Vista Casa più ricca:
+  - **Meteo** nel cruscotto, con le previsioni dei prossimi giorni in un popup (da Home
+    Assistant);
+  - **Oggi e prossimi giorni**: le scadenze dei prossimi 7 giorni, con la spunta per chiuderle.
+    Solo per il proprietario: i familiari con accesso alla sola casa non le vedono;
+  - **icone sulla piantina**: presenza, musica, robot al lavoro, lavatrice in funzione;
+  - **Elettrodomestici**: in funzione con la potenza, e "finito … fa";
+  - **Ultimi eventi**: porte, finestre, serrature, allarme e persone delle ultime 24 ore.
+
 ## 1.15.1
 - **Ricerche web regolabili per agente**: in `agents.yaml`, `max_searches: 3` limita le ricerche
   web di Jarvis o di un agente per ogni richiesta (da 1 a 20; se manca restano 5, come prima).

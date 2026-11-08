@@ -184,6 +184,36 @@ test("luci: la card resta semplice, colore e temperatura nel popup", { timeout: 
   await done(page);
 });
 
+test("vista Casa: meteo, oggi, icone sulla piantina, elettrodomestici, ultimi eventi", { timeout: 30000 }, async () => {
+  const page = await open();
+  await casa(page);
+  // the weather in the HUD, the forecast in a popup
+  await page.waitForFunction(() => /9°\/17°/.test(document.querySelector(".hud-wx")?.textContent || ""));
+  await page.click("[data-act='weather']");
+  await page.waitForSelector(".casa-wx-modal");
+  assert.equal(await page.locator(".wx-day").count(), 6, "sei giorni di previsioni");
+  assert.match(await page.textContent(".wx-day >> nth=1"), /Domani.*Pioggia · 80%/s, "niente «pioggia» ripetuto");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".casa-wx-modal", { state: "detached" });
+  // today: the owner's deadlines, the late one first
+  const today = page.locator(".hc-today");
+  assert.equal(await today.count(), 4, "al massimo quattro, entro sette giorni");
+  assert.match(await today.first().textContent(), /scaduta/i);
+  // what's going on in the rooms
+  assert.equal(await page.locator(".plan-room[data-area='soggiorno'] .plan-icons .pi").count(), 2, "presenza e musica");
+  assert.equal(await page.locator(".plan-room[data-area='lavanderia'] .plan-icons .pi").count(), 1, "la lavatrice in funzione");
+  assert.equal(await page.locator(".plan-room[data-area='cucina'] .plan-icons .pi").count(), 1, "il bollitore non ha icona");
+  // appliances and recent events
+  const appl = await page.textContent(".casa-right");
+  assert.match(appl, /Lavatrice.*in funzione/s);
+  assert.match(appl, /Lavastoviglie.*finito \d+ min fa/s);
+  assert.match(await page.textContent(".casa-left"), /Ultimi eventi.*Porta ingresso.*bloccata.*min fa/s);
+  // ticking a deadline off
+  await today.first().locator("[data-act='ddone']").click();
+  await page.waitForFunction(() => document.querySelectorAll(".hc-today").length === 3 && !/Invio verbale/.test(document.querySelector(".casa-right").textContent));
+  await done(page);
+});
+
 test("card: robot con mappa, telecamera composta live con i sensori, media completo", { timeout: 30000 }, async () => {
   const page = await open();
   await casa(page);

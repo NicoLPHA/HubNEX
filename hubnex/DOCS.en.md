@@ -220,6 +220,20 @@ when open, "for how long"), sensors with the chart of the last 24 hours, people,
 the card; the **alarm** is disarmed with the keypad. The **rooms are Home Assistant's areas**:
 the entities of an area (or of its device) appear in the room by themselves.
 
+Around the floor plan, at a glance:
+
+- **Weather** in the HUD: condition, temperature, low/high and rain; a tap opens the forecast for
+  the next days, with humidity and wind. It uses Home Assistant's `weather.*` entity.
+- **Today and next days**: your and the agents' deadlines in the next 7 days, with a tick to close
+  them. Only you see it: Home Assistant users with access to the house only don't.
+- **On the floor plan**, under the room's name: a person where there is presence or motion, a note
+  where something is playing, the robot where it cleans, a washing machine where the washing
+  machine or dishwasher is running.
+- **Appliances**: washing machine, dishwasher, dryer, oven and kettle on a plug that measures
+  power (recognised by name): "running" and, for 3 hours, "finished … ago".
+- **Recent events**: the last changes in the last 24 hours of doors, windows, locks, alarm and
+  people.
+
 - **Floor plan**: **⚙ Floor plan** opens the editor.
   1. **Upload floor plan**: a photo or a PDF of the plan (white margins are trimmed by
      themselves). It stays only in the add-on's folder.

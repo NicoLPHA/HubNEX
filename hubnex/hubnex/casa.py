@@ -40,6 +40,7 @@ ATTRS = (
     "fan_speed", "fan_speed_list", "status", "source_list", "shuffle", "repeat", "is_volume_muted",
     "media_album_name", "app_name", "media_series_title",
     "current_humidity", "battery_level", "hvac_action",
+    "humidity", "wind_speed", "wind_speed_unit",  # the weather
     "has_date", "has_time", "min", "max", "step", "mode", "options",
     "last_period", "last_reset", "meter_period",  # utility meters: the previous period, its start
 )

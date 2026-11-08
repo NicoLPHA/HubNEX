@@ -610,3 +610,25 @@ def test_vacuum_map_is_found_on_the_same_device():
     assert casa.vacuum_map("vacuum.roborock_s8") == "camera.roborock_map"
     ha.states = {"vacuum.robot": {}, "camera.ingresso": {}}
     assert casa.vacuum_map("vacuum.robot") is None
+
+
+async def test_the_forecast_comes_from_home_assistant_service():
+    import json as _json
+
+    import httpx
+
+    from hubnex.integrations.homeassistant import HomeAssistant
+
+    seen = {}
+
+    def handle(req):
+        seen.update(url=str(req.url), body=_json.loads(req.content))
+        return httpx.Response(200, json={"changed_states": [], "service_response": {
+            "weather.casa": {"forecast": [{"datetime": "2026-11-08T00:00:00Z", "condition": "rainy", "temperature": 14, "templow": 9}]}}})
+
+    ha = HomeAssistant("http://ha:8123", "tok")
+    ha._client = httpx.AsyncClient(base_url="http://ha:8123/api", transport=httpx.MockTransport(handle))
+    days = await ha.forecast("weather.casa")
+    assert days[0]["condition"] == "rainy"
+    assert seen["url"].endswith("/api/services/weather/get_forecasts?return_response")
+    assert seen["body"] == {"entity_id": "weather.casa", "type": "daily"}

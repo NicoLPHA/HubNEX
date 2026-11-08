@@ -45,9 +45,10 @@ function loadScript(src) {
 }
 
 export class CasaView {
-  constructor(root, { api, token }) {
+  constructor(root, { api, token, deadlines }) {
     this.root = root;
     this.api = api;
+    this.deadlines = deadlines; // () => the owner's deadlines, or null for family members
     this.token = token || (() => "");
     this.camTick = Date.now();
     this.camSrc = {}; // last frame loaded, per camera
@@ -71,6 +72,7 @@ export class CasaView {
       if (e.key !== "Escape") return;
       if (this.live) this.closeCamera();
       else if (this.toneOpen && this.visible) { this.toneOpen = null; this.render(true); }
+      else if (this.weatherOpen && this.visible) { this.weatherOpen = false; this.render(true); }
       else if (this.energyOpen && !this.energyEdit && this.visible) { this.energyOpen = false; clearInterval(this._energyTimer); this.render(true); }
     });
     this.data = null;
@@ -125,6 +127,7 @@ export class CasaView {
       try {
         this.data = await (await this.api("/api/casa")).json();
         this.error = null;
+        this.loadForecast();
       } catch (err) {
         this.error = err.message;
       } finally {
@@ -133,6 +136,19 @@ export class CasaView {
     })();
     await this.loading;
     this.render(force);
+  }
+
+  // The weather forecast, from Home Assistant: every 30 minutes is plenty.
+  async loadForecast() {
+    if (!this.data?.weather || Date.now() - (this._fcAt || 0) < 18e5) return;
+    this._fcAt = Date.now();
+    try {
+      const r = await this.api("/api/casa/forecast");
+      this.forecast = (await r.json()).forecast || null;
+      this.renderSoon();
+    } catch {
+      this.forecast = null;
+    }
   }
 
   // Live events from the HQ WebSocket.
@@ -729,6 +745,9 @@ export class CasaView {
       case "pad-text": this.pad.code = this.root.querySelector("#pad-text")?.value || ""; this.padSend(); return;
       case "pad-close": this.pad = null; break;
       case "alarm-panel": this.alarmOpen = true; break;
+      case "weather": this.weatherOpen = true; break;
+      case "weather-close": this.weatherOpen = false; break;
+      case "ddone": this.api(`/api/deadlines/${el.dataset.id}/done`, { method: "POST" }).catch(() => {}); el.closest(".hc-today")?.classList.add("gone"); return;
       case "alarm-close": this.alarmOpen = false; break;
       case "kind": return;
       case "hvac": this.st(eid).s = el.dataset.m; this.call("climate", "set_hvac_mode", { entity_id: eid, hvac_mode: el.dataset.m }); break;
@@ -984,6 +1003,7 @@ export class CasaView {
         <div class="hc-grid">${this.data.alarms.filter((e) => this.st(e)).map((e) => this.cardHTML(e)).join("")}</div></section></div>`;
     }
     if (this.toneOpen && this.st(this.toneOpen)) layer += this.toneHTML(this.toneOpen);
+    if (this.weatherOpen && this.data?.weather && this.st(this.data.weather)) layer += this.weatherHTML();
     if (this.pad) layer += this.padHTML();
     if (this.cardEdit) layer += this.cardEditHTML();
     if (this.renaming) layer += this.renameHTML();
@@ -1005,7 +1025,7 @@ export class CasaView {
       this.pruneLive();
     }
     document.body.classList.toggle("casa-sheet", !!(this.data && !this.page && this.selected && this.area(this.selected)));
-    document.body.classList.toggle("casa-modal-open", !!(this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen || this.energyOpen || this.toneOpen));
+    document.body.classList.toggle("casa-modal-open", !!(this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen || this.energyOpen || this.toneOpen || this.weatherOpen));
     if (this.editing && this.cands) {
       const box = this.root.querySelector("#casa-cands");
       if (box) box.innerHTML = this.candsHTML();
@@ -1017,7 +1037,7 @@ export class CasaView {
     return `
       ${this.hudHTML()}
       <div class="casa-body">
-        <aside class="casa-col casa-left">${this.climateHTML()}</aside>
+        <aside class="casa-col casa-left">${this.climateHTML()}${this.activityHTML()}</aside>
         <main class="casa-center">${this.planHTML()}</main>
         <aside class="casa-col casa-right">${this.selected && this.area(this.selected) ? this.quickHTML(this.area(this.selected)) : this.overviewHTML()}</aside>
       </div>`;
@@ -1059,7 +1079,7 @@ export class CasaView {
         const temp = this.temp(a);
         const tag = this.lit(a) ? t("LUCE") : this.alerts(a).length ? t("APERTA") : "";
         return `<button class="plan-room ${cls}" style="${geo}" data-act="room" data-area="${a.id}" aria-label="${esc(a.name)}">
-          <b>${esc(a.name)}</b><span class="plan-meta"><span class="mono">${temp != null && !small ? num(temp) + "°" : ""}</span><span class="plan-tag">${small ? "" : tag}</span></span></button>`;
+          <b>${esc(a.name)}</b>${small ? "" : this.planIcons(a)}<span class="plan-meta"><span class="mono">${temp != null && !small ? num(temp) + "°" : ""}</span><span class="plan-tag">${small ? "" : tag}</span></span></button>`;
       }).join("");
       const tabs = floors.length > 1 ? `<div class="casa-floors">${floors.map((x, i) => `<button class="${i === this.floor ? "on" : ""}" data-act="floor" data-i="${i}">${esc(x.name)}</button>`).join("")}</div>` : `<div class="casa-floor-name">${esc(f.name)} · ${t("tocca una stanza")}</div>`;
       // The real drawing, faint under the hologram (light lines on the dark background).

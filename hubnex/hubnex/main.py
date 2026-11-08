@@ -7,6 +7,7 @@ import os
 import json
 import base64
 import hmac
+import time
 import mimetypes
 import logging
 from contextlib import asynccontextmanager
@@ -470,6 +471,26 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     def need_ha(hq: HQ) -> None:
         if not hq.watcher.enabled:
             raise HTTPException(503, tr("Home Assistant non configurato"))
+
+    forecast_cache: dict = {}
+
+    @app.get("/api/casa/forecast", dependencies=[Depends(auth)])
+    async def casa_forecast(hq: HQ = Depends(get_hq)):
+        """The weather forecast for the house view, asked to Home Assistant at most every 30 min."""
+        need_ha(hq)
+        eid = hq.casa.build().get("weather")
+        if not eid:
+            return {"forecast": []}
+        hit = forecast_cache.get(eid)
+        if hit and time.time() - hit[0] < 1800:
+            return {"forecast": hit[1]}
+        try:
+            days = await hq.ha.forecast(eid)
+        except Exception as exc:  # an old Home Assistant or a weather service without forecast
+            log.info("forecast unavailable: %s", exc)
+            days = []
+        forecast_cache[eid] = (time.time(), days)
+        return {"forecast": days}
 
     @app.get("/api/casa", dependencies=[Depends(auth)])
     async def casa(hq: HQ = Depends(get_hq)):

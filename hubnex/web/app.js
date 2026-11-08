@@ -505,7 +505,11 @@ function graphChanged() {
   graphTimer = setTimeout(loadGraph, 1500);
 }
 
-const casa = new CasaView($("casa"), { api, token: () => S.token });
+const casa = new CasaView($("casa"), {
+  api,
+  token: () => S.token,
+  deadlines: () => (S.data && S.data.role !== "casa" ? S.data.deadlines || [] : null),
+});
 
 function setView(view) {
   S.view = view;
@@ -1315,7 +1319,7 @@ function handle(ev) {
       $("feed").prepend(feedItem(ev.entry));
       if ($("feed").children.length > 300) $("feed").lastChild.remove(); // long-open dashboards
       break;
-    case "deadlines": S.data.deadlines = ev.deadlines; renderDeadlines(); break;
+    case "deadlines": S.data.deadlines = ev.deadlines; renderDeadlines(); if (casa.visible) casa.render(); break;
     case "drafts": S.data.drafts = ev.drafts; renderDrafts(); break;
     case "actions": S.data.actions = ev.actions; renderDrafts(); break;
     case "stats": S.data.stats = ev.stats; renderStats(); break;

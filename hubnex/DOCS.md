@@ -215,6 +215,20 @@ telecamere. Le **serrature** con un codice in Home Assistant chiedono il codice 
 le altre una conferma nella card; l'**allarme** si disinserisce con il tastierino. Le **stanze sono le aree di Home
 Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nella stanza.
 
+Intorno alla piantina, a colpo d'occhio:
+
+- **Meteo** nel cruscotto: condizione, temperatura, minima/massima e pioggia; un tocco apre le
+  previsioni dei prossimi giorni, con umidità e vento. Usa l'entità `weather.*` di Home Assistant.
+- **Oggi e prossimi giorni**: le scadenze tue e degli agenti nei prossimi 7 giorni, con la spunta
+  per chiuderle. Lo vedi solo tu: gli utenti di Home Assistant con accesso alla sola casa no.
+- **Sulla piantina**, sotto il nome della stanza: una persona dove c'è presenza o movimento, una
+  nota dove suona qualcosa, il robot dove pulisce, una lavatrice dove lavatrice o lavastoviglie
+  sono in funzione.
+- **Elettrodomestici**: lavatrice, lavastoviglie, asciugatrice, forno e bollitore con una presa
+  che misura la potenza (riconosciuti dal nome): "in funzione" e, per 3 ore, "finito … fa".
+- **Ultimi eventi**: le ultime variazioni delle ultime 24 ore di porte, finestre, serrature,
+  allarme e persone.
+
 - **Piantina**: **⚙ Piantina** apre l'editor.
   1. **Carica planimetria**: una foto o un PDF della pianta (i margini bianchi vengono
      tolti da soli). Resta solo nella cartella dell'add-on.
