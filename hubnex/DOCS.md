@@ -260,6 +260,16 @@ I valori sono quelli di Home Assistant: `on`, `off`, `open`, `playing`… oppure
 partire veloce ci sono i **modelli** (Stufa, Ingresso, Lavanderia, Clima stanza, Energia, Musica),
 che prendono le entità adatte della stanza; i blocchi si spostano anche **trascinandoli**.
 
+**Descrivila a Jarvis**: in cima all'editor scrivi cosa vuoi ("la stufa con temperatura,
+accensione, orari e pellet; rossa sopra 23 gradi") e tocca **Crea**: Jarvis compone la card con
+le entità vere della casa (quelle che non esistono vengono scartate) e la apre nell'editor, da
+controllare e salvare. È una richiesta a Claude, pochi centesimi.
+
+**Esporta / Importa card**: **Esporta** copia la card come testo, da condividere; **Modifica
+stanza → Importa card** la incolla in un'altra casa, e i blocchi con entità che lì non ci sono
+restano da scegliere. Nelle condizioni e nelle regole, con "uguale a" e "diverso da", il valore
+si sceglie da un elenco (acceso/spento, aperta/chiusa, in riproduzione…).
+
 **Aggiungere entità.** Con **Modifica stanza → Aggiungi entità** puoi mettere in una stanza
 qualsiasi entità di Home Assistant, anche senza area o di un tipo che HubNEX non disegna
 (compare con il suo stato). Gli aiutanti nascono senza area: assegnala in Home Assistant oppure

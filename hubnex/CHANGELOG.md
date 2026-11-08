@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.20.0
+- **Card libera**, terza parte:
+  - **Descrivila a Jarvis**: scrivi la card che vuoi e Jarvis la compone con le entità vere
+    della casa (le entità inventate vengono scartate); si apre nell'editor da controllare;
+  - **Esporta / Importa card**: una card diventa testo da condividere e si incolla in un'altra
+    casa, dove i blocchi con entità mancanti restano da scegliere;
+  - nelle condizioni e nelle regole i valori si scelgono da un **elenco tradotto** (acceso,
+    aperta, in riproduzione…) invece di scrivere `on` o `playing`.
+
 ## 1.19.0
 - **Card libera**, seconda parte:
   - blocchi **media** (copertina, titolo, comandi, volume), **telecamera** (dal vivo) e

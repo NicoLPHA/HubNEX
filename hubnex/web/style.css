@@ -1288,3 +1288,14 @@ body.casa-modal-open #chat, body.casa-modal-open #orb { display: none !important
 .fe-tpls button { padding: 6px 10px; border: 1px dashed rgba(79, 209, 255, 0.35); border-radius: 5px; background: transparent; color: var(--text); cursor: pointer; font: inherit; font-size: 13px; }
 .fe-tpls button:hover { border-color: var(--accent); border-style: solid; }
 @media (max-width: 1000px) { .fe-tpls, .fe-tpl-k { grid-column: 1 / -1; } }
+
+/* Free card, part 3: Jarvis composes, export and import */
+.fe-draft { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; padding: 8px 10px; border: 1px solid rgba(79, 209, 255, 0.35); border-radius: 8px; background: rgba(79, 209, 255, 0.05); box-shadow: 0 0 30px -14px var(--accent); }
+.fe-draft .hc-input { flex: 1; min-width: 0; }
+.fe-orb { flex: none; width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle, #fff, #4fd1ff 45%, transparent 70%); box-shadow: 0 0 14px #4fd1ff; }
+.fe-draft.busy .fe-orb { animation: fe-pulse 1s ease-in-out infinite; }
+@keyframes fe-pulse { 50% { transform: scale(1.35); opacity: 0.7; } }
+.fe-import { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.fe-import textarea, .fe-export { width: 100%; font-family: "JetBrains Mono", monospace; font-size: 12px; resize: vertical; }
+.fe-export { margin-bottom: 12px; }
+.fe-rule .hc-select { flex: 1; min-width: 0; }

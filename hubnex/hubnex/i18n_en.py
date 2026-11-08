@@ -67,6 +67,8 @@ EN: dict[str, str] = {
     "agente sconosciuto": "unknown agent",
     "risposta non trovata": "answer not found",
     "aggiungi almeno un blocco": "add at least one block",
+    "card non riuscita": "card failed",
+    "non è una card di HubNEX": "this is not a HubNEX card",
     "aggiungi almeno un'entità": "add at least one entity",
     "area sconosciuta": "unknown area",
     "autenticazione rifiutata": "authentication refused",

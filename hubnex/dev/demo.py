@@ -217,9 +217,34 @@ SCRIPT = {
 }
 
 
+def demo_card(request: str) -> dict:
+    """What the demo's Claude composes when asked for a card: the stove (plus one entity made up,
+    which HubNEX must leave out)."""
+    return {"name": "Stove" if EN else "Stufa", "color": "warm", "blocks": [
+        {"kind": "value", "entity": "climate.soggiorno", "label": "", "w": 2, "h": 2, "rules": [{"op": ">", "v": "23", "c": "red"}, {"op": "<", "v": "19", "c": "cool"}]},
+        {"kind": "toggle", "entity": "input_boolean.stufa_automatica", "label": "", "w": 1, "h": 1},
+        {"kind": "ring", "entity": "input_number.stufa_potenza", "label": "", "w": 1, "h": 1, "min": 1, "max": 5},
+        {"kind": "bar", "entity": "input_number.sacchi_pellet", "label": "Pellet", "w": 2, "h": 1, "min": 0, "max": 20,
+         "rules": [{"op": "<", "v": "5", "c": "red"}], "tap": {"do": "ask", "text": "Quando devo ordinare il pellet?"}},
+        {"kind": "band", "entity": "input_datetime.stufa_accensione", "entity2": "input_datetime.stufa_spegnimento", "label": "", "w": 4, "h": 1},
+        {"kind": "select", "entity": "input_select.stufa_modo", "label": "", "w": 2, "h": 1},
+        {"kind": "toggle", "entity": "switch.stufa_inventata", "label": "", "w": 1, "h": 1},
+        {"kind": "ask", "entity": "", "label": "Quanto pellet mi resta?", "w": 2, "h": 1},
+    ]}
+
+
 class DemoClaude(FakeClient):
     """Claude stand-in: one polite sentence, whatever is asked; a request for a quote plays the
     team at work (Jarvis delegates to Sales and the Accountant, then sums up)."""
+
+    async def _create(self, **kwargs):
+        import json as _json
+        self.requests.append(kwargs)
+        if "Componi card" in str(kwargs.get("system")):
+            import asyncio
+            await asyncio.sleep(1.5)  # as if Claude were thinking
+            return response([text_block(_json.dumps(demo_card(str(kwargs["messages"][-1]["content"]))))], "end_turn")
+        return response([text_block("{}")], "end_turn")
 
     def _stream(self, **kwargs):
         from types import SimpleNamespace as NS

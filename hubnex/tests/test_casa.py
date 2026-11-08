@@ -699,3 +699,44 @@ def test_counters_are_stocks_by_name_and_any_entity_can_be_searched():
     assert casa.compact("counter.visite")["k"] == "number"
     found = casa.candidates("")
     assert len(found) == 122, "no limit at 60: every entity can be added to a room"
+
+
+def test_jarvis_composes_a_free_card_and_cards_travel_as_text(settings, make_hq):
+    import json as _json
+
+    draft = {"name": "Soggiorno", "color": "warm", "blocks": [
+        {"kind": "toggle", "entity": "light.lampada", "label": "", "w": 1, "h": 1, "rules": [{"op": "=", "v": "on", "c": "warm"}]},
+        {"kind": "toggle", "entity": "light.inventata", "label": "", "w": 1, "h": 1},  # made up: left out
+        {"kind": "ask", "entity": "", "label": "Che luci ho acceso?", "w": 2, "h": 1},
+        {"kind": "state", "entity": "switch.irrigazione", "label": "", "w": 2, "h": 1, "show": {"e": "sensor.nessuno", "op": "=", "v": "on"}},
+    ]}
+    hq = make_hq([response([text_block(_json.dumps(draft))], "end_turn")])
+    settings.trusted_proxy = None
+    with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
+        w, ws, task = client.portal.call(connected)
+        hq.casa.ha = hq.watcher = w
+        r = client.post("/api/casa/rooms/soggiorno/cards/draft", json={"text": "le luci del soggiorno e l'irrigazione"})
+        assert r.status_code == 200, r.text
+        got = r.json()
+        assert got["name"] == "Soggiorno" and got["color"] == "warm" and got["dropped"] == 1
+        assert [b["entity"] for b in got["blocks"]] == ["light.lampada", "", "switch.irrigazione"]
+        assert "show" not in got["blocks"][2]  # its condition named an entity that doesn't exist
+        assert set(got["states"]) == {"light.lampada", "switch.irrigazione"} and got["states"]["light.lampada"]["k"] == "light"
+        req = hq.client.requests[0]
+        assert "output_config" in req and req["output_config"]["format"]["type"] == "json_schema"
+        prompt = req["messages"][0]["content"]
+        assert "light.lampada | Lampada da terra | light" in prompt and "le luci del soggiorno" in prompt
+        assert prompt.index("light.lampada") < prompt.index("light.lampadario")  # the room first
+        assert client.post("/api/casa/rooms/nessuna/cards/draft", json={"text": "una card"}).status_code == 404
+
+        # export from one house, import into another: missing entities wait to be chosen
+        shared = {"hubnex_card": 1, "name": "Da un amico", "color": "cool", "blocks": [
+            {"kind": "toggle", "entity": "light.lampada", "w": 1, "h": 1},
+            {"kind": "value", "entity": "sensor.casa_amico", "w": 2, "h": 1, "tap": {"do": "toggle", "e": "light.amico"}},
+            {"kind": "boom"},
+        ]}
+        got = client.post("/api/casa/cards/import", json=shared).json()
+        assert got["missing"] == 1 and got["dropped"] == 1
+        assert got["blocks"][1]["entity"] == "" and got["blocks"][1]["tap"]["e"] == ""
+        assert client.post("/api/casa/cards/import", json={"name": "x"}).status_code == 422
+        client.portal.call(lambda: task.cancel())

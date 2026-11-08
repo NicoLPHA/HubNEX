@@ -265,6 +265,16 @@ Values are Home Assistant's: `on`, `off`, `open`, `playing`… or a number. To s
 are **templates** (Stove, Entrance, Laundry, Room climate, Energy, Music), which take the room's
 suitable entities; blocks can also be moved by **dragging** them.
 
+**Describe it to Jarvis**: at the top of the editor write what you want ("the stove with
+temperature, power, times and pellet; red above 23 degrees") and tap **Create**: Jarvis composes
+the card with the house's real entities (made-up ones are left out) and opens it in the editor, to
+check and save. It is one Claude request, a few cents.
+
+**Export / Import card**: **Export** copies the card as text, to share; **Edit room → Import
+card** pastes it into another house, and blocks whose entities aren't there are left to choose. In
+conditions and rules, with "equal to" and "not equal to", the value is picked from a list (on/off,
+open/closed, playing…).
+
 **Adding entities.** With **Edit room → Add entity** you can put any Home Assistant entity in a
 room, also one without an area or of a kind HubNEX doesn't draw (it shows its state). Helpers are
 born without an area: set it in Home Assistant or add them from here.

@@ -151,6 +151,10 @@ class BlockIn(BaseModel):
     tap: TapIn | None = None
 
 
+class DraftIn(BaseModel):
+    text: str = Field(min_length=3, max_length=1000)
+
+
 class CardIn(BaseModel):
     id: str | None = Field(default=None, pattern=r"^c[0-9]{1,4}$")
     name: str = Field(max_length=60)
@@ -213,6 +217,41 @@ HOUSE_DOMAINS = {
     "input_datetime", "time", "date", "datetime", "input_text", "text", "counter",
 }
 HOUSE_EVENTS = {"ha", "casa_changed"}
+
+
+def clean_card(hq, data: dict, keep_missing: bool) -> dict:
+    """A card from outside (Claude's draft, an import) made safe for the editor: valid blocks only,
+    entities that exist; `keep_missing`: a missing one leaves its block empty instead of dropping it."""
+    known = hq.watcher.states
+    blocks, dropped, missing = [], 0, 0
+    for b in (data.get("blocks") or [])[:24]:
+        try:
+            blk = BlockIn(**b) if isinstance(b, dict) else None
+        except ValueError:
+            blk = None
+        if blk is None:
+            dropped += 1
+            continue
+        if blk.show and blk.show.e not in known:
+            blk.show = None
+        if blk.tap and blk.tap.e and blk.tap.e not in known:
+            blk.tap.e = ""
+        gone = [f for f in ("entity", "entity2") if getattr(blk, f) and getattr(blk, f) not in known]
+        need = blk.kind not in ("text", "ask") and (not blk.entity or blk.entity in gone or blk.kind == "band" and (not blk.entity2 or "entity2" in gone))
+        if gone or need:
+            if not keep_missing:
+                dropped += 1  # an entity that doesn't exist (made up, or of another house)
+                continue
+            for f in gone:
+                setattr(blk, f, "")
+            missing += 1
+        blocks.append({k: v for k, v in blk.model_dump(exclude_none=True).items() if v != []})
+    used = {e for b in blocks for e in (b.get("entity"), b.get("entity2"), (b.get("show") or {}).get("e"), (b.get("tap") or {}).get("e")) if e}
+    color = data.get("color") if data.get("color") in ("", "warm", "cool", "green", "violet", "red") else ""
+    return {
+        "name": str(data.get("name") or "")[:60], "color": color, "blocks": blocks, "dropped": dropped, "missing": missing,
+        "states": {e: hq.casa.compact(e) for e in used},  # so the editor shows them at once
+    }
 
 
 def stock_stats(points: list[tuple[str, str]], now: datetime) -> dict:
@@ -770,6 +809,35 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         )
         hq.emit({"type": "casa_changed"})
         return {"ok": True, "id": card_id}
+
+    @app.post("/api/casa/rooms/{area_id}/cards/draft", dependencies=[Depends(full)])
+    async def casa_card_draft(area_id: str, body: DraftIn, hq: HQ = Depends(get_hq)):
+        """A free card described in words: Claude composes it with the house's real entities.
+        It comes back for the editor; nothing is saved until the owner does."""
+        from hubnex.cardgen import CARD_SCHEMA, SYSTEM, card_prompt, entity_lines
+
+        need_ha(hq)
+        area = hq.watcher.areas.get(area_id)
+        if area is None:
+            raise HTTPException(404, tr("area sconosciuta"))
+        rooms = [(a, v.get("name") or a) for a, v in hq.watcher.areas.items()]
+        prompt = card_prompt(area.get("name") or area_id, entity_lines(hq.casa, area_id), body.text, rooms)
+        try:
+            raw = await complete(hq.client, model=hq.settings.model, system=SYSTEM, prompt=prompt, effort="low",
+                                 schema=CARD_SCHEMA, on_usage=hq.usage_for("cards"))
+            data = json.loads(raw)
+        except Exception as exc:
+            raise HTTPException(502, f"{tr('card non riuscita')}: {exc}")
+        return clean_card(hq, data, keep_missing=False)
+
+    @app.post("/api/casa/cards/import", dependencies=[Depends(full)])
+    async def casa_card_import(body: dict, hq: HQ = Depends(get_hq)):
+        """A card shared as text (Esporta): its blocks for the editor; the entities this house
+        doesn't have are left empty, to be chosen."""
+        need_ha(hq)
+        if not isinstance(body, dict) or body.get("hubnex_card") != 1 or not isinstance(body.get("blocks"), list):
+            raise HTTPException(422, tr("non è una card di HubNEX"))
+        return clean_card(hq, body, keep_missing=True)
 
     @app.post("/api/casa/rooms/{area_id}/cards/{card_id}/remove", dependencies=[Depends(full)])
     async def casa_card_delete(area_id: str, card_id: str, hq: HQ = Depends(get_hq)):

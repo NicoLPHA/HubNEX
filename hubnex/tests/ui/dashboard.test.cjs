@@ -282,7 +282,7 @@ test("card libera: modello, colore secondo il valore, mostra solo se, domanda a 
   await page.click("[data-act='fb-pick'][data-e='media_player.cucina']");
   await page.click("[data-act='fb-show-add']");
   await page.click("[data-act='fb-pick'][data-e='media_player.cucina']");
-  await page.fill("[data-fb='show.v']", "off");
+  await page.selectOption("[data-fb='show.v']", "off");
   assert.equal(await page.locator(".fe-prev .k-media.hid").count(), 1);
   await page.click("[data-act='fb-add'][data-k='ask']");
   await page.fill("#fb-label", "Quanto pellet mi resta?");
@@ -301,6 +301,39 @@ test("card libera: modello, colore secondo il valore, mostra solo se, domanda a 
       await fetch(`api/casa/rooms/soggiorno/cards/${c.id}/remove`, { method: "POST" });
     }
   });
+  await done(page);
+});
+
+test("card libera: Jarvis la compone, si esporta e si importa, valori da un elenco", { timeout: 40000 }, async () => {
+  const page = await open();
+  await casa(page);
+  await page.locator(".plan-room[data-area='soggiorno']").click();
+  await page.click(".casa-quick [data-act='open']");
+  await page.click("[data-act='edit']");
+  await page.click("[data-act='card-free']");
+  await page.fill("#fb-draft-text", "la stufa con tutto");
+  await page.click("[data-act='fb-draft']");
+  await page.waitForFunction(() => document.querySelectorAll(".fe-prev .fb").length >= 6, null, { timeout: 15000 });
+  assert.equal(await page.inputValue("#fb-name"), "Stufa");
+  assert.match(await page.textContent(".casa-toast"), /scartato/, "l'entità inventata è stata tolta");
+  // a condition chosen from a translated list
+  await page.click(".fe-prev .k-select");
+  await page.click("[data-act='fb-show-add']");
+  await page.fill("#fb-find", "automatica");
+  await page.click("[data-act='fb-pick'][data-e='input_boolean.stufa_automatica']");
+  const opts = await page.locator("select[data-fb='show.v'] option").allTextContents();
+  assert.ok(opts.includes("acceso") && opts.includes("spento"), opts.join(","));
+  // export, then import it with an entity this house doesn't have
+  await page.click("[data-act='fb-export']");
+  const text = await page.inputValue(".fe-export");
+  assert.equal(JSON.parse(text).hubnex_card, 1);
+  await page.click("[data-act='fb-close']");
+  await page.click("[data-act='card-import']");
+  await page.fill("#fb-paste", text.replace("input_select.stufa_modo", "input_select.altra_casa"));
+  await page.click("[data-act='fb-import']");
+  await page.waitForFunction(() => /sceglila tu/.test(document.querySelector(".casa-toast")?.textContent || ""));
+  assert.equal(await page.locator(".fe-prev .fb.sel").count(), 1, "il blocco senza entità è già selezionato");
+  await page.click("[data-act='fb-close']");
   await done(page);
 });
 
