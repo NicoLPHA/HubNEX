@@ -1299,3 +1299,14 @@ body.casa-modal-open #chat, body.casa-modal-open #orb { display: none !important
 .fe-import textarea, .fe-export { width: 100%; font-family: "JetBrains Mono", monospace; font-size: 12px; resize: vertical; }
 .fe-export { margin-bottom: 12px; }
 .fe-rule .hc-select { flex: 1; min-width: 0; }
+
+/* Free card, flat style: no boxes, the blocks sit on the card like a composed card's rows */
+.hc-free.flat .fgrid { gap: 4px 18px; }
+.hc-free.flat .fb { border-color: transparent; background: transparent; padding: 8px 2px; }
+.hc-free.flat .fb:not(.tone-red, .tone-warm, .tone-cool, .tone-green, .tone-violet) { border-radius: 0; border-bottom-color: rgba(79, 209, 255, 0.08); }
+.hc-free.flat .fb[class*="tone-"] { padding: 8px 10px; border-color: transparent; }
+.hc-free.flat .k-camera { padding: 0; }
+.hc-free.flat .fb.tap:hover { background: rgba(79, 209, 255, 0.05); }
+.fe-style { display: inline-flex; border: 1px solid rgba(79, 209, 255, 0.25); border-radius: 6px; overflow: hidden; }
+.fe-style button { padding: 7px 12px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
+.fe-style button.on { background: rgba(79, 209, 255, 0.14); color: var(--accent); }

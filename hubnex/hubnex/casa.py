@@ -377,7 +377,7 @@ class Casa:
         await self.store.put("casa_adjust", self.adjust)
 
     # cards the owner composes in a room, their order, names and sizes (HubNEX only)
-    async def save_card(self, area_id: str, card_id: str | None, name: str, entities: list[str], size: str, group: str | None = None, enable: str | None = None, nochart: list[str] | None = None, blocks: list[dict] | None = None, color: str = "") -> str:
+    async def save_card(self, area_id: str, card_id: str | None, name: str, entities: list[str], size: str, group: str | None = None, enable: str | None = None, nochart: list[str] | None = None, blocks: list[dict] | None = None, color: str = "", style: str = "") -> str:
         cards = self.adjust.setdefault("cards", {}).setdefault(area_id, [])
         card_id = card_id or f"c{max([int(c['id'][1:]) for c in cards if c['id'][1:].isdigit()] or [0]) + 1}"
         card = {"id": card_id, "name": name.strip()[:60] or "Card", "entities": list(dict.fromkeys(entities))[:24], "size": size}
@@ -385,6 +385,8 @@ class Casa:
             card.update(kind="free", blocks=blocks[:24])
             if color:
                 card["color"] = color
+            if style:
+                card["style"] = style
         if group:
             card["group"] = group
         if enable is not None:  # "" = the owner said: no switch, the times always apply

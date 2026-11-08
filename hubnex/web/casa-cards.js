@@ -594,7 +594,7 @@ export const Cards = {
       return `<div class="${cls}" data-w="${b.w || 1}" data-h="${b.h || 1}"${at}>${this.blockHTML(b, !!edit)}${edit && !shown ? `<span class="fb-hidtag">${t("ora nascosto")}</span>` : ""}</div>`;
     }).join("");
     const empty = edit && !blocks ? `<p class="casa-muted fb-empty">${t("Aggiungi un blocco dalla colonna a sinistra.")}</p>` : "";
-    return `<article class="hc hc-free wide ${card.color ? `fc-${card.color}` : ""}">
+    return `<article class="hc hc-free wide ${card.color ? `fc-${card.color}` : ""} ${card.style === "flat" ? "flat" : ""}">
       <header class="hc-head"><b class="hc-name">${esc(card.name || t("Card"))}</b></header>
       <div class="fgrid">${blocks}</div>${empty}</article>`;
   },

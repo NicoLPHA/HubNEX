@@ -245,7 +245,7 @@ test("card libera: si costruisce a blocchi e funziona", { timeout: 40000 }, asyn
   await page.waitForSelector(".fe-panel", { state: "detached" });
   const card = page.locator(".hc-free:has-text('Prova libera')");
   await card.waitFor();
-  assert.ok(await card.evaluate((el) => el.classList.contains("fc-green")));
+  assert.ok(await card.evaluate((el) => el.classList.contains("fc-green") && el.classList.contains("flat")), "verde e pulita, lo stile di partenza");
   assert.equal(await card.locator(".fb").count(), 2);
   assert.equal(await card.locator(".fb[data-w='2'][data-h='2']").count(), 1, "il valore grande 2×2");
   // its switch works from the card

@@ -248,7 +248,8 @@ button), **slider** (brightness or a number), **chart** of the last 24 hours, **
 band** (a start and an end time), **selector**, **state** (how it is and since when) and
 **text**. For each block choose the entity (the search offers only the suitable ones), a label,
 the size (1×1 to 4×2) and, for ring and bar, minimum and maximum; **Before/After** move it. The
-card has a name and a colour; in the middle of the editor you see the preview with the real
+card has a name, a colour and a style (**Clean**, the default: the blocks right on the card;
+**Boxes**: each in its own); in the middle of the editor you see the preview with the real
 values. **Edit** opens it again.
 
 More blocks: **media** (cover art, title, controls and volume), **camera** (live; a tap opens it

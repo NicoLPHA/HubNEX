@@ -162,6 +162,7 @@ class CardIn(BaseModel):
     kind: Literal["composed", "free"] = "composed"
     blocks: list[BlockIn] = Field(default_factory=list, max_length=24)
     color: CARD_COLOR = ""
+    style: Literal["", "flat"] = ""  # free card: blocks in boxes, or flat (no boxes)
     size: Literal["small", "wide"] = "wide"
     group: str | None = Field(default=None, pattern=r"^[a-z]{1,20}$")  # the room's group it sits in (None: of its first entity)
     enable: str | None = Field(default=None, max_length=255)  # the switch that turns the card's times on ("automatica"); "" = none
@@ -249,7 +250,7 @@ def clean_card(hq, data: dict, keep_missing: bool) -> dict:
     used = {e for b in blocks for e in (b.get("entity"), b.get("entity2"), (b.get("show") or {}).get("e"), (b.get("tap") or {}).get("e")) if e}
     color = data.get("color") if data.get("color") in ("", "warm", "cool", "green", "violet", "red") else ""
     return {
-        "name": str(data.get("name") or "")[:60], "color": color, "blocks": blocks, "dropped": dropped, "missing": missing,
+        "name": str(data.get("name") or "")[:60], "color": color, "style": data.get("style") if data.get("style") in ("", "flat") else None, "blocks": blocks, "dropped": dropped, "missing": missing,
         "states": {e: hq.casa.compact(e) for e in used},  # so the editor shows them at once
     }
 
@@ -805,7 +806,7 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         card_id = await hq.casa.save_card(
             area_id, body.id, body.name, body.entities, body.size, body.group, body.enable, body.nochart,
             blocks=[{k: v for k, v in b.model_dump(exclude_none=True).items() if v != []} for b in body.blocks] if body.kind == "free" else None,
-            color=body.color,
+            color=body.color, style=body.style,
         )
         hq.emit({"type": "casa_changed"})
         return {"ok": True, "id": card_id}

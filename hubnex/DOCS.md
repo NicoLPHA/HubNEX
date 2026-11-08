@@ -243,7 +243,8 @@ griglia da 4 colonne (2 sul telefono). Blocchi: **valore grande**, **indicatore 
 **grafico** delle ultime 24 ore, **barra**, **fascia oraria** (un orario di inizio e uno di fine),
 **selettore**, **stato** (com'è e da quanto) e **testo**. Per ogni blocco scegli l'entità (la
 ricerca propone solo quelle adatte), un'etichetta, la dimensione (da 1×1 a 4×2) e, per anello e
-barra, minimo e massimo; **Prima/Dopo** lo spostano. La card ha un nome e un colore; al centro
+barra, minimo e massimo; **Prima/Dopo** lo spostano. La card ha un nome, un colore e uno stile
+(**Pulito**, di partenza: i blocchi direttamente sulla card; **Riquadri**: ognuno nel suo); al centro
 dell'editor vedi l'anteprima con i valori veri. Si riapre con **Modifica**.
 
 Altri blocchi: **media** (copertina, titolo, comandi e volume), **telecamera** (dal vivo, un tocco

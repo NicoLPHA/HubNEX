@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.20.1
+- Card libera: **stile Pulito**, senza riquadri, come le card composte, e di partenza per le
+  card nuove; **Riquadri** resta da scegliere nell'editor. Le card già create restano come
+  sono. Lo stile viaggia anche con Esporta / Importa.
+
 ## 1.20.0
 - **Card libera**, terza parte:
   - **Descrivila a Jarvis**: scrivi la card che vuoi e Jarvis la compone con le entità vere

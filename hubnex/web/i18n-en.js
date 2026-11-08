@@ -757,5 +757,8 @@ export const EN = {
   "{n} blocchi scartati: entità che in casa non ci sono.": "{n} blocks left out: entities the house doesn't have.",
   "Un blocco scartato: un'entità che in casa non c'è.": "One block left out: an entity the house doesn't have.",
   "Un blocco ha un'entità che qui non c'è: sceglila tu.": "One block has an entity this house doesn't have: choose it yourself.",
-  "Un blocco del modello non ha trovato un'entità adatta: aggiungilo a mano.": "One block of the template found no suitable entity: add it by hand."
+  "Un blocco del modello non ha trovato un'entità adatta: aggiungilo a mano.": "One block of the template found no suitable entity: add it by hand.",
+  "Stile": "Style",
+  "Riquadri": "Boxes",
+  "Pulito": "Clean"
 };

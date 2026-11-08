@@ -936,11 +936,11 @@ export class CasaView {
       }
       case "order-reset": this.saveOrder([]); break;
       case "card-new": this.cardEdit = { area: this.page, id: null, name: "", entities: [], size: "wide", group: "", enable: null, nochart: [], q: "", cands: [] }; this.cardSearch(""); break;
-      case "card-free": this.freeEdit = { area: this.page, id: null, name: "", color: "", group: "", blocks: [], sel: null, target: "entity", q: "", cands: [] }; break;
+      case "card-free": this.freeEdit = { area: this.page, id: null, name: "", color: "", style: "flat", group: "", blocks: [], sel: null, target: "entity", q: "", cands: [] }; break;
       case "card-edit": {
         const card = this.area(this.page).cards.find((c) => c.id === el.dataset.id);
         if (card.kind === "free") {
-          this.freeEdit = { area: this.page, id: card.id, name: card.name, color: card.color || "", group: card.group || "", blocks: card.blocks.map((b) => ({ ...b })), sel: null, target: "entity", q: "", cands: [] };
+          this.freeEdit = { area: this.page, id: card.id, name: card.name, color: card.color || "", style: card.style || "", group: card.group || "", blocks: card.blocks.map((b) => ({ ...b })), sel: null, target: "entity", q: "", cands: [] };
           break;
         }
         this.cardEdit = { area: this.page, id: card.id, name: card.name, entities: [...card.entities], size: card.size, group: card.group || "", enable: card.enable ?? null, nochart: [...(card.nochart || [])], q: "", cands: [] };
@@ -964,11 +964,11 @@ export class CasaView {
       }
       case "fb-export": {
         const f = this.freeEdit;
-        f.exported = JSON.stringify({ hubnex_card: 1, name: f.name, color: f.color, blocks: f.blocks }, null, 1);
+        f.exported = JSON.stringify({ hubnex_card: 1, name: f.name, color: f.color, style: f.style || "", blocks: f.blocks }, null, 1);
         navigator.clipboard?.writeText(f.exported).then(() => this.toast(t("Card copiata: incollala dove vuoi."))).catch(() => {});
         break;
       }
-      case "card-import": this.freeEdit = { area: this.page, id: null, name: "", color: "", group: "", blocks: [], sel: null, target: "entity", q: "", cands: [], importing: true }; break;
+      case "card-import": this.freeEdit = { area: this.page, id: null, name: "", color: "", style: "flat", group: "", blocks: [], sel: null, target: "entity", q: "", cands: [], importing: true }; break;
       case "fb-import": {
         const f = this.freeEdit;
         let card;
@@ -1055,6 +1055,7 @@ export class CasaView {
       }
       case "fb-del": this.freeEdit.blocks.splice(this.freeEdit.sel, 1); this.freeEdit.sel = null; break;
       case "fb-color": this.freeEdit.color = el.dataset.c; break;
+      case "fb-style": this.freeEdit.style = el.dataset.s; break;
       case "fb-save": {
         const f = this.freeEdit;
         if (!f.blocks.length) { this.toast(t("Aggiungi almeno un blocco")); return; }
@@ -1069,7 +1070,7 @@ export class CasaView {
           ...(tap?.do ? { tap: { do: tap.do, e: tap.e || "", text: tap.text || "", area: tap.area || "" } } : {}),
         }));
         try {
-          await this.api(`/api/casa/rooms/${encodeURIComponent(f.area)}/cards`, { method: "POST", body: JSON.stringify({ id: f.id, name: f.name || t("Card"), kind: "free", blocks, color: f.color, size: "wide", group: f.group || null }) });
+          await this.api(`/api/casa/rooms/${encodeURIComponent(f.area)}/cards`, { method: "POST", body: JSON.stringify({ id: f.id, name: f.name || t("Card"), kind: "free", blocks, color: f.color, style: f.style || "", size: "wide", group: f.group || null }) });
           this.freeEdit = null;
           if (this.histAt) this.histAt[f.area] = 0; // its charts: ask for them now
           await this.reload(true);
@@ -1650,6 +1651,7 @@ export class CasaView {
     f.blocks = r.blocks;
     f.name = r.name || f.name;
     f.color = r.color ?? f.color;
+    if (r.style != null) f.style = r.style; // an imported card keeps its own; Jarvis's draft doesn't choose
     f.sel = r.blocks.findIndex((b) => !NO_ENTITY.has(b.kind) && !b.entity);
     if (f.sel < 0) f.sel = null;
     else this.freeSearch("");
@@ -1730,7 +1732,9 @@ export class CasaView {
         <input id="fb-draft-text" class="hc-input" placeholder="${t("Descrivila a Jarvis: es. la stufa con temperatura, accensione, orari e pellet")}" value="${esc(f.draft || "")}" maxlength="1000" autocomplete="off" ${f.busy ? "disabled" : ""}>
         <button class="hc-btn" data-act="fb-draft" ${f.busy ? "disabled" : ""}>${f.busy ? t("Jarvis compone…") : t("Crea")}</button></div>
       <div class="fe-top"><input id="fb-name" class="hc-input" placeholder="${t("Nome della card")}" value="${esc(f.name)}" maxlength="60" autocomplete="off">
-        <span class="fe-colors">${colors}</span><button class="hc-btn" data-act="fb-export" ${f.blocks.length ? "" : "disabled"}>${t("Esporta")}</button><button class="hc-btn primary" data-act="fb-save">${t("Salva card")}</button></div>
+        <span class="fe-colors">${colors}</span>
+        <span class="fe-style" role="group" aria-label="${t("Stile")}"><button class="${f.style ? "" : "on"}" data-act="fb-style" data-s="">${t("Riquadri")}</button><button class="${f.style === "flat" ? "on" : ""}" data-act="fb-style" data-s="flat">${t("Pulito")}</button></span>
+        <button class="hc-btn" data-act="fb-export" ${f.blocks.length ? "" : "disabled"}>${t("Esporta")}</button><button class="hc-btn primary" data-act="fb-save">${t("Salva card")}</button></div>
       ${f.exported ? `<textarea class="hc-input fe-export" rows="4" readonly spellcheck="false">${esc(f.exported)}</textarea>` : ""}
       <div class="fe-cols">
         <div class="fe-pal"><span class="hc-kick">${t("Blocchi")}</span>${pal}</div>

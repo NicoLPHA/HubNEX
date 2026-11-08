@@ -738,5 +738,7 @@ def test_jarvis_composes_a_free_card_and_cards_travel_as_text(settings, make_hq)
         got = client.post("/api/casa/cards/import", json=shared).json()
         assert got["missing"] == 1 and got["dropped"] == 1
         assert got["blocks"][1]["entity"] == "" and got["blocks"][1]["tap"]["e"] == ""
+        assert got["style"] is None  # not given: the editor keeps its own (clean, for a new card)
+        assert client.post("/api/casa/cards/import", json={**shared, "style": "flat"}).json()["style"] == "flat"
         assert client.post("/api/casa/cards/import", json={"name": "x"}).status_code == 422
         client.portal.call(lambda: task.cancel())
