@@ -223,3 +223,25 @@ async def test_no_emoji_in_the_messages(house):
     texts = [team.posts[-1]["text"]] + [c[2]["title"] + c[2]["message"] for c in pushes(calls)]
     assert team.posts[-1]["text"].startswith("URGENTE: Perdita d'acqua")
     assert all(ch.isascii() or ch.isalpha() or ch in "àèéìòù'’ " for t in texts for ch in t)
+
+
+async def test_pellet_below_the_threshold_asks_to_reorder_once(house):
+    hq, team, calls, at = house
+    hq.watcher.states["counter.carico_pellet"] = st("6", name="Carico pellet")  # a counter, by name a stock
+    assert hq.casa.stocks() == ["counter.carico_pellet"]
+    await hq.alerts.tick()
+    assert pushes(calls) == []  # 6 > 5
+    hq.watcher.states["counter.carico_pellet"] = st("5", name="Carico pellet")
+    await hq.alerts.tick()
+    [push] = pushes(calls)
+    assert "Carico pellet: ne restano 5, sotto la soglia di 5" in push[2]["message"]
+    hq.watcher.states["counter.carico_pellet"] = st("4", name="Carico pellet")
+    at(30)
+    await hq.alerts.tick()
+    assert len(pushes(calls)) == 1  # one warning per episode
+    hq.watcher.states["counter.carico_pellet"] = st("19", name="Carico pellet")  # the delivery came
+    at(60)
+    await hq.alerts.tick()
+    assert len(pushes(calls, "clear")) == 1
+    await hq.casa.set_stock("counter.carico_pellet", 15, 20)  # the owner's own threshold
+    assert hq.casa.stock_of("counter.carico_pellet") == {"delivery": 15, "low": 20}

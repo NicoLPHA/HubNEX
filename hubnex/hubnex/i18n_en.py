@@ -139,6 +139,8 @@ EN: dict[str, str] = {
     "Aperte: {names}. Intanto {why}.": "Open: {names}. Meanwhile {why}.",
     "Azione dalla notifica non riuscita: {e}": "Action from the notification failed: {e}",
     "Batterie scariche": "Low batteries",
+    "Scorta da riordinare": "Stock to reorder",
+    "{name}: ne restano {left}, sotto la soglia di {low}. È ora di ordinare.": "{name}: {left} left, below the threshold of {low}. Time to order.",
     "Casa vuota, qualcosa è aperto": "Nobody home, something is open",
     "Chiudi": "Close",
     "Consumo alto": "High consumption",

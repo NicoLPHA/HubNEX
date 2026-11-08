@@ -229,6 +229,19 @@ Intorno alla piantina, a colpo d'occhio:
 - **Ultimi eventi**: le ultime variazioni delle ultime 24 ore di porte, finestre, serrature,
   allarme e persone.
 
+**Scorte (pellet e simili).** Un aiutante *Numero* o un *Contatore* di Home Assistant con
+"pellet", "sacchi" o "scorta" nel nome diventa una card **Scorta**; per gli altri scegli
+"Scorta" nel tipo, modificando la stanza. Mostra quanti ne restano, quanti se ne usano al giorno
+e da quando (dallo storico degli ultimi 30 giorni), i **giorni rimasti** e l'ultima consegna;
+**−1 caricato** quando ne usi uno, **+consegna** quando arriva il pellet. In **Imposta** scegli
+quanti ne arrivano in una consegna e sotto quanti avvisarti: allora la card diventa rossa e
+arriva la notifica **Scorte da riordinare** (regola nelle Notifiche della casa).
+
+**Aggiungere entità.** Con **Modifica stanza → Aggiungi entità** puoi mettere in una stanza
+qualsiasi entità di Home Assistant, anche senza area o di un tipo che HubNEX non disegna
+(compare con il suo stato). Gli aiutanti nascono senza area: assegnala in Home Assistant oppure
+aggiungili da qui.
+
 - **Piantina**: **⚙ Piantina** apre l'editor.
   1. **Carica planimetria**: una foto o un PDF della pianta (i margini bianchi vengono
      tolti da soli). Resta solo nella cartella dell'add-on.

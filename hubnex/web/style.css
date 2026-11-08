@@ -1143,3 +1143,20 @@ body.casa-modal-open #chat, body.casa-modal-open #orb { display: none !important
 .plan-icons { display: flex; gap: 5px; margin: 5px 0 auto; pointer-events: none; }
 .plan-icons .pi { width: 15px; height: 15px; color: var(--accent); filter: drop-shadow(0 0 4px rgba(79, 209, 255, 0.8)); }
 .plan-room.lit .plan-icons .pi { color: #ffe1a8; filter: drop-shadow(0 0 4px rgba(255, 181, 71, 0.9)); }
+
+/* A stock card: pellet bags and the like */
+.hc-stock-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.hc-stock-n { font-size: 40px; font-weight: 300; line-height: 1; font-variant-numeric: tabular-nums; }
+.hc-stock-n small { font-size: 15px; color: var(--muted); margin-left: 6px; }
+.hc-stock-left { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 13px; color: var(--muted); }
+.hc-stock-left b { color: #ff8da2; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; font-size: 12px; }
+.hc-stock-bar { position: relative; height: 8px; border-radius: 4px; background: rgba(79, 209, 255, 0.12); margin: 10px 0 8px; }
+.hc-stock-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: linear-gradient(90deg, var(--warn), #ffd27a); box-shadow: 0 0 12px rgba(255, 181, 71, 0.5); }
+.hc-stock-bar span { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #ff8da2; }
+.hc-stock.low .hc-stock-bar i { background: #ff5c7a; box-shadow: 0 0 12px rgba(255, 92, 122, 0.6); }
+.hc-stock.low { border-color: rgba(255, 92, 122, 0.55) !important; }
+.hc-stock-btns { display: flex; gap: 8px; margin-top: 10px; }
+.hc-stock-btns .hc-btn { flex: 1; min-height: 44px; font-size: 15px; }
+.hc-stock-cfg { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(79, 209, 255, 0.12); font-size: 13px; color: var(--muted); }
+.hc-stock-cfg label { display: flex; flex-direction: column; gap: 4px; }
+.hc-stock-cfg input { width: 80px; }

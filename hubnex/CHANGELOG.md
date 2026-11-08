@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.17.0
+- **Card Scorta** per il pellet e simili: quanti ne restano, consumo al giorno e giorni
+  rimasti (dallo storico di Home Assistant), ultima consegna, "−1 caricato" e "+consegna".
+  La riconosce da sola un aiutante Numero o un Contatore con "pellet", "sacchi" o "scorta"
+  nel nome; per gli altri si sceglie il tipo "Scorta". Sotto la soglia scelta la card diventa
+  rossa e arriva la notifica **Scorte da riordinare**.
+- **Contatori** e **timer** di Home Assistant riconosciuti nelle stanze.
+- **Aggiungi entità**: la ricerca non si ferma più a 60 risultati, ogni entità di Home
+  Assistant si può mettere in una stanza.
+
 ## 1.16.2
 - HQ: il fascio di luce da Jarvis a un agente resta acceso **per tutto il lavoro**, pulsando,
   con dei punti luminosi che scorrono verso l'agente; quando l'agente ha finito sfuma. Prima

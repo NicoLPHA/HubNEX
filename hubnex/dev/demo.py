@@ -94,6 +94,7 @@ add("sensor.energia_prelevata", None, "7426.14", device_class="energy", unit_of_
 add("input_boolean.stufa_automatica", None, "on", friendly_name="Stufa automatica")
 add("input_boolean.stufa_weekend", None, "off", friendly_name="Stufa weekend")
 add("input_boolean.stufa_notte", None, "on", friendly_name="Stufa notte")
+add("input_number.sacchi_pellet", "soggiorno", "7", 600, min=0, max=100, step=1, mode="box", unit_of_measurement="sacchi", friendly_name="Sacchi pellet")
 add("input_select.stufa_modo", "soggiorno", "Comfort", options=["Eco", "Comfort", "Notte"], friendly_name="Modalità stufa")
 # a robot vacuum and its map (an image entity of the same device, as Roborock does)
 T.DEVICES.append({"id": "dev-robot", "name": "Robot aspirapolvere", "area_id": "corridoio"})
@@ -134,7 +135,7 @@ NAMES_EN = {
     "Umidità bagno": "Bathroom humidity", "Umidità cucina": "Kitchen humidity", "Notte": "Night",
     "Robot aspirapolvere": "Robot vacuum", "Mappa robot": "Robot map", "Altoparlante cucina": "Kitchen speaker",
     "Ingresso Veicolo in movimento": "Entrance vehicle moving", "Ingresso Persona": "Entrance person",
-    "Pulisce il soggiorno": "Cleaning the living room", "Lavastoviglie": "Dishwasher",
+    "Pulisce il soggiorno": "Cleaning the living room", "Lavastoviglie": "Dishwasher", "Sacchi pellet": "Pellet bags",
     "Potenza lavastoviglie": "Dishwasher power", "Silenziosa": "Quiet", "Bilanciata": "Balanced",
 }
 if EN:  # the same house, in English
@@ -376,6 +377,13 @@ class REST:
                 pts.append((t.isoformat(), str(round(w))))
                 t += timedelta(minutes=10)
             return {"sensor.potenza_casa": pts}
+        if eids == ["input_number.sacchi_pellet"]:  # a delivery of 15, 6 days ago, then about 1.4 a day
+            pts, v = [], 33
+            for d in range(30, 0, -1):
+                v = v + 15 if d == 6 else v - (2 if d % 3 == 0 else 1)  # 1-2 bags a day
+                pts.append(((now - timedelta(days=d)).isoformat(), str(max(v, 0))))
+            pts.append((now.isoformat(), hq.watcher.states[eids[0]]["state"]))
+            return {eids[0]: pts}
         for i, e in enumerate(eids):
             base = float(hq.watcher.states[e]["state"])
             out[e] = [((now - timedelta(minutes=30 * k)).isoformat(), str(round(base + math.sin(k / 4 + i) * base * 0.06, 2))) for k in range(48, -1, -1)]

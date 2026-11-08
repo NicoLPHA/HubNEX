@@ -12,6 +12,7 @@ const RULES = [
   ["night", () => t("Luci accese di notte"), () => t("Luci ancora accese nella fascia notturna. Con il pulsante Spegni.")],
   ["battery", () => t("Batterie scariche"), () => t("Sensori e dispositivi con la batteria sotto la soglia.")],
   ["offline", () => t("Dispositivi non raggiungibili"), () => t("Dispositivi che non rispondono a Home Assistant da un po'.")],
+  ["stock", () => t("Scorte da riordinare"), () => t("Pellet e altre scorte sotto la soglia impostata nella loro card.")],
 ];
 
 export class AlertsView {

@@ -199,6 +199,7 @@ export const Cards = {
       case "siren": html = this.sirenCard(eid, s); break;
       case "datetime": html = this.datetimeCard(eid, s); break;
       case "number": html = this.numberCard(eid, s); break;
+      case "stock": html = this.stockCard(eid, s); break;
       case "select": html = this.selectCard(eid, s); break;
       case "text": html = this.textCard(eid, s); break;
       case "scene": case "script": case "button": html = this.actionCard(eid, s); break;
@@ -516,6 +517,38 @@ export const Cards = {
       <div class="hc-line"><button class="hc-step" data-act="numstep" data-d="-1" data-e="${eid}" aria-label="${t("Meno")}">−</button>
         <input class="hc-range" type="range" min="${min}" max="${max}" step="${step}" value="${isNaN(v) ? min : v}" data-act="numval" data-e="${eid}" aria-label="${esc(s.n)}" style="flex:1">
         <button class="hc-step" data-act="numstep" data-d="1" data-e="${eid}" aria-label="${t("Più")}">+</button></div>
+    </article>`;
+  },
+
+  // ---------------------------------------------------------------- a stock (pellet bags…)
+  stockCard(eid, s) {
+    const v = parseFloat(s.s);
+    const cfg = this.data.stock?.[eid] || { delivery: 15, low: 5 };
+    const unit = s.a.unit_of_measurement || t("sacchi");
+    const st = this.stockStats[eid];
+    setTimeout(() => this.loadStock(eid));
+    const full = Math.max(cfg.delivery, isNaN(v) ? 0 : v, 1);
+    const pct = isNaN(v) ? 0 : Math.max(0, Math.min(100, (v / full) * 100));
+    const low = !isNaN(v) && v <= cfg.low;
+    const when = st?.last_delivery ? new Date(st.last_delivery).toLocaleDateString(LOCALE, { day: "numeric", month: "short" }) : "";
+    const meta = [
+      st?.per_day ? t("{n} al giorno", { n: num(st.per_day, 1) }) : "",
+      when ? t("ultima consegna {d}", { d: when }) : "",
+    ].filter(Boolean).join(" · ");
+    const left = st?.days_left != null ? (st.days_left < 1 ? t("finisce oggi") : t("circa {n} giorni", { n: st.days_left })) : "";
+    const edit = this.stockEdit === eid ? `<div class="hc-stock-cfg">
+        <label>${t("Una consegna")} <input class="hc-input" type="number" name="delivery" min="1" max="1000" value="${cfg.delivery}"></label>
+        <label>${t("Avvisa sotto")} <input class="hc-input" type="number" name="low" min="0" max="1000" value="${cfg.low}"></label>
+        <button class="hc-btn primary" data-act="stock-save" data-e="${eid}">${t("Salva")}</button></div>` : "";
+    return `<article class="hc hc-stock ${low ? "low" : ""}">
+      ${this.head(t("Scorta"), s, `<button class="hc-link sm" data-act="stock-cfg" data-e="${eid}" aria-label="${t("Impostazioni")}">${t("Imposta")}</button>`)}
+      <div class="hc-stock-top"><span class="hc-stock-n">${isNaN(v) ? "—" : num(v, 0)}<small>${esc(unit)}</small></span>
+        <span class="hc-stock-left">${low ? `<b>${t("Da ordinare")}</b>` : ""}${left ? `<span>${esc(left)}</span>` : ""}</span></div>
+      <div class="hc-stock-bar"><i style="width:${pct}%"></i><span style="left:${Math.min(100, (cfg.low / full) * 100)}%"></span></div>
+      ${meta ? `<div class="hc-state">${esc(meta)}</div>` : ""}
+      <div class="hc-stock-btns"><button class="hc-btn primary" data-act="stock-use" data-e="${eid}">−1 ${t("caricato")}</button>
+        <button class="hc-btn" data-act="stock-add" data-e="${eid}">+${cfg.delivery} ${t("consegna")}</button></div>
+      ${edit}
     </article>`;
   },
 

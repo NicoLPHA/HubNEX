@@ -26,7 +26,7 @@ log = logging.getLogger("hubnex.alerts")
 
 TICK = 20  # seconds between checks
 COOLDOWN = timedelta(minutes=30)  # a problem solved and back within this time doesn't warn again
-RULES = ("safety", "windows", "away", "power", "night", "battery", "offline")
+RULES = ("safety", "windows", "away", "power", "night", "battery", "offline", "stock")
 SAFETY = {"moisture", "smoke", "gas", "carbon_monoxide", "safety"}
 RAIN = {"rainy", "pouring", "lightning-rainy", "snowy-rainy", "hail"}
 OFFLINE_DOMAINS = {"light", "switch", "climate", "lock", "cover", "binary_sensor", "sensor", "fan", "valve", "alarm_control_panel", "camera"}
@@ -44,6 +44,7 @@ DEFAULTS: dict[str, Any] = {
         "night": {"on": True, "app": True, "telegram": True, "ha": False, "minutes": 15, "at": "23:30", "until": "06:00"},
         "battery": {"on": True, "app": True, "telegram": False, "ha": True, "percent": 15},
         "offline": {"on": True, "app": True, "telegram": False, "ha": True, "minutes": 60},
+        "stock": {"on": True, "app": True, "telegram": True, "ha": False},
     },
 }
 NUMBERS = {"minutes": (0, 1440), "watts": (100, 100000), "percent": (1, 99)}
@@ -195,6 +196,8 @@ class Alerts:
             return sorted(e for e in st if self._dc(e) == "battery" and e.split(".")[0] in ("sensor", "binary_sensor") and visible(e))
         if rule == "offline":
             return sorted(e for e in st if e.split(".")[0] in OFFLINE_DOMAINS and visible(e))
+        if rule == "stock":
+            return self.hq.casa.stocks()
         return []
 
     def _on(self, rule: str) -> list[str]:
@@ -310,6 +313,17 @@ class Alerts:
                 out.append(Finding("offline", "offline", tr_sys("Dispositivi non raggiungibili"),
                                    tr_sys("Non rispondono da più di {m} minuti: {names}.", m=rules["offline"]["minutes"], names=listing(list(labels.values()))),
                                    gone))
+        if rules["stock"]["on"]:
+            for e in self._on("stock"):
+                s = st.get(e) or {}
+                v = _float(s.get("state"))
+                low = self.hq.casa.stock_of(e)["low"]
+                if v is not None and v <= low:
+                    unit = (s.get("attributes") or {}).get("unit_of_measurement") or ""
+                    left = f"{v:.0f} {unit}".strip()
+                    out.append(Finding(f"stock:{e}", "stock", tr_sys("Scorta da riordinare"),
+                                       tr_sys("{name}: ne restano {left}, sotto la soglia di {low}. È ora di ordinare.", name=self.name(e), left=left, low=low),
+                                       {e: None}))
         return out
 
     # ------------------------------------------------------------------ the engine

@@ -632,3 +632,35 @@ async def test_the_forecast_comes_from_home_assistant_service():
     assert days[0]["condition"] == "rainy"
     assert seen["url"].endswith("/api/services/weather/get_forecasts?return_response")
     assert seen["body"] == {"entity_id": "weather.casa", "type": "daily"}
+
+
+def test_stock_pace_from_the_history():
+    from datetime import datetime, timedelta, timezone
+
+    from hubnex.main import stock_stats
+
+    now = datetime(2026, 11, 20, 12, tzinfo=timezone.utc)
+    day = lambda d: (now - timedelta(days=d)).isoformat()  # noqa: E731
+    pts = [(day(10), "20"), (day(8), "17"), (day(6), "14"), (day(4), "26"), (day(2), "23"), (day(0), "20"), (day(0), "unavailable")]
+    out = stock_stats(pts, now)
+    assert out["per_day"] == 1.2  # 12 used in 10 days, the delivery doesn't count
+    assert out["days_left"] == 16
+    assert out["last_delivery"] == day(4)
+    assert stock_stats([(day(1), "5")], now) == {"per_day": None, "days_left": None, "last_delivery": None}
+
+
+def test_counters_are_stocks_by_name_and_any_entity_can_be_searched():
+    from types import SimpleNamespace as NS
+
+    from hubnex.casa import Casa
+
+    casa = Casa.__new__(Casa)
+    casa.adjust = {"kind": {}, "names": {}, "extra": {}, "hidden": {}}
+    states = {f"automation.regola_{i}": {"state": "on", "attributes": {}} for i in range(120)}
+    states["counter.carico_pellet"] = {"state": "12", "attributes": {"friendly_name": "Carico pellet", "minimum": 0}}
+    states["counter.visite"] = {"state": "3", "attributes": {"friendly_name": "Visite"}}
+    casa.ha = NS(states=states, entities={}, areas={}, area_of=lambda e: None)
+    assert casa.compact("counter.carico_pellet")["k"] == "stock"
+    assert casa.compact("counter.visite")["k"] == "number"
+    found = casa.candidates("")
+    assert len(found) == 122, "no limit at 60: every entity can be added to a room"

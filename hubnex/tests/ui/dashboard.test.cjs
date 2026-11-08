@@ -214,6 +214,29 @@ test("vista Casa: meteo, oggi, icone sulla piantina, elettrodomestici, ultimi ev
   await done(page);
 });
 
+test("card scorta: pellet con giorni rimasti, −1 caricato, consegna e soglia", { timeout: 30000 }, async () => {
+  const page = await open();
+  await casa(page);
+  await page.locator(".plan-room[data-area='soggiorno']").click();
+  await page.click(".casa-quick [data-act='open']");
+  const card = page.locator(".hc-stock");
+  await card.waitFor();
+  await page.waitForFunction(() => /circa \d+ giorni/.test(document.querySelector(".hc-stock")?.textContent || ""));
+  assert.match(await card.textContent(), /7\s*sacchi.*al giorno.*ultima consegna/s);
+  for (let i = 0; i < 2; i++) { await card.locator("[data-act='stock-use']").click(); await page.waitForTimeout(250); }
+  await page.waitForFunction(() => document.querySelector(".hc-stock.low") && /5\s*sacchi/.test(document.querySelector(".hc-stock").textContent));
+  assert.match(await page.textContent(".hc-stock"), /Da ordinare/i);
+  await page.locator(".hc-stock [data-act='stock-add']").click();
+  await page.waitForFunction(() => /20\s*sacchi/.test(document.querySelector(".hc-stock")?.textContent || "") && !document.querySelector(".hc-stock.low"));
+  // the owner's numbers: a delivery of 10, warn below 25
+  await page.click(".hc-stock [data-act='stock-cfg']");
+  await page.fill(".hc-stock [name=delivery]", "10");
+  await page.fill(".hc-stock [name=low]", "25");
+  await page.click(".hc-stock [data-act='stock-save']");
+  await page.waitForFunction(() => /\+10/.test(document.querySelector(".hc-stock [data-act='stock-add']")?.textContent || "") && document.querySelector(".hc-stock.low"));
+  await done(page);
+});
+
 test("card: robot con mappa, telecamera composta live con i sensori, media completo", { timeout: 30000 }, async () => {
   const page = await open();
   await casa(page);
@@ -328,7 +351,7 @@ test("notifiche della casa: regole, canali, prova", { timeout: 30000 }, async ()
   await page.click("#ha-prefs");
   await page.click("#pref-alerts");
   await page.waitForSelector(".al-rule");
-  assert.equal(await page.locator(".al-rule").count(), 7, "sette regole");
+  assert.equal(await page.locator(".al-rule").count(), 8, "otto regole, con le scorte");
   assert.match(await page.textContent(".al-active"), /Finestra camera/, "la finestra aperta col riscaldamento");
   assert.match(await page.textContent(".al-phones"), /Pixel 9/);
   await page.click("[data-al-on='night']");

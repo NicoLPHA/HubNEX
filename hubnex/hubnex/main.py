@@ -101,7 +101,12 @@ class RoomTempIn(BaseModel):
 
 
 class KindIn(BaseModel):
-    kind: Literal["light", "switch", "gate", "siren", "sensor"] | None = None  # None: as in Home Assistant
+    kind: Literal["light", "switch", "gate", "siren", "sensor", "stock"] | None = None  # None: as in Home Assistant
+
+
+class StockIn(BaseModel):
+    delivery: int = Field(ge=1, le=1000)  # how many come in a delivery
+    low: int = Field(ge=0, le=1000)  # warn below this
 
 
 class CardIn(BaseModel):
@@ -160,9 +165,32 @@ HOUSE_DOMAINS = {
     "light", "switch", "fan", "cover", "climate", "lock", "alarm_control_panel", "media_player",
     "scene", "script", "button", "input_button", "input_boolean", "input_select", "input_number",
     "select", "number", "vacuum", "valve", "siren", "humidifier", "water_heater", "lawn_mower",
-    "input_datetime", "time", "date", "datetime", "input_text", "text",
+    "input_datetime", "time", "date", "datetime", "input_text", "text", "counter",
 }
 HOUSE_EVENTS = {"ha", "casa_changed"}
+
+
+def stock_stats(points: list[tuple[str, str]], now: datetime) -> dict:
+    """From a stock's history: how many go per day (what went down, over the days seen), the
+    days left at that pace, and when the last delivery came (the last rise)."""
+    vals = []
+    for t, v in points:
+        try:
+            vals.append((datetime.fromisoformat(t.replace("Z", "+00:00")), float(v)))
+        except (TypeError, ValueError):
+            continue  # unavailable, unknown
+    if len(vals) < 2:
+        return {"per_day": None, "days_left": None, "last_delivery": None}
+    used = sum(max(0.0, a[1] - b[1]) for a, b in zip(vals, vals[1:]))
+    rises = [b[0] for a, b in zip(vals, vals[1:]) if b[1] > a[1]]
+    days = max(1.0, (now - vals[0][0]).total_seconds() / 86400)
+    per_day = used / days if used else None
+    left = vals[-1][1]
+    return {
+        "per_day": round(per_day, 2) if per_day else None,
+        "days_left": int(left / per_day) if per_day else None,
+        "last_delivery": rises[-1].isoformat() if rises else None,
+    }
 
 
 def house_service(domain: str, service: str) -> bool:
@@ -587,6 +615,27 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         except HomeAssistantError as exc:
             raise HTTPException(502, str(exc))
         return {eid: downsample(points) for eid, points in raw.items()}
+
+    @app.get("/api/casa/stock/{entity_id}", dependencies=[Depends(auth)])
+    async def casa_stock(entity_id: str, hq: HQ = Depends(get_hq)):
+        """How fast a stock goes (last 30 days of its history): per day, days left, last delivery."""
+        need_ha(hq)
+        if entity_id not in hq.watcher.states:
+            raise HTTPException(404, tr("entità sconosciuta"))
+        try:
+            raw = (await hq.ha.history([entity_id], 24 * 30)).get(entity_id, [])
+        except HomeAssistantError as exc:
+            raise HTTPException(502, str(exc))
+        return stock_stats(raw, datetime.now().astimezone())
+
+    @app.post("/api/casa/entities/{entity_id}/stock", dependencies=[Depends(full)])
+    async def casa_stock_set(entity_id: str, body: StockIn, hq: HQ = Depends(get_hq)):
+        need_ha(hq)
+        if entity_id not in hq.watcher.states:
+            raise HTTPException(404, tr("entità sconosciuta"))
+        await hq.casa.set_stock(entity_id, body.delivery, body.low)
+        hq.emit({"type": "casa_changed"})
+        return {"ok": True}
 
     @app.get("/api/casa/energy", dependencies=[Depends(auth)])
     async def casa_energy(hq: HQ = Depends(get_hq)):

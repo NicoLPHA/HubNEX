@@ -14,9 +14,9 @@ const OPENING = new Set(["door", "window", "opening", "garage_door"]);
 const PRESENCE = new Set(["motion", "occupancy", "presence"]);
 const SECURITY_CLASSES = new Set([...ALERT, ...PRESENCE, "lock", "tamper", "vibration", "sound"]);
 const APPLIANCE = /bollitor|kettle|boiler|caldai|scaldabagn|acqua|water|frigo|fridge|freezer|congelat|forno|oven|piastr|lavatric|lavastovigl|asciugatric|cpu|processor|chip|batter|intern|motor|esterna|outdoor|pompa|pump|vasca|piscina|pool/i;
-const SHOW_AS = [["", t("Come in Home Assistant")], ["light", t("Luce")], ["switch", t("Presa / interruttore")], ["gate", t("Cancello / porta (impulso)")], ["siren", t("Sirena")], ["sensor", t("Solo stato")]];
+const SHOW_AS = [["", t("Come in Home Assistant")], ["light", t("Luce")], ["switch", t("Presa / interruttore")], ["gate", t("Cancello / porta (impulso)")], ["siren", t("Sirena")], ["sensor", t("Solo stato")], ["stock", t("Scorta (pellet, sacchi…)")]];
 const SECTIONS = [
-  ["light", t("Luci")], ["gate", t("Cancelli e porte")], ["climate", t("Clima")], ["cover", t("Tapparelle e tende")], ["valve", t("Valvole e irrigazione")], ["media", t("Media")],
+  ["light", t("Luci")], ["gate", t("Cancelli e porte")], ["climate", t("Clima")], ["stock", t("Scorte")], ["cover", t("Tapparelle e tende")], ["valve", t("Valvole e irrigazione")], ["media", t("Media")],
   ["switch", t("Prese e interruttori")], ["people", t("Persone")], ["security", t("Sicurezza")], ["camera", t("Telecamere")], ["sensor", t("Sensori")], ["settings", t("Orari e impostazioni")], ["vacuum", t("Pulizia")], ["action", t("Azioni")], ["other", t("Altro")],
 ];
 
@@ -49,6 +49,8 @@ export class CasaView {
     this.root = root;
     this.api = api;
     this.deadlines = deadlines; // () => the owner's deadlines, or null for family members
+    this.stockStats = {}; // stock entity -> its pace (per day, days left, last delivery)
+    this.stockAt = {};
     this.token = token || (() => "");
     this.camTick = Date.now();
     this.camSrc = {}; // last frame loaded, per camera
@@ -149,6 +151,14 @@ export class CasaView {
     } catch {
       this.forecast = null;
     }
+  }
+
+  // A stock's pace, from Home Assistant's history: asked at most every 10 minutes.
+  loadStock(eid) {
+    if (Date.now() - (this.stockAt[eid] || 0) < 6e5) return;
+    this.stockAt[eid] = Date.now();
+    this.api(`/api/casa/stock/${encodeURIComponent(eid)}`).then((r) => r.json())
+      .then((s) => { this.stockStats[eid] = s; this.renderSoon(); }).catch(() => {});
   }
 
   // Live events from the HQ WebSocket.
@@ -259,6 +269,7 @@ export class CasaView {
     if (s.k === "scene" || s.k === "script" || s.k === "button") return "action";
     if (s.k === "camera") return "camera";
     if (s.k === "vacuum") return "vacuum";
+    if (s.k === "stock") return "stock";
     if (["datetime", "number", "select", "text"].includes(s.k)) return "settings";
     return "other";
   }
@@ -768,6 +779,23 @@ export class CasaView {
         const st = this.st(eid), t = (String(st?.s).match(/\d{2}:\d{2}/) || ["00:00"])[0];
         const m = (((Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) + Number(el.dataset.d)) % 1440) + 1440) % 1440;
         this.setDateTime(eid, `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+        break;
+      }
+      case "stock-use": case "stock-add": {
+        const st = this.st(eid), cfg = this.data.stock?.[eid] || {};
+        const max = Number(st.a.max ?? st.a.maximum ?? Infinity), min = Number(st.a.min ?? st.a.minimum ?? 0);
+        const v = (parseFloat(st.s) || 0) + (act === "stock-use" ? -1 : Number(cfg.delivery) || 1);
+        this.setNumber(eid, Math.min(max, Math.max(min, v)));
+        this.stockAt[eid] = 0; // the pace changes: ask again
+        break;
+      }
+      case "stock-cfg": this.stockEdit = this.stockEdit === eid ? null : eid; break;
+      case "stock-save": {
+        const box = el.closest(".hc-stock");
+        const body = { delivery: Number(box.querySelector("[name=delivery]").value), low: Number(box.querySelector("[name=low]").value) };
+        this.stockEdit = null;
+        this.api(`/api/casa/entities/${encodeURIComponent(eid)}/stock`, { method: "POST", body: JSON.stringify(body) })
+          .then(() => this.reload(true)).catch((err) => this.toast(err.message));
         break;
       }
       case "numstep": {

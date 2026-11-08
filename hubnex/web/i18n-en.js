@@ -633,5 +633,22 @@ export const EN = {
   "pioggia {n}%": "rain {n}%",
   "scaduta": "overdue",
   "{n} h fa": "{n} h ago",
-  "{n} min fa": "{n} min ago"
+  "{n} min fa": "{n} min ago",
+  "Avvisa sotto": "Warn below",
+  "Da ordinare": "To order",
+  "Imposta": "Settings",
+  "Impostazioni": "Settings",
+  "Pellet e altre scorte sotto la soglia impostata nella loro card.": "Pellet and other stocks below the threshold set in their card.",
+  "Scorta": "Stock",
+  "Scorta (pellet, sacchi…)": "Stock (pellet, bags…)",
+  "Scorte": "Stocks",
+  "Scorte da riordinare": "Stocks to reorder",
+  "Una consegna": "One delivery",
+  "caricato": "loaded",
+  "circa {n} giorni": "about {n} days",
+  "consegna": "delivery",
+  "finisce oggi": "runs out today",
+  "sacchi": "bags",
+  "ultima consegna {d}": "last delivery {d}",
+  "{n} al giorno": "{n} a day"
 };

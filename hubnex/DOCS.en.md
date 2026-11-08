@@ -234,6 +234,18 @@ Around the floor plan, at a glance:
 - **Recent events**: the last changes in the last 24 hours of doors, windows, locks, alarm and
   people.
 
+**Stocks (pellet and the like).** A Home Assistant *Number* helper or *Counter* with "pellet",
+"bags" or "stock" in its name becomes a **Stock** card; for others pick "Stock" as the type when
+editing the room. It shows how many are left, how many go per day and the last delivery (from
+the last 30 days of history), the **days left**; **−1 loaded** when you use one, **+delivery**
+when the pellet arrives. In **Settings** choose how many come in a delivery and below how many to
+warn: then the card turns red and the **Stocks to reorder** notification comes (a rule in the
+house notifications).
+
+**Adding entities.** With **Edit room → Add entity** you can put any Home Assistant entity in a
+room, also one without an area or of a kind HubNEX doesn't draw (it shows its state). Helpers are
+born without an area: set it in Home Assistant or add them from here.
+
 - **Floor plan**: **⚙ Floor plan** opens the editor.
   1. **Upload floor plan**: a photo or a PDF of the plan (white margins are trimmed by
      themselves). It stays only in the add-on's folder.
