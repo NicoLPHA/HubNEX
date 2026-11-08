@@ -32,6 +32,34 @@ def test_integration_token_works_without_hq_token(settings, make_hq):
         assert r.json() == {"reply": "Buonasera, signore.", "by": "jarvis"}
 
 
+def test_the_dashboard_chat_answers_through_a_job(settings, make_hq):
+    """A long answer must not hang on one request: the job id comes at once, the answer later."""
+    import time as _time
+
+    settings.hq_token = "t"
+    hq = make_hq([response([text_block("Fatto, Signore.")], "end_turn")])
+    hq.settings.model_voice = ""  # no quick route: straight to Jarvis
+    app = create_app(settings, hq=hq, start_workers=False)
+    auth = {"Authorization": "Bearer t"}
+    with TestClient(app) as client:
+        job = client.post("/api/chat", headers=auth, json={"text": "prepara la relazione", "background": True}).json()["job"]
+        for _ in range(50):
+            out = client.get(f"/api/chat/{job}", headers=auth).json()
+            if out["done"]:
+                break
+            _time.sleep(0.05)
+        assert out == {"done": True, "reply": "Fatto, Signore.", "by": "jarvis"}
+        assert client.get(f"/api/chat/{job}", headers=auth).status_code == 404  # given once
+        hq.client.responses = []  # the next call fails: the error comes back on the job
+        job = client.post("/api/chat", headers=auth, json={"text": "di nuovo", "background": True}).json()["job"]
+        for _ in range(50):
+            r = client.get(f"/api/chat/{job}", headers=auth)
+            if r.status_code != 200 or r.json()["done"]:
+                break
+            _time.sleep(0.05)
+        assert r.status_code == 502
+
+
 def test_integration_installed_once_and_updated_on_change(tmp_path):
     ha_config = tmp_path / "homeassistant"
     ha_config.mkdir()

@@ -7,6 +7,7 @@ import os
 import json
 import base64
 import hmac
+import secrets
 import time
 import mimetypes
 import logging
@@ -53,6 +54,9 @@ class ChatIn(BaseModel):
     channel: str = "dashboard"
     voice: bool = False  # the answer will be spoken (Assist): keep it short
     speak: bool = False  # the dashboard will read the answer aloud too
+    # The dashboard doesn't wait on one long request (a proxy may cut it after a minute or
+    # two): it gets a job id at once and asks for the answer with short requests.
+    background: bool = False
 
 
 class TaskIn(BaseModel):
@@ -334,6 +338,8 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def state(hq: HQ = Depends(get_hq)):
         return await hq.snapshot()
 
+    chat_jobs: dict[str, dict] = {}  # job id -> {"at": time, "done": bool, "out": answer, "error": text}
+
     @app.post("/api/chat", dependencies=[Depends(full)])
     async def chat(body: ChatIn, hq: HQ = Depends(get_hq)):
         # Dashboard: Home Assistant's own sentences first, then the quick route, then Jarvis.
@@ -342,16 +348,49 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         files = attachments_for(hq, body.attachments)
         if not body.text.strip() and not files:
             raise HTTPException(422, tr("scrivi un messaggio o allega un file"))
-        reply, spoken, by = await hq.converse(
-            body.channel, body.text, voice=body.voice, spoken=body.speak,
-            quick=body.voice or dashboard, local=dashboard, attachments=files,
-        )
-        if body.voice and reply:
-            reply = for_voice(reply)  # Assist reads it aloud: units and symbols as words
-        out = {"reply": reply or tr("L'agente ha risposto direttamente nel gruppo Telegram."), "by": by}
-        if spoken:
-            out["spoken"] = spoken  # what the voice says of a long answer ("riassunto")
-        return out
+
+        async def answer() -> dict:
+            reply, spoken, by = await hq.converse(
+                body.channel, body.text, voice=body.voice, spoken=body.speak,
+                quick=body.voice or dashboard, local=dashboard, attachments=files,
+            )
+            if body.voice and reply:
+                reply = for_voice(reply)  # Assist reads it aloud: units and symbols as words
+            out = {"reply": reply or tr("L'agente ha risposto direttamente nel gruppo Telegram."), "by": by}
+            if spoken:
+                out["spoken"] = spoken  # what the voice says of a long answer ("riassunto")
+            return out
+
+        if not body.background:
+            return await answer()
+        now = time.time()
+        for k in [k for k, j in chat_jobs.items() if now - j["at"] > 3600]:
+            del chat_jobs[k]  # answers nobody came back for
+        job_id = secrets.token_urlsafe(9)
+        job = chat_jobs[job_id] = {"at": now, "done": False}
+
+        async def run() -> None:
+            try:
+                job["out"] = await answer()
+            except Exception as exc:
+                log.exception("chat failed")
+                job["error"] = str(exc) or exc.__class__.__name__
+            job["done"] = True
+
+        job["task"] = asyncio.create_task(run())
+        return {"job": job_id}
+
+    @app.get("/api/chat/{job_id}", dependencies=[Depends(full)])
+    async def chat_job(job_id: str):
+        job = chat_jobs.get(job_id)
+        if job is None:
+            raise HTTPException(404, tr("risposta non trovata"))
+        if not job["done"]:
+            return {"done": False}
+        chat_jobs.pop(job_id, None)
+        if "error" in job:
+            raise HTTPException(502, job["error"])
+        return {"done": True, **job["out"]}
 
     @app.get("/api/agents/{agent_id}", dependencies=[Depends(full)])
     async def agent_detail(agent_id: str, hq: HQ = Depends(get_hq)):

@@ -65,6 +65,7 @@ EN: dict[str, str] = {
     "accesso negato ({a}): controlla il token del connettore": "access denied ({a}): check the connector's token",
     "accesso rifiutato da ElevenLabs": "access refused by ElevenLabs",
     "agente sconosciuto": "unknown agent",
+    "risposta non trovata": "answer not found",
     "area sconosciuta": "unknown area",
     "autenticazione rifiutata": "authentication refused",
     "bozza sconosciuta": "unknown draft",

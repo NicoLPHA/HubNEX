@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.16.1
+- Chat: niente più "Failed to fetch" con le richieste lunghe (agenti che cercano e verificano
+  sul web). La dashboard non tiene aperta una sola richiesta per tutta la risposta, che un
+  proxy (Home Assistant, Nabu Casa, l'app) poteva chiudere dopo un minuto o due: riceve
+  subito un numero di lavoro e chiede la risposta con richieste brevi. Se la rete cade un
+  momento, riprova da sola.
+
 ## 1.16.0
 - Vista Casa più ricca:
   - **Meteo** nel cruscotto, con le previsioni dei prossimi giorni in un popup (da Home

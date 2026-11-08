@@ -1121,6 +1121,25 @@ $("chat").addEventListener("drop", (e) => {
   addFiles([...e.dataTransfer.files]);
 });
 
+// The answer of a chat job: short requests every 1.5 s, so no proxy cuts a long wait. A
+// dropped connection on the way (phone changing network…) is retried, not reported.
+async function chatAnswer(job) {
+  let misses = 0;
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 1500));
+    let res;
+    try {
+      res = await api(`/api/chat/${job}`);
+    } catch (err) {
+      if (err instanceof TypeError && ++misses < 40) continue; // network: try again
+      throw err;
+    }
+    misses = 0;
+    const out = await res.json();
+    if (out.done) return out;
+  }
+}
+
 async function sendChat(text, sent = []) {
   stopTalk();
   const voice = S.speak && S.data?.integrations?.voice;
@@ -1132,8 +1151,8 @@ async function sendChat(text, sent = []) {
   try {
     // In a room of the house view Jarvis knows where you are ("spegni qui").
     const context = S.view === "casa" ? casa.context() : "";
-    const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ text: context + text, speak: !!voice, attachments: sent.map((f) => f.id) }) });
-    const { reply, spoken: said, by } = await res.json();
+    const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ text: context + text, speak: !!voice, attachments: sent.map((f) => f.id), background: true }) });
+    const { reply, spoken: said, by } = await chatAnswer((await res.json()).job);
     wait.classList.remove("pending");
     if (by === "ha" || by === "quick") { // a small note: who answered
       wait.dataset.by = by;
