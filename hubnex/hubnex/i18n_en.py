@@ -66,6 +66,8 @@ EN: dict[str, str] = {
     "accesso rifiutato da ElevenLabs": "access refused by ElevenLabs",
     "agente sconosciuto": "unknown agent",
     "risposta non trovata": "answer not found",
+    "aggiungi almeno un blocco": "add at least one block",
+    "aggiungi almeno un'entità": "add at least one entity",
     "area sconosciuta": "unknown area",
     "autenticazione rifiutata": "authentication refused",
     "bozza sconosciuta": "unknown draft",

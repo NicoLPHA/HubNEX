@@ -537,8 +537,24 @@ def test_cards_composed_in_a_room_and_helpers_set_from_the_dashboard(settings, m
         assert client.post("/api/casa/rooms/soggiorno/cards", json={"name": "X", "entities": ["light.inesistente"]}).status_code == 422
         bad = {"name": "Stufa", "entities": ["input_datetime.stufa_accensione"], "enable": "light.lampada"}
         assert client.post("/api/casa/rooms/soggiorno/cards", json=bad).status_code == 422  # its switch must be in the card
+        # a free card: blocks on the grid; its entities are its blocks'
+        free = {"name": "Stufa libera", "kind": "free", "color": "warm", "blocks": [
+            {"kind": "band", "entity": "input_datetime.stufa_accensione", "entity2": "input_datetime.stufa_spegnimento", "w": 4},
+            {"kind": "text", "label": "Inverno", "w": 4},
+            {"kind": "ring", "entity": "input_datetime.stufa_accensione", "min": 0, "max": 5},
+        ]}
+        r = client.post("/api/casa/rooms/soggiorno/cards", json=free)
+        assert r.json() == {"ok": True, "id": "c2"}
+        assert client.post("/api/casa/rooms/soggiorno/cards", json={**free, "blocks": []}).status_code == 422
+        assert client.post("/api/casa/rooms/soggiorno/cards", json={**free, "blocks": [{"kind": "razzo", "entity": "x.y"}]}).status_code == 422
+        assert client.post("/api/casa/rooms/soggiorno/cards", json={**free, "blocks": [{"kind": "value", "entity": "light.inesistente"}]}).status_code == 422
+        assert client.post("/api/casa/rooms/soggiorno/cards", json={**free, "blocks": [{"kind": "value", "entity": "input_datetime.stufa_accensione", "w": 5}]}).status_code == 422
         view = client.get("/api/casa").json()
         sogg = next(a for a in view["areas"] if a["id"] == "soggiorno")
+        card = sogg["cards"][1]
+        assert card["kind"] == "free" and card["color"] == "warm" and len(card["blocks"]) == 3
+        assert card["entities"] == ["input_datetime.stufa_accensione", "input_datetime.stufa_spegnimento"]
+        assert card["blocks"][2] == {"kind": "ring", "entity": "input_datetime.stufa_accensione", "entity2": "", "label": "", "w": 1, "h": 1, "min": 0.0, "max": 5.0}
         assert sogg["cards"][0]["name"] == "Stufa" and sogg["cards"][0]["group"] == "climate" and sogg["order"] == []
         assert view["states"]["input_datetime.stufa_accensione"]["k"] == "datetime"  # sent although in no area
         assert view["states"]["input_datetime.stufa_accensione"]["a"]["has_time"] is True
@@ -562,7 +578,7 @@ def test_cards_composed_in_a_room_and_helpers_set_from_the_dashboard(settings, m
         client.post("/api/casa/call", json={"domain": "input_datetime", "service": "set_datetime", "data": {"entity_id": "input_datetime.stufa_accensione", "time": "07:00:00"}})
         assert calls[-1] == ("input_datetime", "set_datetime", {"entity_id": "input_datetime.stufa_accensione", "time": "07:00:00"})
         client.post("/api/casa/rooms/soggiorno/cards/c1/remove")
-        assert [c["id"] for c in next(a for a in client.get("/api/casa").json()["areas"] if a["id"] == "soggiorno")["cards"]] == ["c2"]
+        assert [c["id"] for c in next(a for a in client.get("/api/casa").json()["areas"] if a["id"] == "soggiorno")["cards"]] == ["c2", "c3"]
         client.portal.call(lambda: task.cancel())
 
 

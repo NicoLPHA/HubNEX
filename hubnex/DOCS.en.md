@@ -242,6 +242,15 @@ when the pellet arrives. In **Settings** choose how many come in a delivery and 
 warn: then the card turns red and the **Stocks to reorder** notification comes (a rule in the
 house notifications).
 
+**Free card.** With **Edit room → + Free card** you build a card from blocks on a 4-column grid
+(2 on a phone). Blocks: **big value**, **ring gauge**, **switch**, **button** (scene, script,
+button), **slider** (brightness or a number), **chart** of the last 24 hours, **bar**, **time
+band** (a start and an end time), **selector**, **state** (how it is and since when) and
+**text**. For each block choose the entity (the search offers only the suitable ones), a label,
+the size (1×1 to 4×2) and, for ring and bar, minimum and maximum; **Before/After** move it. The
+card has a name and a colour; in the middle of the editor you see the preview with the real
+values. **Edit** opens it again.
+
 **Adding entities.** With **Edit room → Add entity** you can put any Home Assistant entity in a
 room, also one without an area or of a kind HubNEX doesn't draw (it shows its state). Helpers are
 born without an area: set it in Home Assistant or add them from here.

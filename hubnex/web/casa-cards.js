@@ -570,8 +570,87 @@ export const Cards = {
     return `<article class="hc hc-action">${this.head(t("Azione"), s, `<button class="hc-link" data-act="scene" data-e="${eid}">${t("Avvia")}</button>`)}</article>`;
   },
 
+  // ---------------------------------------------------------------- a free card: blocks on a grid
+  // Four columns (two on a phone); each block shows one entity its own way. `edit`: the editor's
+  // preview, where a tap selects the block instead of acting.
+  freeCard(card, edit = null) {
+    const blocks = (card.blocks || []).map((b, i) => {
+      const cls = `fb k-${b.kind}${edit && edit.sel === i ? " sel" : ""}`;
+      const at = edit ? ` data-act="fb-sel" data-i="${i}" role="button" tabindex="0"` : "";
+      return `<div class="${cls}" data-w="${b.w || 1}" data-h="${b.h || 1}"${at}>${this.blockHTML(b, !!edit)}</div>`;
+    }).join("");
+    const empty = edit && !blocks ? `<p class="casa-muted fb-empty">${t("Aggiungi un blocco dalla colonna a sinistra.")}</p>` : "";
+    return `<article class="hc hc-free wide ${card.color ? `fc-${card.color}` : ""}">
+      <header class="hc-head"><b class="hc-name">${esc(card.name || t("Card"))}</b></header>
+      <div class="fgrid">${blocks}</div>${empty}</article>`;
+  },
+
+  blockHTML(b, editing = false) {
+    const label = (s) => `<span class="fb-l">${esc(b.label || s?.n || "")}</span>`;
+    if (b.kind === "text") return `<span class="fb-txt">${esc(b.label || t("Testo"))}</span>`;
+    const e = b.entity, s = this.st(e);
+    if (!s) return `${label()}<span class="casa-muted">${e ? t("non disponibile") : t("scegli un'entità")}</span>`;
+    const v = parseFloat(s.k === "climate" ? s.a.current_temperature : s.s);
+    const unit = s.k === "climate" ? "°" : s.a.unit_of_measurement || "";
+    const range = () => {
+      const min = b.min ?? Number(s.a.min ?? s.a.minimum ?? 0), max = b.max ?? Number(s.a.max ?? s.a.maximum ?? 100);
+      return [min, max, max > min ? Math.max(0, Math.min(1, (v - min) / (max - min))) : 0];
+    };
+    switch (b.kind) {
+      case "value": {
+        const doing = (ACTION[s.a.hvac_action] || HVAC[s.s] || s.s || "").toLowerCase();
+        const sub = s.k === "climate" && s.a.temperature != null ? `${t("obiettivo")} ${num(s.a.temperature)}°${doing ? ` · ${doing}` : ""}` : "";
+        const big = isNaN(v) ? `<span class="fb-word ${this.valueClass(e)}">${esc(this.value(e))}</span>` : `<span class="fb-big">${num(v)}<small>${esc(unit)}</small></span>`;
+        return `${label(s)}${big}${sub ? `<span class="fb-sub">${esc(sub)}</span>` : ""}`;
+      }
+      case "ring": {
+        const [, , pct] = range();
+        return `${label(s)}<div class="fb-ring">${ring({ size: b.h > 1 ? 96 : 64, pct, label: isNaN(v) ? "—" : num(v), sub: unit, color: "var(--fc, var(--accent))" })}</div>`;
+      }
+      case "bar": {
+        const [, max, pct] = range();
+        return `${label(s)}<span class="fb-mid">${isNaN(v) ? "—" : num(v)}<small> ${esc(unit)}${max ? ` / ${num(max)}` : ""}</small></span><div class="fb-bar"><i style="width:${pct * 100}%"></i></div>`;
+      }
+      case "toggle": {
+        const on = this.isOn(e);
+        return `${label(s)}<div class="fb-switch">${this.switchHTML(e)}</div><span class="fb-sub ${on ? "on" : ""}">${on ? t("acceso") : t("spento")}</span>`;
+      }
+      case "button":
+        return `${label(s)}<button class="hc-btn fb-go" data-act="${["scene", "script", "button", "input_button"].includes(e.split(".")[0]) ? "scene" : "toggle"}" data-e="${e}">${esc(b.label ? s.n : t("Avvia"))}</button>`;
+      case "slider": {
+        if (s.k === "light") {
+          const pct = s.s === "on" && s.a.brightness != null ? Math.round((s.a.brightness / 255) * 100) : s.s === "on" ? 100 : 0;
+          return `${label(s)}<span class="fb-mid">${pct}<small>%</small></span><input class="hc-range" type="range" min="1" max="100" value="${pct}" data-act="bright" data-e="${e}" aria-label="${esc(s.n)}">`;
+        }
+        const [min, max] = range(), step = Number(s.a.step ?? 1);
+        return `${label(s)}<span class="fb-mid">${isNaN(v) ? "—" : num(v)}<small> ${esc(unit)}</small></span><input class="hc-range" type="range" min="${min}" max="${max}" step="${step}" value="${isNaN(v) ? min : v}" data-act="numval" data-e="${e}" aria-label="${esc(s.n)}">`;
+      }
+      case "chart":
+        return `${label(s)}<span class="fb-mid">${esc(this.value(e))}</span>${spark(this.hist?.[e]) || `<span class="fb-sub">${editing ? t("il grafico compare dopo il salvataggio") : t("grafico in arrivo…")}</span>`}`;
+      case "band": {
+        const s2 = this.st(b.entity2);
+        const a = this.dtParts(e, s).time, z = s2 ? this.dtParts(b.entity2, s2).time : null;
+        if (!a || !z) return `${label(s)}<span class="casa-muted">${t("servono due orari: inizio e fine")}</span>`;
+        const m = (x) => Number(x.slice(0, 2)) * 60 + Number(x.slice(3, 5));
+        const on = m(a), off = m(z), d = new Date(), now = d.getHours() * 60 + d.getMinutes();
+        const inside = on <= off ? now >= on && now < off : now >= on || now < off;
+        const width = ((off - on + 1440) % 1440) / 14.4;
+        const wrap = on + width * 14.4 > 1440 ? `<i style="left:0;width:${(on + width * 14.4 - 1440) / 14.4}%"></i>` : "";
+        return `${label(s)}<span class="fb-sub ${inside ? "on" : ""}">${a} – ${z} · ${inside ? t("ora attivo") : t("non attivo")}</span>
+          <div class="hc-band" aria-hidden="true"><i style="left:${on / 14.4}%;width:${width}%"></i>${wrap}<b style="left:${now / 14.4}%"></b><span><em>0</em><em>6</em><em>12</em><em>18</em><em>24</em></span></div>`;
+      }
+      case "select": {
+        const opts = s.a.options || [];
+        return `${label(s)}<div class="hc-tabs fb-tabs">${opts.map((o) => `<button class="hc-tab ${o === s.s ? "sel" : ""}" data-act="selopt" data-v="${esc(o)}" data-e="${e}">${esc(o)}</button>`).join("")}</div>`;
+      }
+      default: // state
+        return `${label(s)}<span class="fb-word ${this.valueClass(e)}">${esc(this.value(e))}</span>${s.lc ? `<span class="fb-sub">${esc(since(s.lc))}</span>` : ""}`;
+    }
+  },
+
   // ---------------------------------------------------------------- a card composed in HubNEX
   composedCard(card) {
+    if (card.kind === "free") return this.freeCard(card);
     const eids = card.entities.filter((e) => this.st(e));
     const cam = eids.find((e) => e.startsWith("camera."));
     if (cam) return this.cameraComposed(card, cam, eids);

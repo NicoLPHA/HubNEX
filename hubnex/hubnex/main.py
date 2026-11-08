@@ -109,10 +109,28 @@ class StockIn(BaseModel):
     low: int = Field(ge=0, le=1000)  # warn below this
 
 
+BLOCK_KINDS = Literal["value", "ring", "toggle", "button", "slider", "chart", "bar", "band", "select", "state", "text"]
+
+
+class BlockIn(BaseModel):
+    """A block of a free card: what it shows, of which entity, how big on the 4-column grid."""
+    kind: BLOCK_KINDS
+    entity: str = Field(default="", max_length=255)
+    entity2: str = Field(default="", max_length=255)  # the band's end time
+    label: str = Field(default="", max_length=60)
+    w: int = Field(default=1, ge=1, le=4)
+    h: int = Field(default=1, ge=1, le=2)
+    min: float | None = None  # ring and bar: their scale
+    max: float | None = None
+
+
 class CardIn(BaseModel):
     id: str | None = Field(default=None, pattern=r"^c[0-9]{1,4}$")
     name: str = Field(max_length=60)
-    entities: list[str] = Field(min_length=1, max_length=12)
+    entities: list[str] = Field(default_factory=list, max_length=24)
+    kind: Literal["composed", "free"] = "composed"
+    blocks: list[BlockIn] = Field(default_factory=list, max_length=24)
+    color: Literal["", "warm", "cool", "green", "violet", "red"] = ""
     size: Literal["small", "wide"] = "wide"
     group: str | None = Field(default=None, pattern=r"^[a-z]{1,20}$")  # the room's group it sits in (None: of its first entity)
     enable: str | None = Field(default=None, max_length=255)  # the switch that turns the card's times on ("automatica"); "" = none
@@ -703,12 +721,22 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         need_ha(hq)
         if area_id not in hq.watcher.areas:
             raise HTTPException(404, tr("area sconosciuta"))
+        if body.kind == "free":
+            if not body.blocks:
+                raise HTTPException(422, tr("aggiungi almeno un blocco"))
+            # its entities are those of its blocks (a text block has none)
+            body.entities = list(dict.fromkeys(e for b in body.blocks for e in (b.entity, b.entity2) if e))
+        elif not body.entities:
+            raise HTTPException(422, tr("aggiungi almeno un'entità"))
         unknown = [e for e in body.entities if e not in hq.watcher.states]
         if unknown:
             raise HTTPException(422, f"{tr('entità sconosciute')}: {', '.join(unknown)}")
         if body.enable and body.enable not in body.entities:
             raise HTTPException(422, tr("l'interruttore degli orari deve essere nella card"))
-        card_id = await hq.casa.save_card(area_id, body.id, body.name, body.entities, body.size, body.group, body.enable, body.nochart)
+        card_id = await hq.casa.save_card(
+            area_id, body.id, body.name, body.entities, body.size, body.group, body.enable, body.nochart,
+            blocks=[b.model_dump(exclude_none=True) for b in body.blocks] if body.kind == "free" else None, color=body.color,
+        )
         hq.emit({"type": "casa_changed"})
         return {"ok": True, "id": card_id}
 

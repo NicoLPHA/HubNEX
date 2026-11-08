@@ -214,6 +214,51 @@ test("vista Casa: meteo, oggi, icone sulla piantina, elettrodomestici, ultimi ev
   await done(page);
 });
 
+test("card libera: si costruisce a blocchi e funziona", { timeout: 40000 }, async () => {
+  const page = await open();
+  await casa(page);
+  await page.locator(".plan-room[data-area='soggiorno']").click();
+  await page.click(".casa-quick [data-act='open']");
+  await page.click("[data-act='edit']");
+  await page.click("[data-act='card-free']");
+  await page.fill("#fb-name", "Prova libera");
+  await page.click("[data-act='fb-color'][data-c='green']");
+  // an interruttore: only switches and lights are offered
+  await page.click("[data-act='fb-add'][data-k='toggle']");
+  await page.fill("#fb-find", "presa tv");
+  await page.waitForSelector("[data-act='fb-pick'][data-e='switch.presa_tv']");
+  assert.equal(await page.locator("#fb-cands [data-e='sensor.temp_cucina']").count(), 0, "un sensore non è un interruttore");
+  await page.click("[data-act='fb-pick'][data-e='switch.presa_tv']");
+  // a big value, 2×2, with its own label
+  await page.click("[data-act='fb-add'][data-k='value']");
+  await page.fill("#fb-find", "clima");
+  await page.click("[data-act='fb-pick'][data-e='climate.soggiorno']");
+  await page.click("[data-act='fb-size'][data-w='2'][data-h='2']");
+  await page.fill("#fb-label", "Qui");
+  assert.match(await page.textContent("#fb-preview"), /QUI|Qui/);
+  // a block without its entity can't be saved
+  await page.click("[data-act='fb-add'][data-k='state']");
+  await page.click("[data-act='fb-save']");
+  await page.waitForSelector(".casa-toast");
+  await page.click("[data-act='fb-del']");
+  await page.click("[data-act='fb-save']");
+  await page.waitForSelector(".fe-panel", { state: "detached" });
+  const card = page.locator(".hc-free:has-text('Prova libera')");
+  await card.waitFor();
+  assert.ok(await card.evaluate((el) => el.classList.contains("fc-green")));
+  assert.equal(await card.locator(".fb").count(), 2);
+  assert.equal(await card.locator(".fb[data-w='2'][data-h='2']").count(), 1, "il valore grande 2×2");
+  // its switch works from the card
+  await card.locator(".casa-switch").click();
+  await page.waitForFunction(() => /spento/.test(document.querySelector(".hc-free .k-toggle")?.textContent || ""));
+  // and it opens again in the editor
+  await card.locator("[data-act='card-edit']").click();
+  await page.waitForSelector(".fe-panel");
+  assert.equal(await page.inputValue("#fb-name"), "Prova libera");
+  await page.click("[data-act='fb-close']");
+  await done(page);
+});
+
 test("card scorta: pellet con giorni rimasti, −1 caricato, consegna e soglia", { timeout: 30000 }, async () => {
   const page = await open();
   await casa(page);

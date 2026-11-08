@@ -237,6 +237,15 @@ e da quando (dallo storico degli ultimi 30 giorni), i **giorni rimasti** e l'ult
 quanti ne arrivano in una consegna e sotto quanti avvisarti: allora la card diventa rossa e
 arriva la notifica **Scorte da riordinare** (regola nelle Notifiche della casa).
 
+**Card libera.** Con **Modifica stanza → + Card libera** costruisci una card a blocchi su una
+griglia da 4 colonne (2 sul telefono). Blocchi: **valore grande**, **indicatore ad anello**,
+**interruttore**, **pulsante** (scena, script, pulsante), **cursore** (luminosità o numero),
+**grafico** delle ultime 24 ore, **barra**, **fascia oraria** (un orario di inizio e uno di fine),
+**selettore**, **stato** (com'è e da quanto) e **testo**. Per ogni blocco scegli l'entità (la
+ricerca propone solo quelle adatte), un'etichetta, la dimensione (da 1×1 a 4×2) e, per anello e
+barra, minimo e massimo; **Prima/Dopo** lo spostano. La card ha un nome e un colore; al centro
+dell'editor vedi l'anteprima con i valori veri. Si riapre con **Modifica**.
+
 **Aggiungere entità.** Con **Modifica stanza → Aggiungi entità** puoi mettere in una stanza
 qualsiasi entità di Home Assistant, anche senza area o di un tipo che HubNEX non disegna
 (compare con il suo stato). Gli aiutanti nascono senza area: assegnala in Home Assistant oppure

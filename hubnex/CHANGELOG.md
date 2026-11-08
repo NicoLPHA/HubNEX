@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.18.0
+- **Card libera** (prima parte): una card a blocchi su una griglia da 4 colonne, 2 sul
+  telefono. Blocchi: valore grande, anello, interruttore, pulsante, cursore, grafico, barra,
+  fascia oraria, selettore, stato e testo; per ognuno entità, etichetta, dimensione (da 1×1 a
+  4×2), minimo e massimo. Nome e colore della card, anteprima dal vivo nell'editor. Si crea da
+  Modifica stanza → + Card libera.
+
 ## 1.17.0
 - **Card Scorta** per il pellet e simili: quanti ne restano, consumo al giorno e giorni
   rimasti (dallo storico di Home Assistant), ultima consegna, "−1 caricato" e "+consegna".
