@@ -64,6 +64,7 @@ ADDON_OPTIONS = {
     "voice_answers": "VOICE_ANSWERS",
     "language": "HUBNEX_LANGUAGE",
     "ha_blocked_services": "HA_BLOCKED_SERVICES",
+    "calendar_entities": "HUBNEX_CALENDARS",
     "install_assist_integration": "HUBNEX_INSTALL_ASSIST",
     "non_admin_access": "HUBNEX_NON_ADMIN_ACCESS",
     "anthropic_credit_usd": "ANTHROPIC_CREDIT_USD",
@@ -189,6 +190,8 @@ class Settings:
     ha_token: str = ""
     # Services Jarvis may never call on its own (e.g. unlocking doors, disarming the alarm)
     ha_blocked_services: set[str] = field(default_factory=set)
+    # Calendars the calendar_events tool may read (entity ids). Empty = every calendar of Home Assistant.
+    calendar_entities: set[str] = field(default_factory=set)
     telegram_token_jarvis: str = ""
     telegram_token_mail: str = ""
     telegram_chat_id: str = ""  # the team group (negative id)
@@ -236,6 +239,7 @@ class Settings:
             port=int(e("HQ_PORT") or 8765),
             ha_url=(e("HA_URL") or "").rstrip("/"),
             ha_token=e("HA_TOKEN", ""),
+            calendar_entities={x.strip() for x in (e("HUBNEX_CALENDARS") or "").replace(";", ",").split(",") if x.strip().startswith("calendar.")},
             ha_blocked_services={
                 x.strip()
                 for x in (

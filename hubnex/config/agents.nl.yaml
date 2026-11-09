@@ -13,6 +13,7 @@
 #    ha_list_entities, ha_get_state, ha_call_service      -> Home Assistant
 #    mail_list, mail_search, mail_read, mail_propose_draft -> mailbox (concepten die jij goedkeurt)
 #    web_search, web_fetch                                -> zoeken op het web
+#    calendar_events                                      -> agenda's van Home Assistant (alleen lezen)
 #    notify_owner                                         -> bericht in de Telegram-groep
 #    deadline_done                                        -> deadlines afsluiten
 #  Altijd inbegrepen: memory_save, memory_search, deadline_add, deadline_list

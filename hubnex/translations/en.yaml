@@ -94,6 +94,9 @@ configuration:
     description: completa = the voice reads the whole answer; riassunto = for long answers the voice says only the gist in one or two sentences, the written text stays complete.
   ha_blocked_services:
     name: Blocked HA services
+  calendar_entities:
+    name: Allowed calendars
+    description: Comma separated entity ids (e.g. calendar.nico, calendar.family) the calendar_events tool may read. Empty = every Home Assistant calendar. The appointments are read by the agents you give the tool to and sent to the AI provider.
   install_assist_integration:
     name: Assist integration
     description: Install and update the integration that makes Jarvis an Assist conversation agent.

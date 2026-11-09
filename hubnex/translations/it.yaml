@@ -105,6 +105,9 @@ configuration:
   ha_blocked_services:
     name: Servizi HA bloccati
     description: Servizi che Jarvis non può mai chiamare da solo, separati da virgola.
+  calendar_entities:
+    name: Agende consentite
+    description: Entity id separati da virgola (es. calendar.nico, calendar.famiglia) che lo strumento calendar_events può leggere. Vuoto = tutte le agende di Home Assistant. Gli appuntamenti vengono letti dagli agenti a cui dai lo strumento e inviati al fornitore AI.
   install_assist_integration:
     name: Integrazione Assist
     description: Installa e aggiorna l'integrazione che rende Jarvis l'agente di conversazione di Assist (voce da app di HA e speaker).

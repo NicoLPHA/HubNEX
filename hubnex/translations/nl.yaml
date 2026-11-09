@@ -95,6 +95,9 @@ configuration:
   ha_blocked_services:
     name: Geblokkeerde HA-diensten
     description: Gescheiden door komma's. Diensten die Jarvis nooit zelf mag aanroepen, bijvoorbeeld sloten ontgrendelen of het alarm uitschakelen. Scripts en automatiseringen vallen hier niet onder, bedenk dat dus bij wat je blootstelt.
+  calendar_entities:
+    name: Toegestane agenda's
+    description: Entity-id's gescheiden door komma's (bijv. calendar.nico, calendar.gezin) die de tool calendar_events mag lezen. Leeg = alle agenda's van Home Assistant. De afspraken worden gelezen door de agents aan wie je de tool geeft en gaan naar de AI-aanbieder.
   install_assist_integration:
     name: Assist-integratie
     description: Installeer en werk de integratie bij waarmee Jarvis een gespreksagent van Assist wordt.

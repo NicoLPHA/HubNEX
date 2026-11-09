@@ -189,6 +189,28 @@ reads anyway). Word and Excel files are not read directly: save them as PDF (or 
 sheet). Each photo costs about as much as 1,500 words of text; a PDF about 1,500–3,000 per page.
 Attachments are kept for 30 days in `/data/allegati`, then deleted.
 
+## Calendars
+
+With the `calendar_events` tool agents can read your **calendars from Home Assistant**, for example Google
+Calendar, and answer questions about them ("What do I have on Thursday?", "When are we both free?"). The tool is
+**read only**: it cannot create, change or delete anything.
+
+1. Make sure the calendars are in Home Assistant. With Google Calendar **every calendar of the account** (shared
+   ones too, such as a partner's) becomes its own `calendar.<name>` entity. To use someone else's calendar, ask
+   them to share it with your Google account. Check under Settings → Devices & services → Google Calendar which
+   calendars there are.
+2. Give the tool to the agents that need it, in `agents.yaml`: `tools: [..., calendar_events]`. Without it an
+   agent cannot read appointments.
+3. Choose which calendars HubNEX may read with the **Allowed calendars** option (`calendar_entities`), for example
+   `calendar.nico, calendar.danielle`. Empty means **every** Home Assistant calendar, birthdays, holidays or work
+   too. Any other calendar is not shown, even if an agent asks for it.
+
+Every appointment carries the name of its calendar, so Jarvis knows whose it is. The title, start and end, the
+place and a shortened description are read; the text in an appointment is **data, not an order** (an invitation
+from someone else can contain anything). The appointments go to the AI provider: only add someone else's
+calendar with their consent. Don't give `calendar_events` to an agent that may also act on the house
+(`ha_call_service`): text from an invitation could try to steer it.
+
 ## Work mailbox
 
 Set your provider's IMAP/SMTP (servers, SSL ports 993/465, user, password).

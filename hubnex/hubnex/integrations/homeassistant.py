@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 import httpx
@@ -149,6 +150,14 @@ class HomeAssistant:
             json={"entity_id": entity_id, "type": "daily"},
         )
         return (((res or {}).get("service_response") or {}).get(entity_id) or {}).get("forecast") or []
+
+    async def calendar_events(self, entity_ids: list[str], start: datetime, end: datetime) -> dict[str, list[dict]]:
+        """The events of calendars between two moments. `calendar.get_events` answers with data, which
+        Home Assistant only returns when asked for it (`?return_response`)."""
+        body = {"entity_id": entity_ids, "start_date_time": start.isoformat(), "end_date_time": end.isoformat()}
+        out = await self._request("POST", "/services/calendar/get_events", params={"return_response": "true"}, json=body)
+        answer = (out or {}).get("service_response") or {}
+        return {eid: list((v or {}).get("events") or []) for eid, v in answer.items()}
 
     async def call_service(self, domain: str, service: str, data: dict | None = None, by_owner: bool = False) -> list[dict]:
         """`by_owner`: pressed by the owner in the dashboard, so the services Jarvis may not

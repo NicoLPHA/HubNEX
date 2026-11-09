@@ -185,6 +185,25 @@ che Claude legge comunque). Word ed Excel non si leggono direttamente: salvali i
 un foglio). Ogni foto costa circa quanto 1.500 parole di testo; un PDF circa 1.500–3.000 per
 pagina. Gli allegati restano 30 giorni in `/data/allegati`, poi vengono cancellati.
 
+## Agende
+
+Con lo strumento `calendar_events` gli agenti possono leggere le tue **agende di Home Assistant**, per esempio
+Google Calendar, e rispondere a domande ("Cosa ho giovedì?", "Quando siamo liberi entrambi?"). Lo strumento è
+**di sola lettura**: non può creare, modificare né cancellare nulla.
+
+1. Le agende devono essere in Home Assistant. Con Google Calendar **ogni agenda dell'account** (anche quelle
+   condivise, come quella del partner) diventa un'entità `calendar.<nome>`. Per usare l'agenda di un'altra
+   persona, chiedile di condividerla con il tuo account Google. Controlla in Impostazioni → Dispositivi e
+   servizi → Google Calendar quali agende ci sono.
+2. Dai lo strumento agli agenti che ne hanno bisogno, in `agents.yaml`: `tools: [..., calendar_events]`.
+3. Scegli quali agende HubNEX può leggere con l'opzione **Agende consentite** (`calendar_entities`), per
+   esempio `calendar.nico, calendar.danielle`. Vuoto = **tutte** le agende di Home Assistant (anche compleanni,
+   festività, lavoro). Le altre non vengono mostrate, nemmeno se un agente le chiede.
+
+Ogni appuntamento riporta il nome della sua agenda. Il testo degli appuntamenti sono dati, non ordini. Gli
+appuntamenti vanno al fornitore AI: aggiungi l'agenda di un'altra persona solo con il suo consenso. Non dare
+`calendar_events` a un agente che può anche agire sulla casa (`ha_call_service`).
+
 ## Posta di lavoro
 
 Imposta IMAP/SMTP del tuo provider (server, porte SSL 993/465, utente, password).

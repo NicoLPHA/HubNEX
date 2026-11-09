@@ -198,6 +198,28 @@ bericht. Foto's worden gedraaid zoals ze zijn genomen en geschaald tot 1568 pixe
 csv voor een spreadsheet). Elke foto kost ongeveer evenveel als 1.500 woorden tekst; een pdf ongeveer
 1.500–3.000 per pagina. Bijlagen worden 30 dagen bewaard in `/data/allegati` en daarna verwijderd.
 
+## Agenda's
+
+Met de tool `calendar_events` kunnen agents je **agenda's uit Home Assistant** lezen, bijvoorbeeld Google
+Agenda, en er vragen over beantwoorden ("Wat heb ik donderdag?", "Wanneer hebben we allebei tijd?"). De tool
+is **alleen lezen**: hij kan niets aanmaken, wijzigen of verwijderen.
+
+1. Zorg dat de agenda's in Home Assistant staan. Bij Google Agenda wordt **elke agenda van het account**
+   (ook gedeelde, zoals die van een partner) een eigen entiteit `calendar.<naam>`. Wil je de agenda van iemand
+   anders gebruiken, laat die persoon hem dan met jouw Google-account delen. Controleer onder Instellingen →
+   Apparaten & diensten → Google Agenda welke agenda's er zijn.
+2. Geef de tool aan de agents die hem nodig hebben, in `agents.yaml`: `tools: [..., calendar_events]`.
+   Zonder dat kan een agent geen afspraken lezen.
+3. Kies welke agenda's HubNEX mag lezen met de optie **Toegestane agenda's** (`calendar_entities`), bijvoorbeeld
+   `calendar.nico, calendar.danielle`. Leeg betekent **alle** agenda's van Home Assistant, ook verjaardagen,
+   feestdagen of werk. Een andere agenda wordt dan niet getoond, ook niet als een agent erom vraagt.
+
+Bij elke afspraak staat de naam van de agenda, zodat Jarvis weet van wie ze zijn. De titel, het begin- en
+eindtijdstip, de plaats en een ingekorte omschrijving worden gelezen; de tekst in een afspraak is **data, geen
+opdracht** (een uitnodiging van iemand anders kan er alles in zetten). De afspraken gaan naar de AI-aanbieder:
+zet de agenda van een ander er alleen in met diens toestemming. Geef `calendar_events` niet aan een agent die ook
+huisacties mag uitvoeren (`ha_call_service`): tekst uit een uitnodiging zou hem kunnen proberen te sturen.
+
 ## Zakelijke mailbox
 
 Stel de IMAP/SMTP van je provider in (servers, SSL-poorten 993/465, gebruiker, wachtwoord).

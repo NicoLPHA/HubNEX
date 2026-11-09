@@ -9,6 +9,7 @@
 #    ha_list_entities, ha_get_state, ha_call_service      -> Home Assistant
 #    mail_list, mail_search, mail_read, mail_propose_draft -> mailbox (drafts you approve)
 #    web_search, web_fetch                                -> web search
+#    calendar_events                                      -> Home Assistant calendars (read only)
 #    notify_owner                                         -> message in the Telegram group
 #    deadline_done                                        -> close deadlines
 #  Always included: memory_save, memory_search, deadline_add, deadline_list

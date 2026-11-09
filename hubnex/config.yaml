@@ -73,6 +73,7 @@ options:
   voice_answers: completa
   language: auto
   ha_blocked_services: lock.unlock,lock.open,alarm_control_panel.alarm_disarm
+  calendar_entities: ""
   install_assist_integration: true
   non_admin_access: casa
 schema:
@@ -114,5 +115,6 @@ schema:
   voice_answers: list(completa|riassunto)
   language: list(auto|it|en|nl)
   ha_blocked_services: str?
+  calendar_entities: str?
   install_assist_integration: bool
   non_admin_access: list(casa|completo)
