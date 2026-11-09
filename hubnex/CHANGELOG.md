@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.20.3
+Nederlandse fork (NicoLPHA/HubNEX), gebaseerd op upstream 1.20.2.
+- **Nederlands als standaardtaal** voor de add-on, de meldingen, Telegram, het voorbeeldteam en het dashboard;
+  de opties-pagina en de handleiding (tabblad Documentatie) zijn Nederlands. De keuzelijsten hebben Nederlandse
+  waarden (laag/gemiddeld/hoog, volledig/samenvatting, huis/volledig); de oude waarden blijven werken.
+- **Scherm Taal, stem en agenda's** in het dashboard (Voorkeuren): dropdowns voor taal, spraakengine, stem en
+  agenda's, met de lijsten uit Home Assistant. Een keuze geldt meteen en blijft na een herstart.
+- **Gesproken meldingen** via speakers (Sonos, Google…): aan/uit, speakers, engine en volume, per regel.
+- **Agenda-tool** `calendar_events`: afspraken uit de agenda's van Home Assistant (Google Agenda), alleen lezen,
+  met een lijst van toegestane agenda's.
+- Voorbeeldteam `agents.nl.yaml` voor het huis; het Werk-blok staat als optioneel blok in commentaar.
+- Beveiliging: IMAP-zoekterm gezuiverd, filter voor deur-/alarmopdrachten ook in het Nederlands en Engels, de
+  add-on bouwt lokaal in plaats van een image van de oorspronkelijke auteur te downloaden.
+
 ## 1.20.2
 - Card libera, stile **Pulito** come le card composte: etichette piccole, valori di misura
   media, una linea sopra ogni blocco che si accende quando l'entità è attiva, orari con −15/+15
