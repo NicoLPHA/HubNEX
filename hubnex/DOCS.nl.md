@@ -48,6 +48,14 @@ Server**, of via Samba in de share `addon_configs`. **Start de add-on opnieuw op
 - Routines: taken die een agent op vaste tijden zelf uitvoert. Ze staan **uit** totdat je
   `enabled: true` schrijft.
 
+Het Nederlandse voorbeeldteam is voor het **huis** (Jarvis Butler en Jarvis Wacht). Voor zakelijke
+mail staat onderaan een kant-en-klaar blok **WERK** in commentaar (Jarvis Mail en Jarvis Boekhouder): haal
+bij alle regels tussen `# >>> WERK` en `# <<< WERK` de eerste `# ` weg om het te gebruiken. Zonder de agent
+met id `mail` zet HubNEX de mailbox uit en meldt dat in het logboek.
+
+Laat agents weg die je niet nodig hebt: een agent is alleen nuttig als hij sensoren of gegevens heeft om
+naar te kijken. Een beveiligingsagent zonder deur-, raam- of alarmsensoren heeft niets te doen.
+
 Het voorbeeldbestand is regel voor regel van commentaar voorzien. Instructies mag je in elke taal
 schrijven: de assistent antwoordt hoe dan ook in de taal van de add-on.
 

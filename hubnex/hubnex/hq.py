@@ -145,7 +145,11 @@ class HQ:
 
             team = TelegramTeam(settings, self)
         self.team = team  # the Telegram group: Jarvis' bot plus one bot per agent that has one
-        self.maildesk = MailDesk(self) if settings.mail.enabled else None
+        self.maildesk = MailDesk(self) if settings.mail.enabled and org.agent(MAIL_AGENT_ID) else None
+        if settings.mail.enabled and self.maildesk is None:
+            # The mail desk works through the agent with this id: without it every mail action would fail.
+            log.warning("Posta configurata ma agents.yaml non ha l'agente con id '%s': la posta resta spenta. "
+                        "Aggiungilo (vedi il blocco LAVORO/WERK dell'esempio).", MAIL_AGENT_ID)
         self.alerts = Alerts(self)  # smart notifications about the house (no Claude)
         self.actions = ActionDesk(self)  # changes to other programs wait for the owner's ✅
         self.connectors = Connectors(self, org.connectors)  # the programs of your work (MCP)

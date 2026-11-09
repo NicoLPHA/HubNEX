@@ -155,8 +155,8 @@ def test_dutch_example_team(tmp_path, monkeypatch):
     from hubnex import config
     from hubnex.config import load_org
     org = load_org(str(config.DEFAULT_AGENTS_NL))
-    assert org.boss_name == "Jarvis" and len(org.companies) == 2
-    assert len(org.agents) == len(load_org(str(config.DEFAULT_AGENTS)).agents)
+    assert org.boss_name == "Jarvis" and [c.id for c in org.companies] == ["home"], "the example is for the house only"
+    assert {a.id for a in org.agents} == {"butler", "sentinel"}
     # first start of the add-on in a Dutch Home Assistant: the Dutch example team
     opts, cfg = tmp_path / "options.json", tmp_path / "cfg"
     opts.write_text("{}")
@@ -203,3 +203,51 @@ async def test_deadline_warnings_follow_the_language(make_hq):
             assert all("Deadline" in t for t in texts) == (lang == "nl")
         finally:
             i18n.set_system_lang("it")
+
+
+def _with_work_block(text: str) -> str:
+    """The example with its WERK block switched on: the first "# " of every line between the markers is removed."""
+    out, inside = [], False
+    for line in text.splitlines():
+        if line.startswith("# >>> WERK"):
+            inside = True
+        elif line.startswith("# <<< WERK"):
+            inside = False
+        elif inside and line.startswith("#   "):
+            line = line[2:]
+        out.append(line)
+    return "\n".join(out)
+
+
+def test_the_dutch_work_block_can_be_switched_on():
+    import yaml
+
+    from hubnex import config
+
+    text = _with_work_block(config.DEFAULT_AGENTS_NL.read_text(encoding="utf-8"))
+    data = yaml.safe_load(text)
+    assert [c["id"] for c in data["companies"]] == ["home", "work"]
+    work = data["companies"][1]
+    assert {a["id"] for a in work["agents"]} == {"mail", "accountant"}
+    mail = next(a for a in work["agents"] if a["id"] == "mail")
+    assert "mail_propose_draft" in mail["tools"] and "ha_call_service" not in mail["tools"]
+
+
+def test_mail_without_a_mail_agent_is_switched_off_not_broken(settings, make_hq, caplog):
+    import logging
+
+    from hubnex import config
+    from hubnex.config import MailSettings, load_org
+    from hubnex.hq import HQ
+    from hubnex.store import Store
+    from tests.conftest import FakeClient
+
+    settings.mail = MailSettings(user="a@b.c", password="x", imap_host="h", smtp_host="s")
+    with_agent = make_hq([])  # the default example has the mail agent
+    assert with_agent.maildesk is not None
+    settings.agents_file = str(config.DEFAULT_AGENTS_NL)  # house only: no agent with id "mail"
+    with caplog.at_level(logging.WARNING, logger="hubnex.hq"):
+        hq = HQ(settings, load_org(settings.agents_file), Store(settings.db_path), client=FakeClient([]))
+    assert hq.maildesk is None
+    assert "mail" in caplog.text
+
