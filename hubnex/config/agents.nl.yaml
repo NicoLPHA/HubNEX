@@ -11,6 +11,9 @@
 #
 #  Tools die je kunt toewijzen:
 #    ha_list_entities, ha_get_state, ha_call_service      -> Home Assistant
+#    ha_history                                           -> geschiedenis van sensoren (alleen lezen)
+#    ha_scene_save/apply/list/delete                      -> lampenstanden onthouden en terugzetten
+#    ha_shopping_list, ha_shopping_add                    -> boodschappenlijst van Home Assistant
 #    mail_list, mail_search, mail_read, mail_propose_draft -> mailbox (concepten die jij goedkeurt)
 #    web_search, web_fetch                                -> zoeken op het web
 #    calendar_events                                      -> agenda's van Home Assistant (alleen lezen)
@@ -34,7 +37,7 @@
 boss:
   name: Jarvis
   effort: medium
-  tools: [ha_list_entities, ha_get_state, ha_call_service, notify_owner, web_search]
+  tools: [ha_list_entities, ha_get_state, ha_call_service, ha_history, ha_scene_save, ha_scene_apply, ha_scene_list, ha_scene_delete, ha_shopping_list, ha_shopping_add, notify_owner, web_search]
   instructions: |
     Je spreekt je gebruiker aan met "meneer" (pas hier aan hoe je genoemd wilt worden en vertel wie je
     bent: je gezin, je gewoontes, hoe je huis in elkaar zit; hoe meer hij weet, hoe nuttiger hij is).
@@ -76,7 +79,7 @@ companies:
         role: Beveiligingswacht (deuren, ramen, sensoren)
         department: security
         effort: low
-        tools: [ha_list_entities, ha_get_state, notify_owner]
+        tools: [ha_list_entities, ha_get_state, ha_history, notify_owner]
         instructions: |
           Je controleert deuren, ramen, bewegingssensoren en het alarm. Je verandert niets:
           je let op en meldt het de eigenaar met notify_owner als er iets niet klopt.

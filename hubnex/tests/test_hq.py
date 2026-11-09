@@ -319,12 +319,14 @@ def test_split_voice():
 
 def _house(hq, local=None):
     asked = []
+    langs = hq._test_langs = []
 
     class HA:
         enabled = True
 
-        async def conversation(self, text, agent_id="conversation.home_assistant"):
+        async def conversation(self, text, agent_id="conversation.home_assistant", language=None):
             asked.append(text)
+            langs.append(language)
             return local or {"response": {"response_type": "error", "data": {"code": "no_intent_match"}}}
 
     hq.ha = HA()
@@ -379,6 +381,28 @@ async def test_dashboard_tries_home_assistant_first(make_hq):
     asked2 = _house(hq2, {"response": {"response_type": "action_done", "speech": {"plain": {"speech": "Sbloccata"}}}})
     reply, _, by = await hq2.converse("dashboard", "sblocca la porta d'ingresso", quick=True, local=True)
     assert by == "jarvis" and asked2 == [] and hq2.client.requests[-1]["model"] == hq2.settings.model
+
+
+async def test_local_first_passes_the_language_and_skips_claude(make_hq):
+    hq = make_hq([])
+    asked = _house(hq, {"response": {"response_type": "action_done", "speech": {"plain": {"speech": "Klaar"}}}})
+    hq.settings.language = "nl"
+    out = await hq.converse("telegram:1", "doe het licht in de keuken aan", quick=True, local=True)
+    assert out == ("Klaar", None, "ha") and asked == ["doe het licht in de keuken aan"]
+    assert hq._test_langs == ["nl"] and hq.client.requests == []
+    hq.settings.language = "auto"  # Home Assistant's own language
+    await hq.converse("telegram:1", "doe het licht aan", quick=True, local=True)
+    assert hq._test_langs[-1] is None
+
+
+async def test_telegram_asks_home_assistant_first(make_hq):
+    """Telegram's text goes through the same local route as the dashboard."""
+    import inspect
+
+    from hubnex.integrations import telegram
+
+    src = inspect.getsource(telegram.TelegramTeam._ask_jarvis)
+    assert "local=True" in src and "quick=True" in src
 
 
 def test_mail_ignore_list(settings):

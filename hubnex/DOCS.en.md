@@ -233,6 +233,21 @@ from someone else can contain anything). The appointments go to the AI provider:
 calendar with their consent. Don't give `calendar_events` to an agent that may also act on the house
 (`ha_call_service`): text from an invitation could try to steer it.
 
+## History, scenes and the shopping list
+
+Three extras for the house. Give the tools to the agents that need them, in `agents.yaml`.
+
+- **History** (`ha_history`, read only): "How often did the back door open this week?", "How warm was it in the
+  living room yesterday?". For a measurement Jarvis gets the minimum, maximum and average; for a door, light or
+  presence, how often it turned on or opened. Up to 5 entities and 7 days back (Home Assistant keeps 10 by default).
+- **Scenes** (`ha_scene_save`, `ha_scene_apply`, `ha_scene_list`, `ha_scene_delete`): "Remember the lights as movie
+  night", later "Movie night on". A scene remembers only **lights and plugs** (on/off, brightness, colour). HubNEX keeps
+  it itself and it survives a restart; **nothing is written to Home Assistant's configuration**. At most 30 scenes.
+  Routines and automations may not save or apply a scene, only you.
+- **Shopping list** (`ha_shopping_list`, `ha_shopping_add`): "Put milk and bread on the list". It uses Home
+  Assistant's `todo.shopping_list` (or the only list you have; with several, Jarvis asks which). What is already on
+  it is not added twice.
+
 ## Work mailbox
 
 Set your provider's IMAP/SMTP (servers, SSL ports 993/465, user, password).

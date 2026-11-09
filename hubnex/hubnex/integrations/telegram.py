@@ -222,7 +222,10 @@ class TelegramTeam:
         await ctx.bot.send_chat_action(chat_id, ChatAction.TYPING)
         try:
             speak = voice and self.settings.telegram_voice_replies and self.hq.tts_enabled
-            answer, said, _ = await self.hq.converse(f"telegram:{chat_id}", text, spoken=speak, attachments=attachments)
+            # Short house requests: Home Assistant's own sentences first, then the quick route; only
+            # what is too long or too involved (or has files) reaches Jarvis.
+            answer, said, _ = await self.hq.converse(
+                f"telegram:{chat_id}", text, spoken=speak, attachments=attachments, local=True, quick=True)
         except Exception as exc:
             log.exception("Errore Jarvis")
             answer, said = f"{tr_sys('Mi scusi, qualcosa è andato storto')}: {exc}", None

@@ -108,9 +108,15 @@ class HomeAssistant:
             raise HomeAssistantError(tr("sintesi vocale {a}: HA {b}", a=engine, b=r.status_code))
         return r.content, r.headers.get("content-type", "audio/mpeg")
 
-    async def conversation(self, text: str, agent_id: str = "conversation.home_assistant") -> dict:
-        """Home Assistant's own conversation agent (the sentences Assist understands locally)."""
-        return await self._request("POST", "/conversation/process", json={"text": text, "agent_id": agent_id}, timeout=10)
+    async def conversation(
+        self, text: str, agent_id: str = "conversation.home_assistant", language: str | None = None
+    ) -> dict:
+        """Home Assistant's own conversation agent (the sentences Assist understands locally).
+        `language`: the sentences' language; without it Home Assistant uses its own."""
+        body = {"text": text, "agent_id": agent_id}
+        if language:
+            body["language"] = language
+        return await self._request("POST", "/conversation/process", json=body, timeout=10)
 
     async def camera_image(self, entity_id: str) -> tuple[bytes, str]:
         """A still frame of a camera (JPEG, usually) and its content type."""
@@ -158,6 +164,15 @@ class HomeAssistant:
         out = await self._request("POST", "/services/calendar/get_events", params={"return_response": "true"}, json=body)
         answer = (out or {}).get("service_response") or {}
         return {eid: list((v or {}).get("events") or []) for eid, v in answer.items()}
+
+    async def todo_items(self, entity_id: str, status: str = "needs_action") -> list[dict]:
+        """The items of a to-do list (the shopping list is `todo.shopping_list`): [{summary, status, ...}]."""
+        out = await self._request(
+            "POST", "/services/todo/get_items", params={"return_response": "true"},
+            json={"entity_id": entity_id, "status": status},
+        )
+        answer = ((out or {}).get("service_response") or {}).get(entity_id) or {}
+        return list(answer.get("items") or [])
 
     async def call_service(self, domain: str, service: str, data: dict | None = None, by_owner: bool = False) -> list[dict]:
         """`by_owner`: pressed by the owner in the dashboard, so the services Jarvis may not

@@ -242,6 +242,23 @@ opdracht** (een uitnodiging van iemand anders kan er alles in zetten). De afspra
 zet de agenda van een ander er alleen in met diens toestemming. Geef `calendar_events` niet aan een agent die ook
 huisacties mag uitvoeren (`ha_call_service`): tekst uit een uitnodiging zou hem kunnen proberen te sturen.
 
+## Geschiedenis, scènes en boodschappenlijst
+
+Drie extra mogelijkheden voor het huis. Geef de tools aan de agents die ze nodig hebben, in `agents.yaml`.
+
+- **Geschiedenis** (`ha_history`, alleen lezen): "Hoe vaak ging de achterdeur deze week open?", "Hoe warm was het
+  gisteren in de woonkamer?". Bij een meting krijgt Jarvis het minimum, maximum en gemiddelde; bij een deur, lamp of
+  aanwezigheid hoe vaak die aan of open ging. Tot 5 entiteiten en 7 dagen terug (Home Assistant bewaart standaard
+  10 dagen).
+- **Scènes** (`ha_scene_save`, `ha_scene_apply`, `ha_scene_list`, `ha_scene_delete`): "Onthoud hoe de lampen nu staan
+  als filmavond" en later "Zet filmavond aan". Een scène onthoudt alleen **lampen en stopcontacten**
+  (aan/uit, helderheid, kleur). Ze wordt door HubNEX zelf bewaard en blijft na een herstart; er wordt **niets in
+  de configuratie van Home Assistant geschreven**. Maximaal 30 scènes. Routines en automatiseringen mogen geen scène
+  opslaan of toepassen, alleen jij.
+- **Boodschappenlijst** (`ha_shopping_list`, `ha_shopping_add`): "Zet melk en brood op de lijst". Dit gebruikt de
+  lijst `todo.shopping_list` van Home Assistant (integratie Boodschappenlijst) of de enige lijst die je hebt; heb je er
+  meer, dan vraagt Jarvis welke. Wat er al op staat, wordt niet dubbel toegevoegd.
+
 ## Zakelijke mailbox
 
 Stel de IMAP/SMTP van je provider in (servers, SSL-poorten 993/465, gebruiker, wachtwoord).

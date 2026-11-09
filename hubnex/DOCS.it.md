@@ -221,6 +221,21 @@ Ogni appuntamento riporta il nome della sua agenda. Il testo degli appuntamenti 
 appuntamenti vanno al fornitore AI: aggiungi l'agenda di un'altra persona solo con il suo consenso. Non dare
 `calendar_events` a un agente che può anche agire sulla casa (`ha_call_service`).
 
+## Storico, scene e lista della spesa
+
+Tre extra per la casa. Dai gli strumenti agli agenti che ne hanno bisogno, in `agents.yaml`.
+
+- **Storico** (`ha_history`, sola lettura): «Quante volte si è aperta la porta sul retro questa settimana?».
+  Per una misura Jarvis riceve minimo, massimo e media; per una porta o una luce, quante volte si è acceso o aperto.
+  Fino a 5 entità e 7 giorni (Home Assistant ne conserva 10 di default).
+- **Scene** (`ha_scene_save`, `ha_scene_apply`, `ha_scene_list`, `ha_scene_delete`): «Ricorda le luci come serata
+  film», poi «Serata film». Una scena ricorda solo **luci e prese**. La conserva HubNEX e resta dopo un riavvio;
+  **non si scrive nulla nella configurazione di Home Assistant**. Al massimo 30 scene. Routine e automazioni non
+  possono salvarle né applicarle, solo tu.
+- **Lista della spesa** (`ha_shopping_list`, `ha_shopping_add`): «Metti latte e pane in lista». Usa
+  `todo.shopping_list` di Home Assistant (o l'unica lista che hai; con più liste Jarvis chiede quale). Ciò che c'è già
+  non viene aggiunto due volte.
+
 ## Posta di lavoro
 
 Imposta IMAP/SMTP del tuo provider (server, porte SSL 993/465, utente, password).

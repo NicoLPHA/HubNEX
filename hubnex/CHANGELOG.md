@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.20.4
+- **Eerst lokaal, dan Claude:** een bericht probeert eerst de eigen zinnen van Home Assistant (geen AI), dan de
+  snelle route (Haiku) en pas dan Jarvis. Dat geldt nu ook voor Telegram; de gekozen taal gaat mee naar Home
+  Assistant.
+- **Geschiedenis:** tool `ha_history` (alleen lezen): minimum, maximum en gemiddelde van een sensor, of hoe vaak
+  een deur of lamp aan/open ging, tot 7 dagen terug.
+- **Scènes:** `ha_scene_save`, `ha_scene_apply`, `ha_scene_list`, `ha_scene_delete`: HubNEX onthoudt hoe de lampen
+  nu staan ("onthoud dit als filmavond") en zet ze terug. Ze staan in HubNEX zelf; er wordt niets in de
+  configuratie van Home Assistant geschreven.
+- **Boodschappenlijst:** `ha_shopping_list` en `ha_shopping_add` ("zet melk en brood op de lijst"), zonder dubbelen.
+
 ## 1.20.3
 Nederlandse fork (NicoLPHA/HubNEX), gebaseerd op upstream 1.20.2.
 - **Nederlands als standaardtaal** voor de add-on, de meldingen, Telegram, het voorbeeldteam en het dashboard;

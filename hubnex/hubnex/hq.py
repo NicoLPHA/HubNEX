@@ -820,14 +820,16 @@ class HQ:
     async def _ha_local(self, text: str) -> str | None:
         """Home Assistant's built-in agent: its answer when it understood and did it, else None."""
         try:
-            res = await self.ha.conversation(text)
+            # An explicit language (nl/en/it) goes along; "auto" leaves it to Home Assistant.
+            lang_ = self.settings.language if self.settings.language in LANGS else None
+            res = await (self.ha.conversation(text, language=lang_) if lang_ else self.ha.conversation(text))
         except Exception as exc:
             log.info("HA conversation unavailable: %s", exc)
             return None
         r = (res or {}).get("response") or {}
         if r.get("response_type") not in ("action_done", "query_answer"):
             return None
-        speech = ((r.get("speech") or {}).get("plain") or {}).get("speech") or "Fatto."
+        speech = ((r.get("speech") or {}).get("plain") or {}).get("speech") or f"{tr_sys('Fatto')}."
         return speech.strip()
 
     async def _quick(self, text: str, voice: bool, history: list[dict]) -> str | None:
