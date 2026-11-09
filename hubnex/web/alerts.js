@@ -67,6 +67,7 @@ export class AlertsView {
     if (!cfg) return;
     const sw = e.target.closest("[data-al-on]");
     if (sw) { cfg.rules[sw.dataset.alOn].on = !cfg.rules[sw.dataset.alOn].on; return this.save(); }
+    if (e.target.closest("[data-al-spk]")) { cfg.speaker.on = !cfg.speaker.on; return this.save(); }
     const ch = e.target.closest("[data-al-ch]");
     if (ch) { const [rule, c] = ch.dataset.alCh.split(":"); cfg.rules[rule][c] = !cfg.rules[rule][c]; return this.save(); }
     const list = e.target.closest("[data-al-list]");
@@ -98,6 +99,14 @@ export class AlertsView {
       const now = new Set(cfg.phones ?? all);
       el.checked ? now.add(el.dataset.alPhone) : now.delete(el.dataset.alPhone);
       cfg.phones = all.every((s) => now.has(s)) ? null : [...now];
+    } else if (el.dataset.alPlayer) {
+      const now = new Set(cfg.speaker.players);
+      el.checked ? now.add(el.dataset.alPlayer) : now.delete(el.dataset.alPlayer);
+      cfg.speaker.players = [...now];
+    } else if (el.dataset.alTts !== undefined) {
+      cfg.speaker.tts = el.value;
+    } else if (el.dataset.alVol !== undefined) {
+      cfg.speaker.volume = Math.max(0, Math.min(100, Number(el.value) || 0));
     } else if (el.dataset.alEnt) {
       const ex = new Set(cfg.exclude);
       el.checked ? ex.delete(el.dataset.alEnt) : ex.add(el.dataset.alEnt);
@@ -135,9 +144,29 @@ export class AlertsView {
     return `<div class="al-where">
       <div class="al-row"><span>${t("Telefoni (app Home Assistant)")}</span><div class="al-phones">${phones}</div></div>
       <div class="al-row"><span>${t("Telegram")}</span><span class="al-muted">${d.telegram ? t("Gruppo collegato") : t("Non configurato: le regole con Telegram usano solo gli altri canali")}</span></div>
+      ${this.speakerHTML(d)}
       <div class="al-row"><span>${t("Ore di silenzio")}<small>${t("Tranne perdite, fumo e gas. Vuoto = sempre attive")}</small></span>
         <span class="al-times"><input type="time" data-al-quiet="from" value="${esc(cfg.quiet.from)}" aria-label="${t("Dalle")}"> – <input type="time" data-al-quiet="to" value="${esc(cfg.quiet.to)}" aria-label="${t("Alle")}"></span></div>
     </div>`;
+  }
+
+  speakerHTML(d) {
+    const sp = d.cfg.speaker, so = d.speaker;
+    const head = `<div class="al-row"><span>${t("Notifiche a voce")}<small>${t("Leggi gli avvisi ad alta voce sugli altoparlanti scelti (Sonos, Google…). Spento: nessun suono. Rispetta le ore di silenzio, tranne perdite, fumo e gas.")}</small></span>
+        <button type="button" class="casa-switch ${sp.on ? "on" : ""}" data-al-spk role="switch" aria-checked="${sp.on}" aria-label="${t("Notifiche a voce")}"></button></div>`;
+    if (!sp.on) return head;
+    const players = so.players.length
+      ? so.players.map((p) => `<label class="al-check"><input type="checkbox" data-al-player="${esc(p.e)}" ${sp.players.includes(p.e) ? "checked" : ""}>${esc(p.n)}<small>${esc(p.e)}</small></label>`).join("")
+      : `<span class="al-muted">${t("Nessun altoparlante trovato in Home Assistant.")}</span>`;
+    const hint = so.players.length && !sp.players.length ? `<span class="al-muted">${t("Scegli almeno un altoparlante")}</span>` : "";
+    const engines = so.tts_choices.map((e) => `<option value="${esc(e)}" ${sp.tts === e ? "selected" : ""}>${esc(e)}</option>`).join("");
+    const engine = so.tts_choices.length || so.tts
+      ? `<select data-al-tts aria-label="${t("Motore vocale")}"><option value="" ${sp.tts ? "" : "selected"}>${t("Automatico")}${!sp.tts && so.tts ? ` (${esc(so.tts)})` : ""}</option>${engines}</select>`
+      : `<span class="al-muted">${t("Nessun motore vocale: imposta «Voce da Home Assistant» nelle opzioni dell'add-on o aggiungi un'integrazione TTS.")}</span>`;
+    return head + `
+      <div class="al-row"><span>${t("Altoparlanti")}</span><div class="al-phones">${players}${hint}</div></div>
+      <div class="al-row"><span>${t("Motore vocale")}</span>${engine}</div>
+      <div class="al-row"><span>${t("Volume (0 = lascia com'è)")}</span><input type="number" class="al-num" data-al-vol value="${sp.volume}" min="0" max="100" step="5" aria-label="${t("Volume (0 = lascia com'è)")}"></div>`;
   }
 
   ruleHTML(d, id, title, desc) {
@@ -160,7 +189,7 @@ export class AlertsView {
         <div><b>${title()}</b><small>${desc()}</small></div>
       </div>
       <div class="al-body">
-        <div class="al-chips">${chip("app", t("App"))}${chip("telegram", "Telegram", !d.telegram)}${chip("ha", t("Home Assistant"))}</div>
+        <div class="al-chips">${chip("app", t("App"))}${chip("telegram", "Telegram", !d.telegram)}${chip("ha", t("Home Assistant"))}${chip("speaker", t("Altoparlante"), !d.cfg.speaker.on)}</div>
         ${params.length ? `<div class="al-params">${params.join("")}</div>` : ""}
         <button type="button" class="hc-link" data-al-list="${id}" aria-expanded="${this.openList.has(id)}">${id === "power" && !watched.length ? t("Nessun sensore di potenza: sceglilo in Energia → Configura") : t("Controlla {n} di {tot}", { n: on, tot: watched.length })}</button>
         ${list}

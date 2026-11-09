@@ -383,6 +383,16 @@ niets. Stel ze in via ⚙ Voorkeuren → **Meldingen van het huis**.
   met de app zelf; je kunt er een paar uitsluiten. Dringende waarschuwingen komen met hoge prioriteit.
 - **Telegram**, in de groep van Jarvis, met dezelfde knoppen.
 - **Home Assistant**: de meldingen onder het belletje.
+- **Speakers** (Sonos, Google…): de melding wordt hardop voorgelezen via de tekst-naar-spraak van Home
+  Assistant. Dit staat **standaard uit**. Zet het aan bij ⚙ Voorkeuren → **Meldingen van het huis** →
+  **Gesproken meldingen**, kies de speakers (alle `media_player`-entiteiten van Home Assistant worden
+  getoond), eventueel de spraakengine en een volume. Daarna kies je per regel of hij ook spreekt
+  (knop **Speaker** naast App, Telegram en Home Assistant): standaard alleen
+  **Lekkages, rook, gas**. De schakelaar bovenaan zet alle gesproken meldingen in één keer aan of uit,
+  en **Stuur een test** laat ze horen. Het volume wordt vóór het bericht ingesteld en daarna **niet**
+  teruggezet; laat het op 0 om het volume van de speaker ongemoeid te laten. De stille uren gelden ook
+  voor de speakers, behalve bij lekkages, rook en gas. Zonder spraakengine (optie **Stem van Home
+  Assistant** of een TTS-integratie zoals Piper of Home Assistant Cloud) is er niets om voor te lezen.
 
 Hoe ze zich gedragen:
 

@@ -68,12 +68,12 @@ async def test_web_searches_per_request_are_set_per_agent(make_hq, tmp_path):
 
     from hubnex.config import load_org
 
-    data = yaml.safe_load(open("config/agents.yaml"))
+    data = yaml.safe_load(open("config/agents.yaml", encoding="utf-8"))
     data["boss"]["max_searches"] = 2
     tecnico = next(a for c in data["companies"] for a in c["agents"] if a["id"] == "tecnico")
     tecnico["max_searches"] = 3
     path = tmp_path / "agents.yaml"
-    path.write_text(yaml.safe_dump(data, allow_unicode=True))
+    path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     hq = make_hq([response([text_block("ok")], "end_turn")] * 2)
     hq.org = load_org(str(path))
     assert await hq.run_agent("tecnico", "cerca") == "ok"
@@ -83,7 +83,7 @@ async def test_web_searches_per_request_are_set_per_agent(make_hq, tmp_path):
     assert next(t for t in hq.client.requests[1]["tools"] if t["name"] == "web_search")["max_uses"] == 2
     assert hq.org.agent("mail").max_searches == 5  # not set: as before
     tecnico["max_searches"] = 0
-    path.write_text(yaml.safe_dump(data, allow_unicode=True))
+    path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     with pytest.raises(ValueError, match="max_searches"):
         load_org(str(path))
 

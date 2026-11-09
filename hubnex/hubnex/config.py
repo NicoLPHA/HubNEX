@@ -82,6 +82,17 @@ def ha_language(storage: str = "/homeassistant/.storage/core.config") -> str | N
         return json.loads(Path(storage).read_text())["data"].get("language")
     except (OSError, ValueError, KeyError, TypeError):
         return None
+
+
+def ha_timezone(storage: str = "/homeassistant/.storage/core.config") -> str | None:
+    """Home Assistant's time zone, read from its configuration (the add-on maps it)."""
+    try:
+        tz = json.loads(Path(storage).read_text(encoding="utf-8"))["data"].get("time_zone")
+        return tz if isinstance(tz, str) and tz else None
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 DEFAULT_MODEL = "claude-sonnet-5-5"
 DEFAULT_MAIL_MODEL = "claude-haiku-5-5"
 DEFAULT_VOICE_MODEL = "claude-haiku-5-5"  # Assist: speed first
@@ -257,7 +268,7 @@ class Settings:
             voice_tts_voice=(e("VOICE_TTS_VOICE") or "").strip(),
             language=(e("HUBNEX_LANGUAGE") or "auto").strip().lower(),
             voice_answers="riassunto" if (e("VOICE_ANSWERS") or "").strip().lower() == "riassunto" else "completa",
-            timezone=e("TZ") or "Europe/Rome",
+            timezone=e("TZ") or ha_timezone() or "Europe/Rome",  # the env, else Home Assistant's, else Italy's
             db_path=e("HUBNEX_DB") or "data/hubnex.db",
             agents_file=e("HUBNEX_AGENTS_FILE") or "config/agents.yaml",
             casa_file=e("HUBNEX_CASA_FILE", ""),

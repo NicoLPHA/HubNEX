@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from hubnex.i18n import tr_sys
 from hubnex.tools import ToolContext, tool
 
 
@@ -21,7 +22,7 @@ from hubnex.tools import ToolContext, tool
 async def memory_save(ctx: ToolContext, inp: dict):
     scope = "global" if inp.get("global") or not ctx.company else ctx.company
     mid = await ctx.hq.store.remember(scope, inp["topic"], inp["content"], ctx.agent_id)
-    await ctx.hq.log("memory", f"Ricordo: {inp['topic']}", ctx.agent_id)
+    await ctx.hq.log("memory", tr_sys("Ricordo: {topic}", topic=inp["topic"]), ctx.agent_id)
     await ctx.hq.emit_stats()
     return {"ok": True, "id": mid}
 
@@ -54,7 +55,7 @@ async def deadline_add(ctx: ToolContext, inp: dict):
     did = await ctx.hq.store.deadline_add(
         inp["title"], inp["due"], ctx.company or inp.get("company"), ctx.agent_id, inp.get("notes", "")
     )
-    await ctx.hq.log("deadline", f"Nuova scadenza: {inp['title']} ({inp['due']})", ctx.agent_id)
+    await ctx.hq.log("deadline", tr_sys("Nuova scadenza: {title} ({due})", title=inp["title"], due=inp["due"]), ctx.agent_id)
     await ctx.hq.emit_deadlines()
     return {"ok": True, "id": did}
 

@@ -377,6 +377,16 @@ free. Set them up in ⚙ Preferences → **House notifications**.
   priority.
 - **Telegram**, in Jarvis' group, with the same buttons.
 - **Home Assistant**: the notifications under the bell.
+- **Speakers** (Sonos, Google…): the warning is read aloud through Home Assistant's text-to-speech.
+  It is **off by default**. Switch it on in ⚙ Preferences → **House notifications** → **Spoken
+  notifications**, pick the speakers (every `media_player` entity of Home Assistant is listed), the
+  speech engine if you like and a volume. Then choose rule by rule whether it speaks too (the
+  **Speaker** button next to App, Telegram and Home Assistant): by default only **Leaks, smoke, gas**.
+  The switch at the top turns all spoken notifications on or off at once, and **Send a test** lets you
+  hear them. The volume is set before the message and **not** put back afterwards; leave it at 0 to
+  keep the speaker's own volume. The quiet hours apply to the speakers too, except for leaks, smoke
+  and gas. Without a speech engine (the **Voice from Home Assistant** option or a TTS integration such
+  as Piper or Home Assistant Cloud) there is nothing to read with.
 
 How they behave:
 

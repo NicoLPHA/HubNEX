@@ -145,7 +145,7 @@ def test_english_example_team(tmp_path, monkeypatch):
         os.environ.pop(k, None)
     try:
         assert config._load_addon_options(str(opts), str(cfg))
-        assert "Jarvis Butler" in (cfg / "agents.yaml").read_text()
+        assert "Jarvis Butler" in (cfg / "agents.yaml").read_text(encoding="utf-8")
     finally:  # the add-on sets its environment: give the other tests theirs back
         os.environ.clear()
         os.environ.update(saved)
@@ -173,3 +173,11 @@ def test_dutch_example_team(tmp_path, monkeypatch):
     finally:
         os.environ.clear()
         os.environ.update(saved)
+
+def test_the_activity_feed_and_telegram_buttons_speak_dutch(dutch):
+    from hubnex.actions import action_buttons
+
+    assert i18n.tr_sys("Nuova scadenza: {title} ({due})", title="Btw", due="2026-12-01") == "Nieuwe deadline: Btw (2026-12-01)"
+    assert i18n.tr_sys("Ricordo: {topic}", topic="x") == "Herinnering: x"
+    [row] = action_buttons(7)
+    assert [label for label, _ in row] == ["✅ Bevestig", "❌ Annuleren"]

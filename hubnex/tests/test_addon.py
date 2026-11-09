@@ -296,3 +296,14 @@ def test_home_assistant_voice_by_name(settings, make_hq):
         settings.voice_tts_voice = "Gandalf"
         r = client.post("/api/tts", json={"text": "Ciao"})
         assert r.status_code == 502 and "Disponibili: Diego, Rinaldo" in r.json()["detail"]
+
+def test_the_time_zone_comes_from_home_assistant(tmp_path):
+    import json
+    from hubnex.config import ha_timezone
+
+    storage = tmp_path / "core.config"
+    storage.write_text(json.dumps({"data": {"time_zone": "Europe/Amsterdam", "language": "nl"}}), encoding="utf-8")
+    assert ha_timezone(str(storage)) == "Europe/Amsterdam"
+    storage.write_text("{}", encoding="utf-8")
+    assert ha_timezone(str(storage)) is None
+    assert ha_timezone(str(tmp_path / "missing")) is None

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from hubnex.context import CURRENT_CHAT
+from hubnex.i18n import tr_sys
 from hubnex.tools import ToolContext, tool
 
 
@@ -79,12 +80,12 @@ async def owner_rules(ctx: ToolContext, inp: dict):
     hq = ctx.hq
     if inp["action"] == "add" and inp.get("rule", "").strip():
         hq.rules.append(inp["rule"].strip())
-        await hq.log("memory", f"Nuova regola: {inp['rule'].strip()}", ctx.agent_id)
+        await hq.log("memory", tr_sys("Nuova regola: {rule}", rule=inp["rule"].strip()), ctx.agent_id)
     elif inp["action"] == "remove":
         n = inp.get("number") or 0
         if not 1 <= n <= len(hq.rules):
             return {"errore": f"Regola {n} inesistente.", "regole": hq.rules}
         removed = hq.rules.pop(n - 1)
-        await hq.log("memory", f"Regola tolta: {removed}", ctx.agent_id)
+        await hq.log("memory", tr_sys("Regola tolta: {rule}", rule=removed), ctx.agent_id)
     await hq.store.put("owner_rules", hq.rules)
     return {"regole": {i: r for i, r in enumerate(hq.rules, 1)} or "Nessuna regola."}

@@ -375,6 +375,16 @@ configurano in ⚙ Preferenze → **Notifiche della casa**.
   telefoni con l'app; puoi escluderne qualcuno. Gli avvisi urgenti arrivano con priorità alta.
 - **Telegram**, nel gruppo di Jarvis, con gli stessi pulsanti.
 - **Home Assistant**: le notifiche nella campanella.
+- **Altoparlanti** (Sonos, Google…): l'avviso viene letto ad alta voce con la sintesi vocale di Home
+  Assistant. È **spento di default**. Accendilo in ⚙ Preferenze → **Notifiche della casa** →
+  **Notifiche a voce**, scegli gli altoparlanti (compaiono tutte le entità `media_player` di Home
+  Assistant), se vuoi il motore vocale e un volume. Poi scegli regola per regola se parla anche
+  (pulsante **Altoparlante** accanto ad App, Telegram e Home Assistant): di default solo **Perdite,
+  fumo, gas**. L'interruttore in alto accende o spegne tutte le notifiche a voce insieme, e **Invia una
+  prova** te le fa ascoltare. Il volume viene impostato prima del messaggio e **non** viene ripristinato
+  dopo; lascialo a 0 per non toccare il volume dell'altoparlante. Le ore di silenzio valgono anche per
+  gli altoparlanti, tranne perdite, fumo e gas. Senza un motore vocale (l'opzione **Voce da Home
+  Assistant** o un'integrazione TTS come Piper o Home Assistant Cloud) non c'è nulla con cui leggere.
 
 Come si comportano:
 

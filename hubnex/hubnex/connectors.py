@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 from hubnex.config import ConnectorSpec
 from hubnex.integrations.mcp import MCPClient, MCPError
-from hubnex.i18n import tr
+from hubnex.i18n import tr, tr_sys
 
 if TYPE_CHECKING:
     from hubnex.hq import HQ
@@ -104,7 +104,7 @@ class Connectors:
             raw = await c.client.list_tools()
         except MCPError as exc:
             if c.error != str(exc):
-                await self.hq.log("error", f"Connettore {c.spec.name}: {exc}")
+                await self.hq.log("error", tr_sys("Connettore {name}: {exc}", name=c.spec.name, exc=exc))
             c.error, c.loaded = str(exc), time.monotonic() - REFRESH_SECONDS + 60  # retry in a minute
             return
         c.tools = {}

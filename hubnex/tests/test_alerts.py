@@ -245,3 +245,150 @@ async def test_pellet_below_the_threshold_asks_to_reorder_once(house):
     assert len(pushes(calls, "clear")) == 1
     await hq.casa.set_stock("counter.carico_pellet", 15, 20)  # the owner's own threshold
     assert hq.casa.stock_of("counter.carico_pellet") == {"delivery": 15, "low": 20}
+
+# ---------------------------------------------------------------------- spoken on speakers (Sonos…)
+def spoken(calls):
+    return [c for c in calls if c[:2] == ("tts", "speak")]
+
+
+def with_speakers(hq):
+    hq.watcher.states["media_player.woonkamer"] = st("idle", name="Woonkamer")
+    hq.watcher.states["media_player.slaapkamer"] = st("off", name="Slaapkamer")
+    hq.watcher.states["tts.piper"] = st("unknown")
+
+
+async def test_speaker_is_off_until_it_is_switched_on(house):
+    hq, team, calls, at = house
+    with_speakers(hq)
+    hq.watcher.states["binary_sensor.perdita_lavatrice"]["state"] = "on"
+    await hq.alerts.tick()
+    assert pushes(calls) and not spoken(calls), "the phone is warned, nothing is said aloud"
+    assert hq.alerts.cfg["speaker"] == {"on": False, "players": [], "tts": "", "volume": 0}
+
+
+async def test_a_leak_is_read_aloud_on_the_chosen_speakers_only(house):
+    hq, team, calls, at = house
+    with_speakers(hq)
+    await hq.alerts.save({"speaker": {"on": True, "players": ["media_player.woonkamer"]}})
+    hq.watcher.states["binary_sensor.perdita_lavatrice"]["state"] = "on"
+    await hq.alerts.tick()
+    [say] = spoken(calls)
+    data = say[2]
+    assert data["entity_id"] == "tts.piper"
+    assert data["media_player_entity_id"] == ["media_player.woonkamer"]
+    assert "Lavatrice" in data["message"] and len(data["message"]) <= 300
+    assert not any(c[:2] == ("media_player", "volume_set") for c in calls), "volume untouched when 0"
+
+
+async def test_only_rules_with_the_speaker_flag_speak(house):
+    hq, team, calls, at = house
+    with_speakers(hq)
+    await hq.alerts.save({"speaker": {"on": True, "players": ["media_player.woonkamer"]}})
+    hq.watcher.states["sensor.termostato_batteria"]["state"] = "9"
+    await hq.alerts.tick()
+    at(31)
+    await hq.alerts.tick()
+    assert pushes(calls) and not spoken(calls), "the battery rule does not speak by default"
+
+
+async def test_switching_the_speaker_on_for_a_rule_makes_it_speak(house):
+    hq, team, calls, at = house
+    with_speakers(hq)
+    await hq.alerts.save({"speaker": {"on": True, "players": ["media_player.woonkamer"]}, "rules": {"battery": {"speaker": True}}})
+    hq.watcher.states["sensor.termostato_batteria"]["state"] = "9"
+    await hq.alerts.tick()
+    at(31)
+    await hq.alerts.tick()
+    assert len(spoken(calls)) == 1
+
+
+async def test_volume_is_set_before_the_warning(house):
+    hq, team, calls, at = house
+    with_speakers(hq)
+    await hq.alerts.save({"speaker": {"on": True, "players": ["media_player.woonkamer"], "volume": 40}})
+    hq.watcher.states["binary_sensor.perdita_lavatrice"]["state"] = "on"
+    await hq.alerts.tick()
+    order = [c[:2] for c in calls if c[:2] in (("media_player", "volume_set"), ("tts", "speak"))]
+    assert order == [("media_player", "volume_set"), ("tts", "speak")]
+    assert [c for c in calls if c[1] == "volume_set"][0][2] == {"entity_id": ["media_player.woonkamer"], "volume_level": 0.4}
+
+
+async def test_no_speaker_or_no_engine_never_breaks_the_warning(house):
+    hq, team, calls, at = house
+    hq.watcher.states["media_player.woonkamer"] = st("idle", name="Woonkamer")  # no tts engine at all
+    await hq.alerts.save({"speaker": {"on": True, "players": ["media_player.woonkamer"]}})
+    hq.watcher.states["binary_sensor.perdita_lavatrice"]["state"] = "on"
+    await hq.alerts.tick()
+    assert pushes(calls) and not spoken(calls)
+    await hq.alerts.save({"speaker": {"on": True, "players": []}})  # on, but no speaker chosen
+    assert await hq.alerts._speak("ciao") is False
+
+
+async def test_a_failing_speaker_does_not_stop_the_other_channels(house):
+    hq, team, calls, at = house
+    with_speakers(hq)
+    original = hq.ha.call_service
+
+    async def broken(domain, service, data=None, by_owner=False):
+        if (domain, service) == ("tts", "speak"):
+            raise RuntimeError("speaker offline")
+        return await original(domain, service, data, by_owner)
+
+    hq.ha.call_service = broken
+    await hq.alerts.save({"speaker": {"on": True, "players": ["media_player.woonkamer"]}})
+    hq.watcher.states["binary_sensor.perdita_lavatrice"]["state"] = "on"
+    await hq.alerts.tick()
+    assert pushes(calls) and len(team.posts) == 1
+
+
+async def test_a_leak_is_spoken_in_the_quiet_hours_the_rest_is_not(house):
+    hq, team, calls, at = house
+    with_speakers(hq)
+    await hq.alerts.save({"quiet": {"from": "17:00", "to": "19:00"}, "speaker": {"on": True, "players": ["media_player.woonkamer"]},
+                          "rules": {"battery": {"speaker": True}}})
+    hq.watcher.states["sensor.termostato_batteria"]["state"] = "9"
+    at(40)
+    await hq.alerts.tick()
+    assert not spoken(calls), "the battery waits for the end of the quiet hours"
+    hq.watcher.states["binary_sensor.perdita_lavatrice"]["state"] = "on"
+    await hq.alerts.tick()
+    assert len(spoken(calls)) == 1, "a leak is always said"
+
+
+async def test_the_test_notification_includes_the_speaker(house):
+    hq, team, calls, at = house
+    with_speakers(hq)
+    await hq.alerts.save({"speaker": {"on": True, "players": ["media_player.woonkamer"]}})
+    assert "Altoparlante" in await hq.alerts.test()
+    assert len(spoken(calls)) == 1
+
+
+async def test_the_popup_lists_speakers_and_engines(house):
+    hq, team, calls, at = house
+    with_speakers(hq)
+    o = await hq.alerts.overview()
+    assert [p["e"] for p in o["speaker"]["players"]] == ["media_player.slaapkamer", "media_player.woonkamer"]
+    assert o["speaker"]["tts_choices"] == ["tts.piper"] and o["speaker"]["tts"] == "tts.piper"
+
+
+async def test_the_engine_prefers_the_language_and_the_owners_choice(house):
+    from hubnex import i18n
+
+    hq, team, calls, at = house
+    hq.watcher.states["tts.google_translate_en_com"] = st("unknown")
+    hq.watcher.states["tts.google_translate_nl_nl"] = st("unknown")
+    hq.watcher.states["tts.home_assistant_cloud"] = st("unknown")
+    i18n.set_system_lang("nl")
+    try:
+        assert hq.alerts.tts_engine() == "tts.google_translate_nl_nl"
+        await hq.alerts.save({"speaker": {"tts": "tts.home_assistant_cloud"}})
+        assert hq.alerts.tts_engine() == "tts.home_assistant_cloud"
+    finally:
+        i18n.set_system_lang("it")
+
+
+def test_speaker_config_is_cleaned():
+    c = clean_config({"speaker": {"on": 1, "players": ["media_player.a", "light.x", 5, "media_player.a"], "tts": "tts.x", "volume": "150"}})
+    assert c["speaker"] == {"on": True, "players": ["media_player.a"], "tts": "tts.x", "volume": 100}
+    assert clean_config({"speaker": {"tts": "notify.evil", "volume": "abc"}})["speaker"] == {"on": False, "players": [], "tts": "", "volume": 0}
+    assert clean_config(None)["rules"]["safety"]["speaker"] is True and clean_config(None)["rules"]["away"]["speaker"] is False

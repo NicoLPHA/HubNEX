@@ -11,7 +11,7 @@ import logging
 from typing import TYPE_CHECKING, Awaitable, Callable
 
 from hubnex.context import CURRENT_CHAT
-from hubnex.i18n import tr
+from hubnex.i18n import tr, tr_sys
 
 if TYPE_CHECKING:
     from hubnex.hq import HQ
@@ -28,7 +28,7 @@ class ActionClosed(Exception):
 
 
 def action_buttons(action_id: int):
-    return [[("✅ Conferma", f"a:{action_id}:ok"), ("❌ Annulla", f"a:{action_id}:no")]]
+    return [[(f"✅ {tr_sys('Conferma')}", f"a:{action_id}:ok"), (f"❌ {tr_sys('Annulla')}", f"a:{action_id}:no")]]
 
 
 class ActionDesk:
@@ -42,11 +42,11 @@ class ActionDesk:
         team = self.hq.team
         chat = CURRENT_CHAT.get() or (team.home_chat if self.hq.team_enabled else None)
         if chat and self.hq.team_enabled:
-            who = f"{self.hq.agent_name(agent_id)} propone" if agent_id and agent_id in self.hq.agents else "Proposta"
+            who = tr_sys("{name} propone", name=self.hq.agent_name(agent_id)) if agent_id and agent_id in self.hq.agents else tr_sys("Proposta")
             posted = await team.post(None, f"🛠 {label.upper()} #{aid} — {who}:\n\n{summary}", chat, action_buttons(aid))
             if posted:
                 await self.hq.store.action_set_message(aid, *posted)
-        await self.hq.log("action", f"Proposta #{aid}: {summary}", agent_id)
+        await self.hq.log("action", tr_sys("Proposta #{aid}: {summary}", aid=aid, summary=summary), agent_id)
         await self.hq.emit_actions()
         return f"Azione #{aid} mostrata al proprietario per conferma. NON è ancora stata eseguita."
 
@@ -55,7 +55,7 @@ class ActionDesk:
         if not a or not await self.hq.store.action_claim(action_id):
             raise ActionClosed()
         if not confirm:
-            await self._close(a, "rejected", "❌ annullata")
+            await self._close(a, "rejected", f"❌ {tr_sys('annullata')}")
             return "Annullata"
         try:
             run = self.executors.get(a["kind"])
@@ -64,7 +64,7 @@ class ActionDesk:
             note = await run(a["payload"])
         except Exception as exc:
             log.exception("action %s failed", action_id)
-            await self._close(a, "failed", f"⚠️ non riuscita: {exc}")
+            await self._close(a, "failed", f"⚠️ {tr_sys('non riuscita: {exc}', exc=exc)}")
             raise
         await self._close(a, "done", note)
         await self.hq.note(f"Il proprietario ha confermato: {a['summary'].splitlines()[0]} ({note}).")
@@ -73,7 +73,7 @@ class ActionDesk:
     async def _close(self, a: dict, status: str, note: str) -> None:
         await self.hq.store.action_close(a["id"], status, note)
         await self.hq.emit_actions()
-        await self.hq.log("action", f"Azione #{a['id']}: {note}", a.get("agent_id"))
+        await self.hq.log("action", tr_sys("Azione #{id}: {note}", id=a["id"], note=note), a.get("agent_id"))
         if self.hq.team_enabled and a.get("chat_id"):
             await self.hq.team.set_buttons(None, a["chat_id"], a["msg_id"], None)
-            await self.hq.team.post(None, f"Azione #{a['id']}: {note}", a["chat_id"], reply_to=a["msg_id"])
+            await self.hq.team.post(None, tr_sys("Azione #{id}: {note}", id=a["id"], note=note), a["chat_id"], reply_to=a["msg_id"])

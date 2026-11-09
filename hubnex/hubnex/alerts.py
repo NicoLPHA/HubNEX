@@ -3,7 +3,8 @@ live states. They only warn; a button on the notification (pressed by the owner)
 way they change anything.
 
 Channels: the Home Assistant companion app (push, with buttons), the Telegram group, Home
-Assistant's own notifications. A rule warns once per episode; the notification goes away by
+Assistant's own notifications and, if switched on, spoken on speakers (Sonos, Google…) through
+Home Assistant's text-to-speech. A rule warns once per episode; the notification goes away by
 itself when the problem is solved.
 """
 
@@ -18,6 +19,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from hubnex.i18n import system_lang, tr_sys
+from hubnex.speech import for_voice
 
 if TYPE_CHECKING:
     from hubnex.hq import HQ
@@ -31,20 +33,25 @@ SAFETY = {"moisture", "smoke", "gas", "carbon_monoxide", "safety"}
 RAIN = {"rainy", "pouring", "lightning-rainy", "snowy-rainy", "hail"}
 OFFLINE_DOMAINS = {"light", "switch", "climate", "lock", "cover", "binary_sensor", "sensor", "fan", "valve", "alarm_control_panel", "camera"}
 MAX_LISTED = 8
+SPOKEN_MAX = 300  # characters: a warning read aloud stays short
 
 DEFAULTS: dict[str, Any] = {
     "quiet": {"from": "", "to": ""},  # "" = no quiet hours
     "phones": None,  # None = every phone with the Home Assistant app
+    # Spoken warnings on speakers: off until the owner switches it on and picks the speakers.
+    # volume 0 = leave the speakers' volume as it is; tts "" = automatic (the add-on's voice option,
+    # else a text-to-speech engine of Home Assistant).
+    "speaker": {"on": False, "players": [], "tts": "", "volume": 0},
     "exclude": [],  # entities never checked
     "rules": {
-        "safety": {"on": True, "app": True, "telegram": True, "ha": True},
-        "windows": {"on": True, "app": True, "telegram": True, "ha": False, "minutes": 5},
-        "away": {"on": True, "app": True, "telegram": True, "ha": False, "minutes": 5},
-        "power": {"on": True, "app": True, "telegram": True, "ha": False, "minutes": 10, "watts": 3000},
-        "night": {"on": True, "app": True, "telegram": True, "ha": False, "minutes": 15, "at": "23:30", "until": "06:00"},
-        "battery": {"on": True, "app": True, "telegram": False, "ha": True, "percent": 15},
-        "offline": {"on": True, "app": True, "telegram": False, "ha": True, "minutes": 60},
-        "stock": {"on": True, "app": True, "telegram": True, "ha": False},
+        "safety": {"on": True, "app": True, "telegram": True, "ha": True, "speaker": True},
+        "windows": {"on": True, "app": True, "telegram": True, "ha": False, "speaker": False, "minutes": 5},
+        "away": {"on": True, "app": True, "telegram": True, "ha": False, "speaker": False, "minutes": 5},
+        "power": {"on": True, "app": True, "telegram": True, "ha": False, "speaker": False, "minutes": 10, "watts": 3000},
+        "night": {"on": True, "app": True, "telegram": True, "ha": False, "speaker": False, "minutes": 15, "at": "23:30", "until": "06:00"},
+        "battery": {"on": True, "app": True, "telegram": False, "ha": True, "speaker": False, "percent": 15},
+        "offline": {"on": True, "app": True, "telegram": False, "ha": True, "speaker": False, "minutes": 60},
+        "stock": {"on": True, "app": True, "telegram": True, "ha": False, "speaker": False},
     },
 }
 NUMBERS = {"minutes": (0, 1440), "watts": (100, 100000), "percent": (1, 99)}
@@ -76,6 +83,14 @@ def clean_config(raw: dict | None) -> dict:
             elif k in ("at", "until") and isinstance(got[k], str) and HHMM.match(got[k]):
                 r[k] = got[k]
         out["rules"][rule] = r
+    sp = raw.get("speaker") if isinstance(raw.get("speaker"), dict) else {}
+    players = [p for p in sp.get("players") or [] if isinstance(p, str) and p.startswith("media_player.")]
+    tts = sp.get("tts") if isinstance(sp.get("tts"), str) and (sp.get("tts") == "" or sp.get("tts", "").startswith("tts.")) else ""
+    try:
+        volume = max(0, min(100, int(float(sp.get("volume") or 0))))
+    except (TypeError, ValueError):
+        volume = 0
+    out["speaker"] = {"on": bool(sp.get("on")), "players": sorted(set(players)), "tts": tts, "volume": volume}
     return out
 
 
@@ -395,6 +410,49 @@ class Alerts:
         chosen = self.cfg["phones"]
         return known if chosen is None else [p for p in chosen if p in known]
 
+    def speakers(self) -> list[dict]:
+        """The media players Home Assistant knows, for the settings popup."""
+        out = []
+        for eid, st in self.ha.states.items():
+            if eid.startswith("media_player."):
+                out.append({"e": eid, "n": (st.get("attributes") or {}).get("friendly_name") or eid})
+        return sorted(out, key=lambda x: x["n"].lower())
+
+    def tts_engines(self) -> list[str]:
+        return sorted(e for e in self.ha.states if e.startswith("tts."))
+
+    def tts_engine(self) -> str:
+        """The engine that reads the warnings: the owner's choice here, else the add-on's voice option,
+        else one of Home Assistant's, preferring one made for the add-on's language."""
+        chosen = self.cfg["speaker"]["tts"] or self.hq.settings.voice_tts_entity
+        if chosen:
+            return chosen
+        engines = self.tts_engines()
+        mine = [e for e in engines if re.search(rf"(^|_){system_lang()}(_|$)", e)]
+        return (mine or engines or [""])[0]
+
+    async def _speak(self, text: str) -> bool:
+        """Read `text` aloud on the chosen speakers. False when it is off, has no speaker or no
+        engine, or Home Assistant refused; a failure is only logged: a warning never breaks."""
+        sp = self.cfg["speaker"]
+        if not sp["on"] or not sp["players"]:
+            return False
+        engine = self.tts_engine()
+        if not engine:
+            log.warning("notifiche a voce: nessun motore vocale")
+            return False
+        data: dict[str, Any] = {"entity_id": engine, "media_player_entity_id": sp["players"],
+                                "message": for_voice(text, limit=SPOKEN_MAX), "cache": True}
+        if engine == self.hq.settings.voice_tts_entity:  # the voice picked in the add-on belongs to this engine
+            language, voice = await self.hq._tts_voice(engine)
+            if language:
+                data["language"] = language
+            if voice:
+                data["options"] = {"voice": voice}
+        if sp["volume"]:
+            await self._safe(self.hq.ha.call_service("media_player", "volume_set", {"entity_id": sp["players"], "volume_level": sp["volume"] / 100}))
+        return await self._safe(self.hq.ha.call_service("tts", "speak", data)) is not None
+
     async def _send(self, ep: Episode, now: datetime) -> None:
         f = ep.finding
         rule = self.cfg["rules"][f.rule]
@@ -430,6 +488,8 @@ class Alerts:
         if rule.get("ha"):
             await self._safe(self.hq.ha.call_service(
                 "persistent_notification", "create", {"title": f"HubNEX · {f.title}", "message": f.text, "notification_id": self._tag(f.key)}))
+        if rule.get("speaker"):
+            await self._speak(f"{f.title}. {f.text}")
 
     async def _clear(self, ep: Episode) -> None:
         f = ep.finding
@@ -484,6 +544,10 @@ class Alerts:
         if any(r["on"] and r["ha"] for r in rules):
             if await self._safe(self.hq.ha.call_service("persistent_notification", "create", {"title": title, "message": text, "notification_id": "hubnex_test"})) is not None:
                 sent.append("Home Assistant")
+        if self.cfg["speaker"]["on"] and self.cfg["speaker"]["players"]:
+            spoken = tr_sys("Notifica di prova: se la senti, gli avvisi della casa arrivano anche dall'altoparlante.")
+            if await self._speak(spoken):
+                sent.append(tr_sys("Altoparlante"))
         return sent
 
     async def overview(self) -> dict:
@@ -493,6 +557,7 @@ class Alerts:
             "cfg": self.cfg,
             "phones": self.phones,
             "telegram": self.hq.team_enabled,
+            "speaker": {"players": self.speakers(), "tts_choices": self.tts_engines(), "tts": self.tts_engine()},
             "watched": {r: [{"e": e, "n": self.name(e)} for e in self.candidates(r)] for r in RULES},
             "active": [
                 {"key": k, "rule": ep.finding.rule, "title": ep.finding.title, "text": ep.finding.text,

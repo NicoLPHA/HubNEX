@@ -839,7 +839,7 @@ function renderCard() {
   $("card-avatar").style.color = a.color || dept?.color || "#4fd1ff";
   $("card-company").textContent = company ? `${company.name} · ${dept?.name || ""}` : "Headquarter";
   $("card-name").textContent = a.name;
-  $("card-role").textContent = a.role;
+  $("card-role").textContent = a.id === S.data.boss.id ? t("Capo del team") : a.role;
   $("card-status").className = `badge ${a.status}`;
   $("card-status").textContent = STATUS_IT[a.status] || a.status;
   $("card-detail").textContent = a.detail || (a.done ? t("{n} compiti completati", { n: a.done }) : "");

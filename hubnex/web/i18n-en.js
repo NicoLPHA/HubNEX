@@ -760,5 +760,15 @@ export const EN = {
   "Un blocco del modello non ha trovato un'entità adatta: aggiungilo a mano.": "One block of the template found no suitable entity: add it by hand.",
   "Stile": "Style",
   "Riquadri": "Boxes",
-  "Pulito": "Clean"
+  "Pulito": "Clean",
+  "Notifiche a voce": "Spoken notifications",
+  "Leggi gli avvisi ad alta voce sugli altoparlanti scelti (Sonos, Google…). Spento: nessun suono. Rispetta le ore di silenzio, tranne perdite, fumo e gas.": "Read the warnings aloud on the speakers you choose (Sonos, Google…). Off: no sound. Follows the quiet hours, except leaks, smoke and gas.",
+  "Altoparlanti": "Speakers",
+  "Altoparlante": "Speaker",
+  "Nessun altoparlante trovato in Home Assistant.": "No speakers found in Home Assistant.",
+  "Scegli almeno un altoparlante": "Choose at least one speaker",
+  "Motore vocale": "Speech engine",
+  "Nessun motore vocale: imposta «Voce da Home Assistant» nelle opzioni dell'add-on o aggiungi un'integrazione TTS.": "No speech engine: set \"Voice from Home Assistant\" in the add-on options or add a TTS integration.",
+  "Volume (0 = lascia com'è)": "Volume (0 = leave as is)",
+  "Capo del team": "Team leader"
 };

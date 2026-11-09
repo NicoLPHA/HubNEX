@@ -759,5 +759,15 @@ export const NL = {
   "{n} blocchi hanno entità che qui non ci sono: sceglile tu.": "{n} blokken hebben entiteiten die hier niet bestaan: kies zelf andere.",
   "{n} blocchi scartati: entità che in casa non ci sono.": "{n} blokken weggelaten: entiteiten die in dit huis niet bestaan.",
   "{n} h fa": "{n} u geleden",
-  "{n} min fa": "{n} min geleden"
+  "{n} min fa": "{n} min geleden",
+  "Notifiche a voce": "Gesproken meldingen",
+  "Leggi gli avvisi ad alta voce sugli altoparlanti scelti (Sonos, Google…). Spento: nessun suono. Rispetta le ore di silenzio, tranne perdite, fumo e gas.": "Spreek de meldingen uit op de gekozen speakers (Sonos, Google…). Uit: geen geluid. Volgt de stille uren, behalve lekkages, rook en gas.",
+  "Altoparlanti": "Speakers",
+  "Altoparlante": "Speaker",
+  "Nessun altoparlante trovato in Home Assistant.": "Geen speakers gevonden in Home Assistant.",
+  "Scegli almeno un altoparlante": "Kies minstens één speaker",
+  "Motore vocale": "Spraakengine",
+  "Nessun motore vocale: imposta «Voce da Home Assistant» nelle opzioni dell'add-on o aggiungi un'integrazione TTS.": "Geen spraakengine: stel «Stem van Home Assistant» in bij de opties van de add-on of voeg een TTS-integratie toe.",
+  "Volume (0 = lascia com'è)": "Volume (0 = ongewijzigd laten)",
+  "Capo del team": "Teamleider"
 };

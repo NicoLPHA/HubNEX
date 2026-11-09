@@ -54,7 +54,7 @@ def test_pdfs_text_and_unsupported_files(tmp_path):
     doc = files.save(pdf(3), "computo.pdf", "application/pdf")
     assert (doc.kind, doc.pages) == ("pdf", 3)
     txt = files.save("Voce;Quantità\nCalcestruzzo;12".encode("cp1252"), "misure.csv", "text/csv")
-    assert txt.kind == "text" and "Quantità" in files.path(txt).read_text()
+    assert txt.kind == "text" and "Quantità" in files.path(txt).read_text(encoding="utf-8")
     with pytest.raises(AttachmentError, match="formato non supportato"):
         files.save(b"PK\x03\x04 a zip", "progetto.dwg", "application/octet-stream")
     with pytest.raises(AttachmentError, match="danneggiato"):
@@ -64,7 +64,7 @@ def test_pdfs_text_and_unsupported_files(tmp_path):
     blocks = files.blocks([doc, txt])
     assert [b["type"] for b in blocks] == ["text", "document", "text", "document"]
     assert blocks[1]["source"]["media_type"] == "application/pdf"
-    assert blocks[3]["source"] == {"type": "text", "media_type": "text/plain", "data": files.path(txt).read_text()}
+    assert blocks[3]["source"] == {"type": "text", "media_type": "text/plain", "data": files.path(txt).read_text(encoding="utf-8")}
     assert note([doc]) == f"[Allegati: #{doc.id} «computo.pdf» (PDF, 3 pag.)]"
 
 
