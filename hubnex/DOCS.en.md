@@ -35,6 +35,28 @@ Everything else is optional and can be added whenever you like, in this suggeste
 
 Every option of the **Configuration** tab has its explanation next to the field.
 
+## Settings: the add-on options and the dashboard screen
+
+There are two places to set things, each with its own role:
+
+- **The add-on's options** (Settings → Add-ons → HubNEX → Configuration): keys, tokens, mail, Telegram, models.
+  Everything is in Dutch, including the dropdowns (e.g. *laag / gemiddeld / hoog*). Home Assistant only allows
+  **fixed lists** or text fields there: a list of your speech engines or calendars is not possible, because they
+  differ per installation.
+- **The dashboard screen** (⚙ Preferences → **Language, voice and calendars**, administrators only): here you choose
+  from lists Home Assistant itself provides:
+  - **Assistant language**: Dutch, Automatic (Home Assistant's), English or Italian.
+  - **Voice from Home Assistant**: a dropdown with all your speech engines (`tts.*`) and below it **Voice name**,
+    with that engine's voices.
+  - **Allowed calendars**: a tick per Home Assistant calendar.
+
+  A choice applies **at once**, wins over the add-on option and is kept after a restart. A choice shows *Set here in
+  the dashboard*; *As in the add-on* (or **Back to the add-on** for the calendars) undoes it. Keys and tokens are
+  deliberately not in this screen.
+
+Dutch is the **starting language** of everything: the add-on, the notifications, Telegram, the example team and the
+dashboard (unless Home Assistant or your own preference says otherwise).
+
 ## The team: `agents.yaml`
 
 On the first start `agents.yaml` is created in the add-on's configuration folder,

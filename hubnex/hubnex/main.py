@@ -209,6 +209,15 @@ class SuggestIn(BaseModel):
     image: str
 
 
+class SettingsIn(BaseModel):
+    """The settings screen: a field left out stays as it is, null = back to the add-on's value."""
+
+    language: Literal["auto", "it", "en", "nl"] | None = None
+    voice_tts_entity: str | None = Field(default=None, max_length=120)
+    voice_tts_voice: str | None = Field(default=None, max_length=80)
+    calendar_entities: list[str] | None = Field(default=None, max_length=50)
+
+
 # What a Home Assistant user who is not an administrator may do from the house view: the
 # devices' own services, as in Home Assistant itself (never e.g. hassio.* or recorder.*).
 HOUSE_DOMAINS = {
@@ -433,6 +442,29 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def alerts_put(body: dict, hq: HQ = Depends(get_hq)):
         await hq.alerts.save(body)
         return await hq.alerts.overview()
+
+    @app.get("/api/settings", dependencies=[Depends(full)])
+    async def settings_get(hq: HQ = Depends(get_hq)):
+        """Language, voice engine, voice and calendars: the values in force and the lists to choose from."""
+        return hq.settings_view()
+
+    @app.put("/api/settings", dependencies=[Depends(full)])
+    async def settings_put(body: SettingsIn, hq: HQ = Depends(get_hq)):
+        try:
+            await hq.save_settings(body.model_dump(exclude_unset=True))
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        return hq.settings_view()
+
+    @app.get("/api/settings/voices", dependencies=[Depends(full)])
+    async def settings_voices(engine: str, hq: HQ = Depends(get_hq)):
+        """The voices of a text-to-speech engine, for the dropdown."""
+        if not (engine.startswith("tts.") and engine.replace(".", "_").replace("_", "").isalnum()):
+            raise HTTPException(422, tr("motore vocale sconosciuto: {a}", a=engine))
+        try:
+            return {"voices": await hq.watcher.tts_voices(engine)}
+        except Exception as exc:
+            raise HTTPException(502, str(exc))
 
     @app.post("/api/alerts/test", dependencies=[Depends(full)])
     async def alerts_test(hq: HQ = Depends(get_hq)):

@@ -36,6 +36,8 @@ from hubnex.providers import ProviderRouter, is_claude
 from hubnex.tools import REGISTRY, SERVER_TOOLS, ToolContext, server_tool, to_text
 
 log = logging.getLogger("hubnex.hq")
+# What the owner can choose in the dashboard (Voorkeuren → Instellingen) instead of in the add-on options.
+APP_SETTINGS = ("language", "voice_tts_entity", "voice_tts_voice", "calendar_entities")
 
 BOSS_ID = "jarvis"
 BOSS_TOOLS = ["team_overview", "delegate", "agent_history", "owner_rules"]
@@ -136,6 +138,11 @@ class HQ:
             set_system_lang(settings.language)
         else:
             self.watcher.on_language = set_system_lang
+        # The add-on's values stay as the "back to the add-on" value of what the settings screen overrides.
+        self._addon_values = {"language": settings.language, "voice_tts_entity": settings.voice_tts_entity,
+                              "voice_tts_voice": settings.voice_tts_voice, "calendar_entities": sorted(settings.calendar_entities)}
+        self.overrides: dict[str, Any] = {}
+        self._language_touched = False
         casa_file = settings.casa_file or str(Path(settings.agents_file).parent / "casa.yaml")
         self.casa = Casa(self.watcher, casa_file, store)
         self._tts_cache: dict[tuple[str, str], tuple[str | None, str | None]] = {}
@@ -176,6 +183,8 @@ class HQ:
             await self.store.put("credit_spent_usd", 0.0)
             await self.store.put("credit_low_warned", False)
         self.rules = await self.store.get("owner_rules", [])
+        self.overrides = await self.store.get("app_settings", {}) or {}
+        self.apply_settings()
         await self.casa.load()
         for agent_id, n in (await self.store.task_counts()).items():
             if agent_id in self.agents:
@@ -212,6 +221,68 @@ class HQ:
                     raise
                 return None, None  # not cached: tried again next time (HA may still be starting)
         return self._tts_cache[key]
+
+    # ------------------------------------------------------------------ the app's own settings
+    def apply_settings(self) -> None:
+        """The add-on's values with the owner's choices from the settings screen on top."""
+        for key in APP_SETTINGS:
+            value = self.overrides[key] if key in self.overrides else self._addon_values[key]
+            setattr(self.settings, key, set(value) if key == "calendar_entities" else value)
+        if "language" in self.overrides:
+            self._language_touched = True
+        if self._language_touched:  # only once the owner has chosen: until then the add-on's own start-up logic rules
+            if self.settings.language in LANGS:
+                set_system_lang(self.settings.language)
+                self.watcher.on_language = None
+            else:  # automatic: Home Assistant's own language
+                self.watcher.on_language = set_system_lang
+                if self.watcher.language:
+                    set_system_lang(self.watcher.language)
+        self._tts_cache.clear()
+
+    async def save_settings(self, data: dict) -> None:
+        """Keep the owner's choices (None = back to the add-on's value). ValueError says what is wrong."""
+        states = self.watcher.states
+        new = dict(self.overrides)
+        for key, value in data.items():
+            if key not in APP_SETTINGS:
+                continue
+            if value is None:
+                new.pop(key, None)
+                continue
+            if key == "language":
+                if value not in ("auto", *LANGS):
+                    raise ValueError(tr("lingua non valida: {a}", a=value))
+            elif key == "voice_tts_entity":
+                if value and not (value.startswith("tts.") and (not states or value in states)):
+                    raise ValueError(tr("motore vocale sconosciuto: {a}", a=value))
+            elif key == "voice_tts_voice":
+                value = str(value).strip()[:80]
+            elif key == "calendar_entities":
+                bad = [c for c in value if not (isinstance(c, str) and c.startswith("calendar.") and (not states or c in states))]
+                if bad:
+                    raise ValueError(tr("agenda sconosciuta: {a}", a=", ".join(map(str, bad))))
+                value = sorted(set(value))
+            new[key] = value
+        self.overrides = new
+        await self.store.put("app_settings", new)
+        self.apply_settings()
+
+    def settings_view(self) -> dict:
+        """What the settings screen shows: the values in force, the add-on's, what is overridden, and the lists to choose from."""
+        states = self.watcher.states
+        name = lambda e: (states[e].get("attributes") or {}).get("friendly_name") or e  # noqa: E731
+        return {
+            "values": {k: sorted(getattr(self.settings, k)) if k == "calendar_entities" else getattr(self.settings, k) for k in APP_SETTINGS},
+            "addon": dict(self._addon_values),
+            "overrides": sorted(self.overrides),
+            "options": {
+                "languages": ["auto", *LANGS],
+                "tts": [{"e": e, "n": name(e)} for e in sorted(x for x in states if x.startswith("tts."))],
+                "calendars": [{"e": e, "n": name(e)} for e in sorted(x for x in states if x.startswith("calendar."))],
+                "elevenlabs": self.voice.tts_enabled,
+            },
+        }
 
     # ------------------------------------------------------------------ events
     async def _ha_event(self, kind: str, entity_id: str | None, state: dict | None) -> None:

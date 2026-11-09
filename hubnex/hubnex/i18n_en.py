@@ -197,4 +197,7 @@ EN: dict[str, str] = {
     "è SCADUTA": "OVERDUE",
     "scade il {day} alle {time}": "is due on {day} at {time}",
     "Scadenza: *{title}* {when}.": "Deadline: *{title}* {when}.",
+    "lingua non valida: {a}": "invalid language: {a}",
+    "motore vocale sconosciuto: {a}": "unknown speech engine: {a}",
+    "agenda sconosciuta: {a}": "unknown calendar: {a}",
 }

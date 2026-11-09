@@ -16,8 +16,8 @@ een Telegram-groep, spraak en connectors voor de programma's die je op je werk g
 4. Vertel in `agents.yaml` (hieronder) wie je bent en hoe je werkt: hoe meer hij weet, hoe nuttiger
    hij is.
 
-**Taal**: de add-on spreekt de taal van Home Assistant (Italiaans, Nederlands, anders Engels); de
-optie **Taal** kiest die met de hand. Bij de eerste start staat het voorbeeldbestand `agents.yaml` in
+**Taal**: de add-on spreekt standaard **Nederlands**; de optie **Taal** (of het scherm *Taal, stem en agenda's* in het
+dashboard) kiest een andere taal, of *auto* om die van Home Assistant te volgen. Bij de eerste start staat het voorbeeldbestand `agents.yaml` in
 dezelfde taal.
 
 Al het andere is optioneel en kun je op elk moment toevoegen, in deze voorgestelde volgorde:
@@ -34,6 +34,28 @@ Al het andere is optioneel en kun je op elk moment toevoegen, in deze voorgestel
 | Tablet of telefoon buiten HA | HQ-token en poort | Gebruik buiten Home Assistant |
 
 Elke optie op het tabblad **Configuratie** heeft naast het veld een uitleg.
+
+## Instellingen: de add-on-opties en het scherm in het dashboard
+
+Er zijn twee plekken om dingen in te stellen, en ze hebben elk hun eigen rol:
+
+- **De opties van de add-on** (Instellingen → Add-ons → HubNEX → Configuratie): sleutels, tokens, mail, Telegram,
+  modellen. Alles staat in het Nederlands, ook de keuzelijsten (bijv. *laag / gemiddeld / hoog*). Home Assistant laat
+  hier alleen **vaste lijsten** of tekstvelden toe: een lijst met jouw spraakengines of agenda's kan daar niet,
+  want die zijn voor elke installatie anders.
+- **Het scherm in het dashboard** (⚙ Voorkeuren → **Taal, stem en agenda's**, alleen voor beheerders): hier kies je
+  uit lijsten die Home Assistant zelf levert:
+  - **Taal van de assistent**: Nederlands, Automatisch (die van Home Assistant), English of Italiano.
+  - **Stem van Home Assistant**: een dropdown met al je spraakengines (`tts.*`) en daaronder **Naam van de stem**,
+    met de stemmen van die engine.
+  - **Toegestane agenda's**: een vinkje per agenda in Home Assistant.
+
+  Een keuze geldt **meteen**, wint van de add-on-optie en blijft na een herstart bewaard. Bij een keuze staat
+  *Hier in het dashboard ingesteld*; met *Zoals in de add-on* (of **Terug naar de add-on** bij de agenda's) maak je
+  hem ongedaan. Sleutels en tokens staan bewust niet in dit scherm.
+
+Nederlands is de **starttaal** van alles: de add-on, de meldingen, Telegram, het voorbeeldteam en het dashboard
+(tenzij Home Assistant of jouw voorkeur iets anders zegt).
 
 ## Het team: `agents.yaml`
 

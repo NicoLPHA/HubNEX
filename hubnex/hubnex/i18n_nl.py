@@ -197,4 +197,7 @@ NL: dict[str, str] = {
     "è SCADUTA": "VERLOPEN",
     "scade il {day} alle {time}": "verloopt op {day} om {time}",
     "Scadenza: *{title}* {when}.": "Deadline: *{title}* {when}.",
+    "lingua non valida: {a}": "ongeldige taal: {a}",
+    "motore vocale sconosciuto: {a}": "onbekende spraakengine: {a}",
+    "agenda sconosciuta: {a}": "onbekende agenda: {a}",
 }

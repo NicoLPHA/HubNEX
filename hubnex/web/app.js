@@ -10,6 +10,7 @@ import { Orb, describeTool } from "./orb.js";
 import { CasaView } from "./casa.js";
 import { CostsView, money } from "./costs.js";
 import { AlertsView } from "./alerts.js";
+import { SettingsView } from "./settings.js";
 import { t, LANG, LOCALE, setLang, translatePage } from "./i18n.js";
 
 translatePage();
@@ -45,6 +46,7 @@ async function api(path, opts = {}) {
 const orb = new Orb($("orb"));
 const costs = new CostsView(api);
 const alerts = new AlertsView(api);
+const appSettings = new SettingsView(api);
 
 // ===================================================================== three.js scene
 const container = $("scene");
@@ -478,6 +480,7 @@ $("ha-prefs").addEventListener("click", () => {
 $("prefs-close").addEventListener("click", () => { $("prefs").classList.add("hidden"); $("ha-prefs").setAttribute("aria-expanded", "false"); });
 $("pref-costs").addEventListener("click", () => { $("prefs-close").click(); costs.open(); });
 $("pref-alerts").addEventListener("click", () => { $("prefs-close").click(); alerts.open(); });
+$("pref-settings").addEventListener("click", () => { $("prefs-close").click(); appSettings.open(); });
 
 // Backup and restore (administrators only; the add-on checks it too).
 $("backup-get").addEventListener("click", async () => {

@@ -30,6 +30,23 @@ Tutto il resto è facoltativo e si aggiunge quando vuoi, in quest'ordine consigl
 
 Ogni opzione della scheda **Configurazione** ha la sua spiegazione accanto al campo.
 
+## Impostazioni: le opzioni dell'add-on e la schermata nella plancia
+
+Ci sono due posti dove impostare le cose, ognuno col suo ruolo:
+
+- **Le opzioni dell'add-on** (Impostazioni → Add-on → HubNEX → Configurazione): chiavi, token, posta, Telegram,
+  modelli. Home Assistant permette qui solo **elenchi fissi** o campi di testo: un elenco dei tuoi motori vocali o
+  delle tue agende non è possibile, perché cambia da installazione a installazione.
+- **La schermata nella plancia** (⚙ Preferenze → **Lingua, voce e agende**, solo amministratori): qui scegli da
+  elenchi che fornisce Home Assistant stesso: **lingua dell'assistente**, **voce da Home Assistant** (motore e
+  nome della voce) e **agende consentite**.
+
+  La scelta vale **subito**, prevale sull'opzione dell'add-on e resta dopo un riavvio. «Come nell'add-on» (o
+  **Torna all'add-on** per le agende) la annulla. Chiavi e token non sono in questa schermata.
+
+L'olandese è la **lingua di partenza** di tutto: add-on, notifiche, Telegram, team di esempio e plancia (salvo che
+Home Assistant o la tua preferenza dicano altro).
+
 ## Il team: `agents.yaml`
 
 Al primo avvio viene creato `agents.yaml` nella cartella di configurazione dell'add-on,

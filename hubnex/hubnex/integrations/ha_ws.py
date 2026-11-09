@@ -253,6 +253,14 @@ class HAWatcher:
         names = ", ".join(v["name"] for v in voices[:30]) or "nessuna"
         raise HAWatcherError(tr("voce '{a}' non trovata in {b} ({c}). Disponibili: {d}", a=wanted, b=engine, c=language, d=names))
 
+    async def tts_voices(self, engine: str) -> list[dict]:
+        """The voices of a TTS engine in Home Assistant's language: [{"id", "name"}, ...] (for a dropdown)."""
+        language, _ = await self.tts_voice(engine, "")
+        if not language:
+            return []
+        res = await self._command({"type": "tts/engine/voices", "engine_id": engine, "language": language}) or {}
+        return [{"id": v["voice_id"], "name": v["name"]} for v in res.get("voices") or []]
+
     async def is_admin(self, user_id: str) -> bool:
         """Whether a Home Assistant user is an administrator (owner or in the admin group)."""
         if user_id not in self._admins or time.monotonic() - self._admins_at > 300:

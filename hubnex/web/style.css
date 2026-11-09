@@ -290,7 +290,7 @@ body.casa #scene, body.casa #left, body.casa #right, body.casa #companies, body.
 /* Per-user choice (Preferenze): only the house, and/or no assistant. */
 body.no-hq .view-switch, body.no-hq #left, body.no-hq #right, body.no-hq #companies, body.no-hq #integrations,
 body.no-ai #chat, body.no-ai #orb, body.no-ai #drafts-badge, body.no-ai #drafts-sheet { display: none !important; }
-body.role-casa #prefs .pref-row:has(#pref-hq), body.role-casa #prefs .pref-row:has(#pref-ai), body.role-casa #pref-costs-row, body.role-casa #pref-alerts-row,
+body.role-casa #prefs .pref-row:has(#pref-hq), body.role-casa #prefs .pref-row:has(#pref-ai), body.role-casa #pref-costs-row, body.role-casa #pref-alerts-row, body.role-casa #pref-settings-row,
 body.role-casa .casa-hint, body.role-casa [data-act="layout"], body.role-casa [data-act="energy-cfg"], body.role-casa [data-act="edit"], body.role-casa .casa-temp-src { display: none !important; }
 #prefs .pref-row + .pref-note:empty { display: none; }
 .pref-costs + .pref-costs { margin-top: 0; border-top: 0; padding-top: 4px; }
@@ -1022,6 +1022,8 @@ body.casa-modal-open #chat, body.casa-modal-open #orb { display: none !important
 .al-times { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
 .alerts input[type="time"], .alerts input[type="number"] { width: auto; min-height: 30px; padding: 2px 8px; font-size: 14px; background: rgba(3, 7, 14, 0.5); color: var(--text); border: 1px solid rgba(79, 209, 255, 0.2); border-radius: 6px; color-scheme: dark; }
 .al-num { width: 84px !important; }
+.alerts select { width: 100%; min-height: 32px; padding: 2px 8px; font-size: 14px; background: rgba(3, 7, 14, 0.5); color: var(--text); border: 1px solid rgba(79, 209, 255, 0.2); border-radius: 6px; color-scheme: dark; }
+.al-row .st-set { color: var(--accent); }
 .al-rule { display: flex; flex-direction: column; gap: 8px; padding: 12px 0 4px; border-top: 1px solid rgba(79, 209, 255, 0.12); }
 .al-head { display: flex; gap: 12px; align-items: flex-start; }
 .al-head b { display: block; font-weight: 500; font-size: 15px; }
