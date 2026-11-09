@@ -209,6 +209,10 @@ class SuggestIn(BaseModel):
     image: str
 
 
+class ShortcutsIn(BaseModel):
+    enabled: bool
+
+
 class SettingsIn(BaseModel):
     """The settings screen: a field left out stays as it is, null = back to the add-on's value."""
 
@@ -465,6 +469,24 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             return {"voices": await hq.watcher.tts_voices(engine)}
         except Exception as exc:
             raise HTTPException(502, str(exc))
+
+    @app.get("/api/shortcuts", dependencies=[Depends(full)])
+    async def shortcuts_get(hq: HQ = Depends(get_hq)):
+        """The learned shortcuts (questions answered without Claude) and whether learning is on."""
+        return await hq.shortcuts.listing()
+
+    @app.put("/api/shortcuts", dependencies=[Depends(full)])
+    async def shortcuts_put(body: ShortcutsIn, hq: HQ = Depends(get_hq)):
+        await hq.shortcuts.set_enabled(body.enabled)
+        return await hq.shortcuts.listing()
+
+    @app.delete("/api/shortcuts", dependencies=[Depends(full)])
+    async def shortcuts_delete(key: str | None = None, all: bool = False, hq: HQ = Depends(get_hq)):
+        """One shortcut by its key, or all of them (?all=true)."""
+        if not key and not all:
+            raise HTTPException(422, tr("indica quale scorciatoia o tutte"))
+        await hq.shortcuts.remove(None if all else key)
+        return await hq.shortcuts.listing()
 
     @app.post("/api/alerts/test", dependencies=[Depends(full)])
     async def alerts_test(hq: HQ = Depends(get_hq)):

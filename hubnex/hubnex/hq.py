@@ -31,6 +31,7 @@ from hubnex.context import CURRENT_CHAT, ORIGIN
 from hubnex.llm import run_agent_loop
 from hubnex.maildesk import MAIL_AGENT_ID, MailDesk
 from hubnex.pricing import call_cost
+from hubnex.shortcuts import Shortcuts
 from hubnex.store import Store
 from hubnex.providers import ProviderRouter, is_claude
 from hubnex.tools import REGISTRY, SERVER_TOOLS, ToolContext, server_tool, to_text
@@ -143,6 +144,7 @@ class HQ:
                               "voice_tts_voice": settings.voice_tts_voice, "calendar_entities": sorted(settings.calendar_entities)}
         self.overrides: dict[str, Any] = {}
         self._language_touched = False
+        self.shortcuts = Shortcuts(self)  # questions that came back often, answered without Claude
         casa_file = settings.casa_file or str(Path(settings.agents_file).parent / "casa.yaml")
         self.casa = Casa(self.watcher, casa_file, store)
         self._tts_cache: dict[tuple[str, str], tuple[str | None, str | None]] = {}
@@ -806,6 +808,9 @@ class HQ:
             if local and self.ha.enabled and local_ok(text):
                 answer = await self._ha_local(strip_context(text))
                 by = "ha"
+            if answer is None and quick and self.ha.enabled and not SENSITIVE.search(text) and not attachments:
+                answer = await self.shortcuts.answer(text)  # learned: the same question, answered locally
+                by = "learned"
             if answer is None and quick and self.settings.model_voice and self.ha.enabled and not SENSITIVE.search(text):
                 answer = await self._quick(text, voice, short)
                 by = "quick"
@@ -843,12 +848,20 @@ class HQ:
         tool_names = [t for t in self.org.boss_tools if t.startswith("ha_")]
         model = self.settings.model_voice
         await self.set_status(BOSS_ID, "thinking", None, task=text)
+        calls: list[tuple[str, dict, bool, str]] = []  # what Claude did, for the learned shortcuts
         try:
             tool_defs, extra = await self._toolbox(BOSS_ID, tool_names, model)
+            base = self._executor(BOSS_ID, None, set(tool_names), extra)
+
+            async def execute(name: str, inp: dict):
+                out, error = await base(name, inp)
+                calls.append((name, dict(inp), error, out if isinstance(out, str) else ""))
+                return out, error
+
             result = await run_agent_loop(
                 self.client, model=model, effort="low", system=self._quick_system(voice),
                 tools=tool_defs, messages=messages,
-                execute=self._executor(BOSS_ID, None, set(tool_names), extra),
+                execute=execute,
                 on_status=lambda s, d: self.set_status(BOSS_ID, s, d), on_usage=self.usage_for(BOSS_ID),
                 max_turns=6,
             )
@@ -858,6 +871,10 @@ class HQ:
         reply = result.text.strip()
         if not reply or QUICK_PASS in reply:
             return None
+        try:
+            await self.shortcuts.observe(text, calls)
+        except Exception:
+            log.exception("learning a shortcut failed")  # never in the way of the answer
         st = self.agents[BOSS_ID]
         await self.set_status(BOSS_ID, "sleeping", None, task=None, last_result=reply[:4000], done=st.done + 1)
         return reply

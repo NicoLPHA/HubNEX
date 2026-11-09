@@ -54,8 +54,8 @@ def summarize(series: list[tuple[str, str]], unit: str = "") -> dict:
             "media": round(sum(nums) / len(nums), 2), "letture": len(nums),
         }
     counts: dict[str, int] = {}
-    prev = None
-    for _, s in rows:
+    prev = rows[0][1]  # the first row is the state at the start of the period: it did not "become" it
+    for _, s in rows[1:]:
         if s != prev:
             counts[s] = counts.get(s, 0) + 1  # how many times it BECAME this state
         prev = s

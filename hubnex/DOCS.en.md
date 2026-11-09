@@ -248,6 +248,26 @@ Three extras for the house. Give the tools to the agents that need them, in `age
   Assistant's `todo.shopping_list` (or the only list you have; with several, Jarvis asks which). What is already on
   it is not added twice.
 
+## Learned answers
+
+A house question that keeps coming back does not have to go to Claude every time. When the quick route answers the
+**same question three times** in the **same way** (same tools, same sensors), HubNEX remembers. Next time it fetches the
+data itself and answers with a fixed sentence: no AI, in about a tenth of a second. The answer carries the note
+"Learned answer, no AI".
+
+- **What is learned:** lookups only (`ha_history`, `ha_get_state`, `ha_shopping_list`, `ha_scene_list`) and applying a
+  saved scene. **Never** locks, doors, the alarm or a free service call.
+- **The exact same question:** capitals and punctuation do not matter; another wording is learned separately. On the
+  dashboard the room is part of it.
+- **Time stays right:** "today", "the last hour" and "this week" are recomputed every time. A question about
+  "yesterday" or a follow-up ("and in the hall?") is not learned.
+- **Only your questions:** routines and automations neither learn nor use shortcuts.
+- **The answer is simpler** than a sentence from Claude.
+- **If something is off** (an error, a sensor that is gone), Claude answers as usual. An answer that fails three times in
+  a row is forgotten and learned again.
+- **Manage it:** Preferences → Language, voice and calendars → **Learned answers**: switch learning off, forget one or
+  all. They are kept in HubNEX itself.
+
 ## Work mailbox
 
 Set your provider's IMAP/SMTP (servers, SSL ports 993/465, user, password).

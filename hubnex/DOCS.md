@@ -259,6 +259,27 @@ Drie extra mogelijkheden voor het huis. Geef de tools aan de agents die ze nodig
   lijst `todo.shopping_list` van Home Assistant (integratie Boodschappenlijst) of de enige lijst die je hebt; heb je er
   meer, dan vraagt Jarvis welke. Wat er al op staat, wordt niet dubbel toegevoegd.
 
+## Geleerde antwoorden
+
+Een vraag over het huis die vaak terugkomt, hoeft niet elke keer naar Claude. Als de snelle route **drie keer
+dezelfde vraag** op **dezelfde manier** beantwoordt (dezelfde tools, dezelfde sensoren), onthoudt HubNEX dat. De
+volgende keer haalt HubNEX de gegevens zelf op en antwoordt met een vaste zin, zonder AI en in ongeveer een
+tiende seconde. Onder het antwoord staat dan "Geleerd antwoord, zonder AI".
+
+- **Wat wordt geleerd:** alleen opvragen (`ha_history`, `ha_get_state`, `ha_shopping_list`, `ha_scene_list`) en het
+  toepassen van een opgeslagen scène. **Nooit** sloten, deuren, alarm of een vrije serviceaanroep.
+- **Exact dezelfde vraag:** hoofdletters en leestekens maken niet uit, een andere formulering wordt apart geleerd.
+  Op het dashboard hoort de kamer erbij: "is het licht aan?" in de keuken is een andere vraag dan in de gang.
+- **Tijd klopt:** "vandaag", "het afgelopen uur" en "deze week" worden elke keer opnieuw berekend. Een vraag over
+  "gisteren" wordt niet geleerd, en ook geen vervolgvraag ("en in de gang?").
+- **Alleen jouw vragen:** routines en automatiseringen leren niets en gebruiken niets.
+- **Het antwoord is eenvoudiger** dan een zin van Claude, bijvoorbeeld "Keuken: 7 keer aan, 6 keer uit (vandaag);
+  nu uit."
+- **Valt iets tegen** (een fout, een sensor die weg of hernoemd is), dan beantwoordt Claude de vraag gewoon. Een
+  antwoord dat drie keer achter elkaar mislukt, wordt vergeten en opnieuw geleerd.
+- **Beheren:** Voorkeuren → Taal, stem en agenda's → **Geleerde antwoorden**. Daar zet je het leren uit, vergeet je één
+  antwoord of alles. De antwoorden staan in HubNEX zelf; er gaat niets naar buiten.
+
 ## Zakelijke mailbox
 
 Stel de IMAP/SMTP van je provider in (servers, SSL-poorten 993/465, gebruiker, wachtwoord).

@@ -13,6 +13,7 @@ export class SettingsView {
     this.el = null;
     this.note = "";
     this.voices = {}; // engine -> [{id, name}] or { error }
+    this.shortcuts = null; // learned shortcuts: { enabled, threshold, items }
     addEventListener("keydown", (e) => { if (e.key === "Escape" && this.el) { e.stopImmediatePropagation(); this.close(); } }, true);
   }
 
@@ -31,6 +32,7 @@ export class SettingsView {
     try {
       this.data = await (await this.api("/api/settings")).json();
       await this.loadVoices();
+      this.shortcuts = await (await this.api("/api/shortcuts")).json();
     } catch (e) {
       this.note = `⚠ ${e.message || e}`;
     }
@@ -67,10 +69,24 @@ export class SettingsView {
   onClick(e) {
     if (e.target === this.el || e.target.closest("[data-st-close]")) return this.close();
     if (e.target.closest("[data-st-cal-reset]")) return this.save({ calendar_entities: null });
+    const del = e.target.closest("[data-sc-del]");
+    if (del) return this.shortcut("DELETE", `?key=${encodeURIComponent(del.dataset.scDel)}`);
+    if (e.target.closest("[data-sc-all]")) return this.shortcut("DELETE", "?all=true");
+  }
+
+  async shortcut(method, query = "", body) {
+    try {
+      this.shortcuts = await (await this.api(`/api/shortcuts${query}`, { method, ...(body ? { body: JSON.stringify(body) } : {}) })).json();
+      this.note = t("Salvato");
+    } catch (e) {
+      this.note = `⚠ ${e.message || e}`;
+    }
+    this.render();
   }
 
   onChange(e) {
     const el = e.target, d = this.data;
+    if (el.dataset.scOn !== undefined) return this.shortcut("PUT", "", { enabled: el.checked });
     if (!d) return;
     if (el.dataset.st) {
       const key = el.dataset.st, value = el.value === ADDON ? null : el.value;
@@ -139,6 +155,23 @@ export class SettingsView {
     const calendars = `<div class="al-row"><span>${t("Agende consentite")}<small>${t("Gli agenti con lo strumento calendar_events leggono solo queste. Niente selezionato = tutte le agende.")}</small>${over ? `<small class="st-set">${t("Impostato qui nella plancia")}</small>` : ""}</span>
       <div class="al-phones">${cals}${reset}</div></div>`;
 
-    return `<div class="al-where">${language}${engine}${voice}${calendars}</div>`;
+    return `<div class="al-where">${language}${engine}${voice}${calendars}</div>${this.shortcutsHTML()}`;
+  }
+
+  /** The questions HubNEX learned to answer without Claude: switch learning off, or forget one. */
+  shortcutsHTML() {
+    const s = this.shortcuts;
+    if (!s) return "";
+    const active = s.items.filter((i) => i.active), learning = s.items.length - active.length;
+    const rows = active.map((i) => `<div class="al-row"><span>${esc(i.text)}<small>${t("{n} volte usata", { n: i.hits })}</small></span>
+      <button type="button" class="hc-link" data-sc-del="${esc(i.key)}">${t("Dimentica")}</button></div>`).join("");
+    const all = active.length || learning ? `<button type="button" class="hc-link" data-sc-all>${t("Dimentica tutto")}</button>` : "";
+    return `<h4 class="st-head">${t("Risposte apprese")}</h4>
+      <p class="al-intro">${t("Una domanda sulla casa che torna spesso e che Claude ha sempre risolto allo stesso modo, la prossima volta si risponde da qui, senza AI e in una frazione di secondo. Solo letture e scene, mai serrature o allarme.")}</p>
+      <div class="al-where"><div class="al-row"><span>${t("Impara dalle domande ripetute")}<small>${t("Dopo {n} volte uguali", { n: s.threshold })}</small></span>
+        <label class="al-check"><input type="checkbox" data-sc-on ${s.enabled ? "checked" : ""}></label></div>
+        ${rows || `<div class="al-row"><span class="al-muted">${t("Ancora nessuna risposta appresa.")}</span></div>`}
+        ${learning ? `<div class="al-row"><span class="al-muted">${t("{n} domande in apprendimento", { n: learning })}</span></div>` : ""}
+        ${all ? `<div class="al-row"><span></span>${all}</div>` : ""}</div>`;
   }
 }

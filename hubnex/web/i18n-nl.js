@@ -790,5 +790,15 @@ export const NL = {
   "Nessuna agenda trovata in Home Assistant.": "Geen agenda's gevonden in Home Assistant.",
   "Impostato qui nella plancia": "Hier in het dashboard ingesteld",
   "Torna all'add-on": "Terug naar de add-on",
-  "nessuna": "geen"
+  "nessuna": "geen",
+  "Risposta appresa, senza AI": "Geleerd antwoord, zonder AI",
+  "{n} volte usata": "{n} keer gebruikt",
+  "Dimentica": "Vergeet",
+  "Dimentica tutto": "Alles vergeten",
+  "Risposte apprese": "Geleerde antwoorden",
+  "Una domanda sulla casa che torna spesso e che Claude ha sempre risolto allo stesso modo, la prossima volta si risponde da qui, senza AI e in una frazione di secondo. Solo letture e scene, mai serrature o allarme.": "Een vraag over het huis die vaak terugkomt en die Claude steeds op dezelfde manier oploste, wordt de volgende keer hier beantwoord: zonder AI en in een fractie van een seconde. Alleen opvragen en scènes, nooit sloten of alarm.",
+  "Impara dalle domande ripetute": "Leer van herhaalde vragen",
+  "Dopo {n} volte uguali": "Na {n} keer hetzelfde",
+  "Ancora nessuna risposta appresa.": "Nog geen antwoorden geleerd.",
+  "{n} domande in apprendimento": "{n} vragen worden nog geleerd"
 };

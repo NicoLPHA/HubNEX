@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.20.5
+- **Geleerde antwoorden:** een vraag over het huis die vaak terugkomt en die Claude steeds op dezelfde manier
+  oploste (zelfde vraag, zelfde tools, drie keer), wordt daarna lokaal beantwoord: zonder AI en in een fractie van
+  een seconde. Alleen opvragen (geschiedenis, standen, boodschappenlijst, scènes) en het toepassen van scènes; nooit
+  sloten, alarm of vrije serviceaanroepen. Te beheren onder Voorkeuren → Taal, stem en agenda's → Geleerde antwoorden
+  (uitzetten, een antwoord of alles vergeten). Een onverwacht resultaat valt terug op Claude.
+- Fix: bij de geschiedenis telde de stand aan het begin van de periode ten onrechte als "aangegaan".
+
 ## 1.20.4
 - **Eerst lokaal, dan Claude:** een bericht probeert eerst de eigen zinnen van Home Assistant (geen AI), dan de
   snelle route (Haiku) en pas dan Jarvis. Dat geldt nu ook voor Telegram; de gekozen taal gaat mee naar Home

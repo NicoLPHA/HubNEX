@@ -791,5 +791,15 @@ export const EN = {
   "Nessuna agenda trovata in Home Assistant.": "No calendars found in Home Assistant.",
   "Impostato qui nella plancia": "Set here in the dashboard",
   "Torna all'add-on": "Back to the add-on",
-  "nessuna": "none"
+  "nessuna": "none",
+  "Risposta appresa, senza AI": "Learned answer, no AI",
+  "{n} volte usata": "used {n} times",
+  "Dimentica": "Forget",
+  "Dimentica tutto": "Forget all",
+  "Risposte apprese": "Learned answers",
+  "Una domanda sulla casa che torna spesso e che Claude ha sempre risolto allo stesso modo, la prossima volta si risponde da qui, senza AI e in una frazione di secondo. Solo letture e scene, mai serrature o allarme.": "A house question that comes back often and that Claude always solved the same way is answered from here next time: no AI, in a fraction of a second. Lookups and scenes only, never locks or the alarm.",
+  "Impara dalle domande ripetute": "Learn from repeated questions",
+  "Dopo {n} volte uguali": "After {n} identical times",
+  "Ancora nessuna risposta appresa.": "No learned answers yet.",
+  "{n} domande in apprendimento": "{n} questions still being learned"
 };

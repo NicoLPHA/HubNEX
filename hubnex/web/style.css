@@ -1024,6 +1024,7 @@ body.casa-modal-open #chat, body.casa-modal-open #orb { display: none !important
 .al-num { width: 84px !important; }
 .alerts select { width: 100%; min-height: 32px; padding: 2px 8px; font-size: 14px; background: rgba(3, 7, 14, 0.5); color: var(--text); border: 1px solid rgba(79, 209, 255, 0.2); border-radius: 6px; color-scheme: dark; }
 .al-row .st-set { color: var(--accent); }
+.settings .st-head { margin: 18px 0 4px; font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
 .al-rule { display: flex; flex-direction: column; gap: 8px; padding: 12px 0 4px; border-top: 1px solid rgba(79, 209, 255, 0.12); }
 .al-head { display: flex; gap: 12px; align-items: flex-start; }
 .al-head b { display: block; font-weight: 500; font-size: 15px; }

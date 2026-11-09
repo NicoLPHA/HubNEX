@@ -1,5 +1,5 @@
 name: HubNEX
-version: "1.20.4"
+version: "1.20.5"
 slug: hubnex
 description: Het AI-hoofdkwartier voor thuis en werk - een team van Claude-agents, een 3D-dashboard in Home Assistant, Telegram, spraak en MCP-connectors.
 url: https://github.com/NicoLPHA/HubNEX

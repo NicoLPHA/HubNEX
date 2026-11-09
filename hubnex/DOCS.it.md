@@ -236,6 +236,21 @@ Tre extra per la casa. Dai gli strumenti agli agenti che ne hanno bisogno, in `a
   `todo.shopping_list` di Home Assistant (o l'unica lista che hai; con più liste Jarvis chiede quale). Ciò che c'è già
   non viene aggiunto due volte.
 
+## Risposte apprese
+
+Una domanda sulla casa che torna spesso non deve andare ogni volta a Claude. Se la via rapida risponde **tre volte alla
+stessa domanda** **allo stesso modo** (stessi strumenti, stessi sensori), HubNEX lo ricorda. La volta dopo recupera i dati
+da solo e risponde con una frase fissa: senza AI, in circa un decimo di secondo.
+
+- **Cosa si impara:** solo letture (`ha_history`, `ha_get_state`, `ha_shopping_list`, `ha_scene_list`) e l'applicazione di
+  una scena salvata. **Mai** serrature, porte, allarme o chiamate libere ai servizi.
+- **Stessa identica domanda:** maiuscole e punteggiatura non contano. Sulla plancia la stanza fa parte della domanda.
+- **Il tempo resta giusto:** «oggi», «l'ultima ora», «questa settimana» si ricalcolano ogni volta. «Ieri» e le domande di
+  seguito non si imparano.
+- **Solo le tue domande:** routine e automazioni non imparano e non usano scorciatoie.
+- **Se qualcosa non torna** risponde Claude. Una risposta che fallisce tre volte di fila viene dimenticata e reimparata.
+- **Gestione:** Preferenze → Lingua, voce e agende → **Risposte apprese**.
+
 ## Posta di lavoro
 
 Imposta IMAP/SMTP del tuo provider (server, porte SSL 993/465, utente, password).
