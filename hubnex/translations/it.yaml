@@ -1,10 +1,10 @@
 configuration:
   anthropic_api_key:
     name: Chiave API Anthropic
-    description: La chiave per usare Claude (console.anthropic.com).
+    description: La chiave per usare Claude (console.anthropic.com). Non serve se usi solo altri fornitori.
   model_jarvis:
     name: Modello di Jarvis
-    description: Usato da Jarvis e dagli agenti che non ne indicano uno in agents.yaml.
+    description: Usato da Jarvis e dagli agenti che non ne indicano uno in agents.yaml. Claude per nome (claude-sonnet-5-5), gli altri con il prefisso del fornitore - openai:gpt-5-mini, ollama:qwen3:14b, compat:nome-modello.
   model_mail:
     name: Modello di Jarvis Mail
     description: Usato dall'agente email e per classificare la posta.
@@ -17,6 +17,27 @@ configuration:
   monthly_budget_usd:
     name: Budget mensile Claude ($)
     description: Avviso nel gruppo Telegram e nelle notifiche quando la spesa del mese arriva all'80% e al 100%. È solo un avviso, HubNEX non si ferma. 0 = nessun avviso.
+  openai_api_key:
+    name: Chiave API OpenAI
+    description: Per i modelli scritti come openai:nome (platform.openai.com).
+  openai_base_url:
+    name: Indirizzo API OpenAI
+    description: Vuoto = quello di OpenAI. Cambialo solo per un servizio che imita OpenAI con la stessa chiave.
+  ollama_url:
+    name: Indirizzo di Ollama
+    description: Per i modelli locali scritti come ollama:nome, es. http://192.168.1.20:11434. Gratis e senza cloud; serve un modello che sappia usare gli strumenti (qwen3, llama3.1, mistral-small).
+  compat_base_url:
+    name: Indirizzo di un altro servizio compatibile
+    description: Per i modelli scritti come compat:nome. Qualsiasi server compatibile con OpenAI, fino a /v1 - LM Studio (http://IP:1234/v1), OpenRouter (https://openrouter.ai/api/v1), Gemini (https://generativelanguage.googleapis.com/v1beta/openai), Mistral, DeepSeek, Groq.
+  compat_api_key:
+    name: Chiave del servizio compatibile
+    description: La chiave di quel servizio; vuota se non la chiede (LM Studio).
+  other_price_input:
+    name: Prezzo input altri modelli ($ per milione di token)
+    description: Per contare la spesa dei modelli openai e compat, come da listino del fornitore. 0 = non contata. I modelli di Ollama sono sempre gratis.
+  other_price_output:
+    name: Prezzo output altri modelli ($ per milione di token)
+    description: Come sopra, per i token di risposta.
   telegram_token_jarvis:
     name: Token bot Jarvis
     description: Da @BotFather. Deve essere un bot che nessun altro programma sta ascoltando.

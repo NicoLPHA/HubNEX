@@ -34,7 +34,17 @@ WEB_SEARCH_USD = 10.00 / 1000  # per search
 FALLBACK_PRICE = PRICES["claude-opus-5-5"]  # unknown model: estimate high rather than low
 
 
-def call_cost(model: str, usage) -> float:
+def call_cost(model: str, usage, other: tuple[float, float] = (0.0, 0.0)) -> float:
+    """`other`: the owner's price (input, output per million tokens) for openai:/compat: models.
+    Local models (ollama:) cost nothing."""
+    from hubnex.providers import split_model
+
+    provider, _ = split_model(model)
+    if provider == "ollama":
+        return 0.0
+    if provider != "anthropic":
+        tokens_in = (usage.input_tokens or 0) + (getattr(usage, "cache_read_input_tokens", 0) or 0)
+        return (tokens_in * other[0] + (usage.output_tokens or 0) * other[1]) / 1_000_000
     price = PRICES.get(model, FALLBACK_PRICE)
     fresh = usage.input_tokens or 0
     read = getattr(usage, "cache_read_input_tokens", 0) or 0

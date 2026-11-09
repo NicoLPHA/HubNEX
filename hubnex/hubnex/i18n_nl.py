@@ -173,4 +173,11 @@ NL: dict[str, str] = {
     "file vuoto": "leeg bestand",
     "formato non supportato: invia foto, PDF o file di testo": "formaat niet ondersteund: stuur foto's, pdf's of tekstbestanden",
     "scrivi un messaggio o allega un file": "schrijf een bericht of voeg een bestand toe",
+    "Scorta da riordinare": "Voorraad bijbestellen",
+    "aggiungi almeno un blocco": "voeg minstens één blok toe",
+    "aggiungi almeno un'entità": "voeg minstens één entiteit toe",
+    "card non riuscita": "kaart mislukt",
+    "non è una card di HubNEX": "dit is geen HubNEX-kaart",
+    "risposta non trovata": "antwoord niet gevonden",
+    "{name}: ne restano {left}, sotto la soglia di {low}. È ora di ordinare.": "{name}: nog {left} over, onder de drempel van {low}. Tijd om te bestellen.",
 }

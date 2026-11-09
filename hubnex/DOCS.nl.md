@@ -221,6 +221,73 @@ toetsenbord om, de andere om een bevestiging in de kaart; het **alarm** schakel 
 toetsenbord. De **kamers zijn de gebieden van Home Assistant**: de entiteiten van een gebied (of van
 zijn apparaat) verschijnen vanzelf in de kamer.
 
+Rond de plattegrond, in één oogopslag:
+
+- **Weer** in de HUD: toestand, temperatuur, min/max en regen; met een tik opent de verwachting voor de
+  komende dagen, met luchtvochtigheid en wind. Het gebruikt de entiteit `weather.*` van Home Assistant.
+- **Vandaag en de komende dagen**: jouw deadlines en die van de agents in de komende 7 dagen, met een
+  vinkje om ze af te sluiten. Alleen jij ziet dit: Home Assistant-gebruikers met alleen toegang tot het
+  huis niet.
+- **Op de plattegrond**, onder de naam van de kamer: een persoon waar aanwezigheid of beweging is, een
+  noot waar iets speelt, de robot waar hij schoonmaakt, een wasmachine waar de wasmachine of
+  vaatwasser draait.
+- **Huishoudelijke apparaten**: wasmachine, vaatwasser, droger, oven en waterkoker op een stopcontact
+  dat het vermogen meet (herkend aan de naam): "in bedrijf" en, 3 uur lang, "klaar … geleden".
+- **Recente gebeurtenissen**: de laatste wijzigingen in de afgelopen 24 uur van deuren, ramen, sloten,
+  alarm en personen.
+
+**Voorraden (pellets en dergelijke).** Een *Getal*-helper of *Teller* van Home Assistant met "pellet",
+"zakken" of "voorraad" in de naam wordt een kaart **Voorraad**; voor andere kies je "Voorraad" als type bij
+het wijzigen van de kamer. Hij toont hoeveel er over zijn, hoeveel er per dag opgaan en de laatste
+levering (uit de laatste 30 dagen geschiedenis), de **resterende dagen**; **−1 geladen** als je er een
+gebruikt, **+levering** als de pellets binnenkomen. Kies bij **Instellingen** hoeveel er in een levering
+zitten en onder hoeveel je gewaarschuwd wilt worden: dan wordt de kaart rood en komt de melding
+**Voorraden om bij te bestellen** (een regel bij de meldingen van het huis).
+
+**Vrije kaart.** Met **Kamer wijzigen → + Vrije kaart** bouw je een kaart uit blokken op een raster van
+4 kolommen (2 op een telefoon). Blokken: **grote waarde**, **ringmeter**, **schakelaar**, **knop**
+(scène, script, knop), **schuif** (helderheid of een getal), **grafiek** van de laatste 24 uur, **balk**,
+**tijdvak** (een begin- en eindtijd), **keuzelijst**, **status** (hoe het is en sinds wanneer) en
+**tekst**. Kies bij elk blok de entiteit (de zoekfunctie biedt alleen de geschikte aan), een label, de
+grootte (1×1 tot 4×2) en, bij ring en balk, minimum en maximum; **Voor/Na** verplaatsen het. De kaart
+heeft een naam, een kleur en een stijl (**Strak**, de standaard: de blokken direct op de kaart;
+**Vakken**: elk in een eigen vak); in het midden van de editor zie je het voorbeeld met de echte
+waarden. **Wijzig** opent hem opnieuw.
+
+Meer blokken: **media** (hoes, titel, bediening en volume), **camera** (live; een tik opent hem groot)
+en **Vraag aan Jarvis** (een kant-en-klare vraag: een tik stuurt hem naar de chat). Bij elk blok kun je
+ook instellen:
+
+- **Kleur volgens de waarde**: maximaal 4 regels, bijv. "boven 23 → rood", "onder 19 → blauw",
+  "gelijk aan open → oranje";
+- **Toon alleen als**: het blok verschijnt alleen zolang een entiteit een bepaalde waarde heeft (bijv.
+  de tv "gelijk aan playing"); in de editor blijft het zichtbaar, gedimd;
+- **Bij aantikken**: aan/uit zetten, een scène of script starten, Jarvis vragen, een andere kamer openen.
+
+De waarden zijn die van Home Assistant: `on`, `off`, `open`, `playing`… of een getal. Om snel te
+beginnen zijn er **sjablonen** (Kachel, Hal, Wasruimte, Kamerklimaat, Energie, Muziek), die de geschikte
+entiteiten van de kamer overnemen; blokken kun je ook **slepen**.
+
+De **lijn bovenaan** elke kaart (vrij of samengesteld) licht vanzelf op: amber zolang iets aan staat of
+een sensor iets detecteert, rood bij een alarm (deur of raam open, water, rook, gas). Bij een kaart met
+een hoofdschakelaar, zoals de kachel, beslist die schakelaar; de kleurregels die je met de hand instelt
+komen daar bovenop.
+
+**Beschrijf het aan Jarvis**: schrijf bovenaan de editor wat je wilt ("de kachel met temperatuur,
+aan/uit, tijden en pellets; rood boven 23 graden") en tik op **Maak**: Jarvis stelt de kaart samen met de
+echte entiteiten van het huis (verzonnen entiteiten worden weggelaten) en opent hem in de editor, om te
+controleren en op te slaan. Het is één Claude-verzoek, een paar cent. Dit gebruikt het model van Jarvis;
+bij een ander model dan Claude moet dat gestructureerde uitvoer ondersteunen.
+
+**Kaart exporteren / importeren**: **Exporteer** kopieert de kaart als tekst, om te delen; **Kamer
+wijzigen → Kaart importeren** plakt hem in een ander huis, en blokken waarvan de entiteiten er niet zijn
+blijven leeg om te kiezen. Bij voorwaarden en regels met "gelijk aan" en "ongelijk aan" kies je de
+waarde uit een lijst (on/off, open/closed, playing…).
+
+**Entiteiten toevoegen.** Met **Kamer wijzigen → Entiteit toevoegen** kun je elke entiteit van Home
+Assistant in een kamer zetten, ook een zonder gebied of van een soort die HubNEX niet tekent (hij toont
+de status). Helpers ontstaan zonder gebied: stel dat in bij Home Assistant of voeg ze hier toe.
+
 - **Plattegrond**: **⚙ Plattegrond** opent de editor.
   1. **Plattegrond uploaden**: een foto of pdf van de plattegrond (witte randen worden automatisch
      weggesneden). Hij blijft alleen in de map van de add-on.
@@ -429,6 +496,48 @@ rest_command:
   doet.
 - De back-up bevat `agents.yaml` en dus ook eventuele MCP-tokens: bewaar hem als een wachtwoord.
 
+## Andere AI-aanbieders: OpenAI en lokale modellen
+
+Claude blijft de aanbevolen keuze, maar Jarvis en elke agent kunnen ook **OpenAI** of een **lokaal
+model** (Ollama, LM Studio) gebruiken, gratis en zonder cloud. Je kiest het model op naam, met het
+voorvoegsel van de aanbieder:
+
+| Schrijf | Aanbieder | In te vullen opties |
+|---|---|---|
+| `claude-sonnet-5-5` | Anthropic (zoals eerder) | Anthropic API-sleutel |
+| `openai:gpt-5-mini` | OpenAI | OpenAI API-sleutel |
+| `ollama:qwen3:14b` | Ollama, op je computer of server | Ollama-adres, bijv. `http://192.168.1.20:11434` |
+| `compat:modelnaam` | Elke OpenAI-compatibele dienst: LM Studio, OpenRouter, Gemini, Mistral, DeepSeek, Groq | Adres (tot `/v1`) en, indien nodig, sleutel |
+
+Schrijf het bij **Model van Jarvis**, **Model van Jarvis Mail** en **Model voor snelle opdrachten**, of
+voor één agent in `agents.yaml` met `model: ollama:qwen3:14b`. Je kunt ze combineren: bijvoorbeeld
+Jarvis op Claude en de mail op een gratis lokaal model. Gebruik je alleen andere aanbieders, dan mag de
+Anthropic-sleutel leeg blijven.
+
+Adressen voor `compat`, bijvoorbeeld:
+
+- LM Studio: `http://PC-IP:1234/v1`
+- OpenRouter: `https://openrouter.ai/api/v1` (modellen zoals `compat:openai/gpt-5-mini`)
+- Gemini: `https://generativelanguage.googleapis.com/v1beta/openai` (modellen zoals `compat:gemini-2.5-flash`)
+
+**Wat verandert ten opzichte van Claude**
+
+- **Zoeken op het web** bestaat alleen met Claude. **Een pagina lezen** vanaf een link (`web_fetch`)
+  doet HubNEX zelf en werkt met alle modellen, alleen voor openbare adressen.
+- **Foto's** komen aan bij de modellen die ze kunnen zien; **pdf's** komen aan als tekst.
+- De **gedachten** van Jarvis in de 3D-weergave verschijnen alleen met Claude.
+- **Uitgaven**: Ollama-modellen kosten niets. Voor `openai`- en `compat`-modellen vul je de
+  catalogusprijs in bij **Invoer-/uitvoerprijs van andere modellen** ($ per miljoen tokens), anders
+  worden ze niet meegeteld. Het **Anthropic-tegoed** telt alleen de aanroepen van Claude af.
+- **Kwaliteit**: Jarvis gebruikt veel tools (huis, geheugen, team). Kleine lokale modellen gebruiken ze
+  slechter: voor echt gebruik heb je modellen van minstens 14 miljard parameters nodig die tools
+  ondersteunen (qwen3, llama3.1, mistral-small). Geef kleinere modellen alleen eenvoudige agents, zoals
+  de mail.
+- **Privacy en veiligheid**: de prompts, de toestand van je huis en bijlagen gaan naar de gekozen
+  aanbieder (bij Ollama op je eigen netwerk blijft het lokaal). Zwakkere modellen laten zich
+  gemakkelijker door tekst in mail of webpagina's sturen: geef een agent met een klein model dan nooit
+  `ha_call_service`.
+
 ## Anthropic-tegoed
 
 De tegel **Claude-tegoed** is een **schatting**: schrijf in `anthropic_credit_usd` het saldo dat je ziet
@@ -456,7 +565,13 @@ staat op console.anthropic.com.
 
 Om weinig uit te geven: de mailagent gebruikt het goedkope model; bij Assist voert Home Assistant
 eenvoudige opdrachten uit; routines en zoekopdrachten op het web kosten tegoed, gebruik ze als het
-nodig is.
+nodig is. Stel in `agents.yaml`, voor Jarvis en voor elke agent, in:
+
+- `effort: medium` in plaats van `high`: hij redeneert nog steeds, maar korter;
+- `max_searches: 3`: hooguit 3 zoekopdrachten op het web per verzoek in plaats van 5. Elke zoekopdracht
+  brengt resultaatpagina's binnen, die bij elke stap opnieuw worden gelezen;
+- sluit het gesprek (×) als je in de chat van onderwerp verandert: nieuwe vragen slepen dan de laatste
+  uitwisselingen niet mee.
 
 ## Gegevens en back-up
 

@@ -14,7 +14,10 @@
 #  Altijd inbegrepen: memory_save, memory_search, deadline_add, deadline_list
 #
 #  Modellen: iedereen gebruikt "model_jarvis" uit de configuratie; de agent met id "mail" gebruikt
-#  "model_mail". Voor één enkele agent: model: claude-...
+#  "model_mail". Voor één enkele agent: model: claude-...  of met een andere aanbieder:
+#  model: openai:gpt-5-mini | ollama:qwen3:14b | compat:modelnaam  (zie de documentatie)
+#  max_searches: 3   zoekopdrachten op het web per verzoek (1 tot 20, 5 als het ontbreekt): elke
+#                    zoekopdracht brengt pagina's binnen om te lezen en kost tegoed, 2-3 is meestal genoeg
 #  effort: low | medium | high | xhigh | max   (hoger = meer redeneren, meer kosten)
 #
 #  Routines: { every: "6h", task: "..." }  of  { at: "09:00", days: [mon,tue,wed,thu,fri], task: "..." }

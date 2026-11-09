@@ -14,9 +14,81 @@ const OPENING = new Set(["door", "window", "opening", "garage_door"]);
 const PRESENCE = new Set(["motion", "occupancy", "presence"]);
 const SECURITY_CLASSES = new Set([...ALERT, ...PRESENCE, "lock", "tamper", "vibration", "sound"]);
 const APPLIANCE = /bollitor|kettle|boiler|caldai|scaldabagn|acqua|water|frigo|fridge|freezer|congelat|forno|oven|piastr|lavatric|lavastovigl|asciugatric|cpu|processor|chip|batter|intern|motor|esterna|outdoor|pompa|pump|vasca|piscina|pool/i;
-const SHOW_AS = [["", t("Come in Home Assistant")], ["light", t("Luce")], ["switch", t("Presa / interruttore")], ["gate", t("Cancello / porta (impulso)")], ["siren", t("Sirena")], ["sensor", t("Solo stato")]];
+const SHOW_AS = [["", t("Come in Home Assistant")], ["light", t("Luce")], ["switch", t("Presa / interruttore")], ["gate", t("Cancello / porta (impulso)")], ["siren", t("Sirena")], ["sensor", t("Solo stato")], ["stock", t("Scorta (pellet, sacchi…)")]];
+// The free card's blocks: kind, name, a hint, its first size, the entities it suits.
+const BLOCKS = [
+  ["value", t("Valore grande"), t("un numero o uno stato in grande"), [2, 1], () => true],
+  ["ring", t("Indicatore ad anello"), t("un valore su una scala"), [1, 1], (s) => s.k === "climate" || !isNaN(parseFloat(s.s))],
+  ["toggle", t("Interruttore"), t("accendi e spegni"), [1, 1], (s) => ["light", "switch"].includes(s.k)],
+  ["button", t("Pulsante"), t("scena, script o pulsante"), [1, 1], (s) => ["scene", "script", "button"].includes(s.k)],
+  ["slider", t("Cursore"), t("luminosità o un numero"), [2, 1], (s) => ["light", "number", "stock"].includes(s.k)],
+  ["chart", t("Grafico"), t("le ultime 24 ore"), [4, 1], (s) => s.k === "sensor" && !isNaN(parseFloat(s.s))],
+  ["bar", t("Barra"), t("quanto è pieno"), [2, 1], (s) => !isNaN(parseFloat(s.s))],
+  ["band", t("Fascia oraria"), t("da un orario a un altro"), [4, 1], (s) => s.k === "datetime"],
+  ["select", t("Selettore"), t("scegli tra le opzioni"), [2, 1], (s) => s.k === "select"],
+  ["state", t("Stato"), t("com'è e da quanto"), [1, 1], () => true],
+  ["camera", t("Telecamera"), t("l'immagine, dal vivo"), [2, 2], (s) => s.k === "camera"],
+  ["media", t("Media"), t("copertina e comandi"), [2, 1], (s) => s.k === "media"],
+  ["ask", t("Domanda a Jarvis"), t("una domanda pronta, a un tocco"), [2, 1], () => false],
+  ["text", t("Testo"), t("un titolo o una nota"), [4, 1], () => false],
+];
+const NO_ENTITY = new Set(["text", "ask"]);
+// Ready-made cards: each block takes the first entity of the room (then of the house) that suits it.
+const named = (re) => (s) => re.test(s.n || "");
+const power = (s) => s.k === "sensor" && s.a.device_class === "power";
+const TEMPLATES = [
+  ["stufa", t("Stufa"), "warm", [
+    ["value", (s) => s.k === "climate", 2, 2], ["toggle", (s) => ["switch", "light"].includes(s.k) && /stufa|stove|camino/i.test(s.n || ""), 1, 1],
+    ["ring", (s) => s.k === "number" && /potenz|power/i.test(s.n || ""), 1, 1], ["bar", (s) => s.k === "stock", 2, 1],
+    ["band", (s) => s.k === "datetime", 4, 1], ["select", (s) => s.k === "select", 4, 1]]],
+  ["ingresso", t("Ingresso"), "cool", [
+    ["camera", (s) => s.k === "camera", 4, 2], ["state", (s) => s.k === "lock", 2, 1],
+    ["state", (s) => s.k === "binary" && ["door", "garage_door", "opening"].includes(s.a.device_class), 2, 1], ["button", (s) => ["scene", "script", "button"].includes(s.k), 4, 1]]],
+  ["lavanderia", t("Lavanderia"), "cool", [
+    ["state", (s) => s.k === "switch" && /lavatric|asciugatric|washing|dryer/i.test(s.n || ""), 2, 1], ["value", (s) => power(s) && /lavatric|asciugatric|washing|dryer/i.test(s.n || ""), 2, 1],
+    ["chart", (s) => power(s) && /lavatric|asciugatric|washing|dryer/i.test(s.n || ""), 4, 1]]],
+  ["clima", t("Clima stanza"), "cool", [
+    ["value", (s) => s.k === "climate", 2, 2], ["ring", (s) => s.k === "sensor" && s.a.device_class === "humidity", 1, 1],
+    ["state", (s) => s.k === "binary" && s.a.device_class === "window", 1, 1], ["chart", (s) => s.k === "sensor" && s.a.device_class === "temperature", 4, 1]]],
+  ["energia", t("Energia"), "green", [
+    ["value", power, 2, 1], ["value", (s) => s.k === "sensor" && s.a.device_class === "energy", 2, 1], ["chart", power, 4, 1]]],
+  ["musica", t("Musica"), "violet", [
+    ["media", (s) => s.k === "media", 4, 1], ["ask", null, 4, 1]]],
+];
+const BLOCK_SIZES = [[1, 1], [2, 1], [2, 2], [3, 1], [4, 1], [4, 2]];
+const CARD_COLORS = [["", t("Nessuno")], ["warm", t("Arancio")], ["cool", t("Azzurro")], ["green", t("Verde")], ["violet", t("Viola")], ["red", t("Rosso")]];
+function stateChoices(s) {
+  if (!s) return [];
+  const dc = s.a.device_class;
+  const onoff = (on, off) => [["on", on], ["off", off]];
+  if (s.a.options?.length) return s.a.options.map((o) => [o, o]);
+  switch (s.k) {
+    case "binary":
+      if (["door", "window", "opening", "garage_door"].includes(dc)) return onoff(t("aperta"), t("chiusa"));
+      if (["motion", "occupancy", "presence", "moving"].includes(dc)) return onoff(t("rileva"), t("libero"));
+      return onoff(t("acceso"), t("spento"));
+    case "light": case "switch": return onoff(t("acceso"), t("spento"));
+    case "media": return [["playing", t("in riproduzione")], ["paused", t("in pausa")], ["idle", t("inattivo")], ["off", t("spento")], ["on", t("acceso")]];
+    case "lock": return [["locked", t("bloccata")], ["unlocked", t("sbloccata")], ["open", t("aperta")]];
+    case "cover": case "gate": return [["open", t("aperta")], ["closed", t("chiusa")], ["opening", t("in apertura")], ["closing", t("in chiusura")]];
+    case "person": return [["home", t("a casa")], ["not_home", t("fuori")]];
+    case "climate": return [["heat", t("Caldo")], ["cool", t("Freddo")], ["auto", "Auto"], ["off", t("Spento")]];
+    case "alarm": return [["disarmed", t("disinserito")], ["armed_home", t("in casa")], ["armed_away", t("fuori casa")], ["armed_night", t("notte")], ["triggered", t("scattato")]];
+    case "vacuum": return [["cleaning", t("pulisce")], ["docked", t("alla base")], ["returning", t("torna alla base")], ["paused", t("in pausa")]];
+    default: return [];
+  }
+}
+// The value of a condition or a rule: from a list when the entity's states are known, else typed.
+function valueField(path, s, op, v) {
+  const list = op === "=" || op === "!=" ? stateChoices(s) : [];
+  if (!list.length) return `<input class="hc-input" data-fb="${path}" value="${esc(v)}" placeholder="${t("valore")}">`;
+  const known = list.some(([x]) => x === v);
+  return `<select class="hc-select" data-fb="${path}">${known ? "" : `<option value="${esc(v)}" selected>${esc(v || "—")}</option>`}${list.map(([x, l]) => `<option value="${esc(x)}" ${x === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
+}
+const COMPARES = [["<", t("sotto")], [">", t("sopra")], ["=", t("uguale a")], ["!=", t("diverso da")]];
+const TAPS = [["", t("Niente")], ["toggle", t("Accendi / spegni")], ["run", t("Avvia scena o script")], ["ask", t("Chiedi a Jarvis")], ["room", t("Apri una stanza")]];
 const SECTIONS = [
-  ["light", t("Luci")], ["gate", t("Cancelli e porte")], ["climate", t("Clima")], ["cover", t("Tapparelle e tende")], ["valve", t("Valvole e irrigazione")], ["media", t("Media")],
+  ["light", t("Luci")], ["gate", t("Cancelli e porte")], ["climate", t("Clima")], ["stock", t("Scorte")], ["cover", t("Tapparelle e tende")], ["valve", t("Valvole e irrigazione")], ["media", t("Media")],
   ["switch", t("Prese e interruttori")], ["people", t("Persone")], ["security", t("Sicurezza")], ["camera", t("Telecamere")], ["sensor", t("Sensori")], ["settings", t("Orari e impostazioni")], ["vacuum", t("Pulizia")], ["action", t("Azioni")], ["other", t("Altro")],
 ];
 
@@ -45,9 +117,44 @@ function loadScript(src) {
 }
 
 export class CasaView {
-  constructor(root, { api, token }) {
+  constructor(root, { api, token, deadlines }) {
     this.root = root;
     this.api = api;
+    this.deadlines = deadlines; // () => the owner's deadlines, or null for family members
+    root.addEventListener("pointerdown", (e) => {
+      const el = e.target.closest(".fe-prev .fb");
+      if (!el || !this.freeEdit) return;
+      this._drag = { i: Number(el.dataset.i), x: e.clientX, y: e.clientY, el, moved: false };
+    });
+    root.addEventListener("pointermove", (e) => {
+      const d = this._drag;
+      if (!d) return;
+      if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 8) return;
+      d.moved = true;
+      d.el.classList.add("dragging");
+      const over = document.elementFromPoint(e.clientX, e.clientY)?.closest(".fe-prev .fb");
+      this.root.querySelectorAll(".fe-prev .fb.drop").forEach((x) => x !== over && x.classList.remove("drop"));
+      if (over && over !== d.el) over.classList.add("drop");
+      d.to = over ? Number(over.dataset.i) : null;
+    });
+    const drop = () => {
+      const d = this._drag;
+      this._drag = null;
+      if (!d?.moved) return;
+      this._dragged = true; // the click that follows is not a selection
+      const f = this.freeEdit;
+      if (f && d.to != null && d.to !== d.i) {
+        const [m] = f.blocks.splice(d.i, 1);
+        f.blocks.splice(d.to, 0, m);
+        f.sel = d.to;
+      }
+      this.render(true);
+      setTimeout(() => { this._dragged = false; }, 300);
+    };
+    root.addEventListener("pointerup", drop);
+    root.addEventListener("pointercancel", drop);
+    this.stockStats = {}; // stock entity -> its pace (per day, days left, last delivery)
+    this.stockAt = {};
     this.token = token || (() => "");
     this.camTick = Date.now();
     this.camSrc = {}; // last frame loaded, per camera
@@ -71,6 +178,8 @@ export class CasaView {
       if (e.key !== "Escape") return;
       if (this.live) this.closeCamera();
       else if (this.toneOpen && this.visible) { this.toneOpen = null; this.render(true); }
+      else if (this.weatherOpen && this.visible) { this.weatherOpen = false; this.render(true); }
+      else if (this.freeEdit && this.visible) { this.freeEdit = null; this.render(true); }
       else if (this.energyOpen && !this.energyEdit && this.visible) { this.energyOpen = false; clearInterval(this._energyTimer); this.render(true); }
     });
     this.data = null;
@@ -125,6 +234,7 @@ export class CasaView {
       try {
         this.data = await (await this.api("/api/casa")).json();
         this.error = null;
+        this.loadForecast();
       } catch (err) {
         this.error = err.message;
       } finally {
@@ -133,6 +243,27 @@ export class CasaView {
     })();
     await this.loading;
     this.render(force);
+  }
+
+  // The weather forecast, from Home Assistant: every 30 minutes is plenty.
+  async loadForecast() {
+    if (!this.data?.weather || Date.now() - (this._fcAt || 0) < 18e5) return;
+    this._fcAt = Date.now();
+    try {
+      const r = await this.api("/api/casa/forecast");
+      this.forecast = (await r.json()).forecast || null;
+      this.renderSoon();
+    } catch {
+      this.forecast = null;
+    }
+  }
+
+  // A stock's pace, from Home Assistant's history: asked at most every 10 minutes.
+  loadStock(eid) {
+    if (Date.now() - (this.stockAt[eid] || 0) < 6e5) return;
+    this.stockAt[eid] = Date.now();
+    this.api(`/api/casa/stock/${encodeURIComponent(eid)}`).then((r) => r.json())
+      .then((s) => { this.stockStats[eid] = s; this.renderSoon(); }).catch(() => {});
   }
 
   // Live events from the HQ WebSocket.
@@ -243,6 +374,7 @@ export class CasaView {
     if (s.k === "scene" || s.k === "script" || s.k === "button") return "action";
     if (s.k === "camera") return "camera";
     if (s.k === "vacuum") return "vacuum";
+    if (s.k === "stock") return "stock";
     if (["datetime", "number", "select", "text"].includes(s.k)) return "settings";
     return "other";
   }
@@ -729,6 +861,9 @@ export class CasaView {
       case "pad-text": this.pad.code = this.root.querySelector("#pad-text")?.value || ""; this.padSend(); return;
       case "pad-close": this.pad = null; break;
       case "alarm-panel": this.alarmOpen = true; break;
+      case "weather": this.weatherOpen = true; break;
+      case "weather-close": this.weatherOpen = false; break;
+      case "ddone": this.api(`/api/deadlines/${el.dataset.id}/done`, { method: "POST" }).catch(() => {}); el.closest(".hc-today")?.classList.add("gone"); return;
       case "alarm-close": this.alarmOpen = false; break;
       case "kind": return;
       case "hvac": this.st(eid).s = el.dataset.m; this.call("climate", "set_hvac_mode", { entity_id: eid, hvac_mode: el.dataset.m }); break;
@@ -749,6 +884,23 @@ export class CasaView {
         const st = this.st(eid), t = (String(st?.s).match(/\d{2}:\d{2}/) || ["00:00"])[0];
         const m = (((Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) + Number(el.dataset.d)) % 1440) + 1440) % 1440;
         this.setDateTime(eid, `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+        break;
+      }
+      case "stock-use": case "stock-add": {
+        const st = this.st(eid), cfg = this.data.stock?.[eid] || {};
+        const max = Number(st.a.max ?? st.a.maximum ?? Infinity), min = Number(st.a.min ?? st.a.minimum ?? 0);
+        const v = (parseFloat(st.s) || 0) + (act === "stock-use" ? -1 : Number(cfg.delivery) || 1);
+        this.setNumber(eid, Math.min(max, Math.max(min, v)));
+        this.stockAt[eid] = 0; // the pace changes: ask again
+        break;
+      }
+      case "stock-cfg": this.stockEdit = this.stockEdit === eid ? null : eid; break;
+      case "stock-save": {
+        const box = el.closest(".hc-stock");
+        const body = { delivery: Number(box.querySelector("[name=delivery]").value), low: Number(box.querySelector("[name=low]").value) };
+        this.stockEdit = null;
+        this.api(`/api/casa/entities/${encodeURIComponent(eid)}/stock`, { method: "POST", body: JSON.stringify(body) })
+          .then(() => this.reload(true)).catch((err) => this.toast(err.message));
         break;
       }
       case "numstep": {
@@ -784,11 +936,146 @@ export class CasaView {
       }
       case "order-reset": this.saveOrder([]); break;
       case "card-new": this.cardEdit = { area: this.page, id: null, name: "", entities: [], size: "wide", group: "", enable: null, nochart: [], q: "", cands: [] }; this.cardSearch(""); break;
+      case "card-free": this.freeEdit = { area: this.page, id: null, name: "", color: "", style: "flat", group: "", blocks: [], sel: null, target: "entity", q: "", cands: [] }; break;
       case "card-edit": {
         const card = this.area(this.page).cards.find((c) => c.id === el.dataset.id);
+        if (card.kind === "free") {
+          this.freeEdit = { area: this.page, id: card.id, name: card.name, color: card.color || "", style: card.style || "", group: card.group || "", blocks: card.blocks.map((b) => ({ ...b })), sel: null, target: "entity", q: "", cands: [] };
+          break;
+        }
         this.cardEdit = { area: this.page, id: card.id, name: card.name, entities: [...card.entities], size: card.size, group: card.group || "", enable: card.enable ?? null, nochart: [...(card.nochart || [])], q: "", cands: [] };
         this.cardSearch("");
         break;
+      }
+      case "fb-close": this.freeEdit = null; break;
+      case "fb-draft": {
+        const f = this.freeEdit, text = (f.draft || "").trim();
+        if (text.length < 3) { this.toast(t("Descrivi la card che vuoi")); return; }
+        f.busy = true;
+        this.render(true);
+        try {
+          const r = await (await this.api(`/api/casa/rooms/${encodeURIComponent(f.area)}/cards/draft`, { method: "POST", body: JSON.stringify({ text }) })).json();
+          this.takeCard(f, r);
+          if (!r.blocks.length) this.toast(t("Jarvis non ha trovato entità adatte: prova a descriverla in un altro modo."));
+          else if (r.dropped) this.toast(r.dropped === 1 ? t("Un blocco scartato: un'entità che in casa non c'è.") : t("{n} blocchi scartati: entità che in casa non ci sono.", { n: r.dropped }));
+        } catch (err) { this.toast(`⚠ ${err.message}`); }
+        f.busy = false;
+        break;
+      }
+      case "fb-export": {
+        const f = this.freeEdit;
+        f.exported = JSON.stringify({ hubnex_card: 1, name: f.name, color: f.color, style: f.style || "", blocks: f.blocks }, null, 1);
+        navigator.clipboard?.writeText(f.exported).then(() => this.toast(t("Card copiata: incollala dove vuoi."))).catch(() => {});
+        break;
+      }
+      case "card-import": this.freeEdit = { area: this.page, id: null, name: "", color: "", style: "flat", group: "", blocks: [], sel: null, target: "entity", q: "", cands: [], importing: true }; break;
+      case "fb-import": {
+        const f = this.freeEdit;
+        let card;
+        try { card = JSON.parse(f.paste || ""); } catch { this.toast(t("Il testo incollato non è una card di HubNEX.")); return; }
+        try {
+          const r = await (await this.api("/api/casa/cards/import", { method: "POST", body: JSON.stringify(card) })).json();
+          f.importing = false;
+          this.takeCard(f, r);
+          if (r.missing) this.toast(r.missing === 1 ? t("Un blocco ha un'entità che qui non c'è: sceglila tu.") : t("{n} blocchi hanno entità che qui non ci sono: sceglile tu.", { n: r.missing }));
+        } catch (err) { this.toast(`⚠ ${err.message}`); return; }
+        break;
+      }
+      case "fb-tpl": {
+        const [, name, color, list] = TEMPLATES.find(([k]) => k === el.dataset.t);
+        const f = this.freeEdit, used = new Set();
+        const pool = [...(this.area(f.area)?.entities || []), ...Object.keys(this.data.states)];
+        const take = (fit) => {
+          const e = fit && pool.find((x) => !used.has(x) && this.st(x) && fit(this.st(x)));
+          if (e) used.add(e);
+          return e || "";
+        };
+        const made = list.map(([kind, fit, w, h]) => {
+          const b = { kind, entity: take(fit), entity2: "", label: "", w, h };
+          if (kind === "band") b.entity2 = take((s) => s.k === "datetime");
+          if (kind === "ring" && /humid|umid/i.test(this.st(b.entity)?.a.device_class || "")) Object.assign(b, { min: 0, max: 100 });
+          if (kind === "ask") b.label = t("Cosa sta suonando in casa?");
+          return b;
+        });
+        // only what the house has: a block without its entity is left out (and said)
+        f.blocks = made.filter((b) => NO_ENTITY.has(b.kind) || (b.entity && (b.kind !== "band" || b.entity2)));
+        const skipped = made.length - f.blocks.length;
+        if (skipped) this.toast(skipped === 1 ? t("Un blocco del modello non ha trovato un'entità adatta: aggiungilo a mano.") : t("{n} blocchi del modello non hanno trovato un'entità adatta: aggiungili a mano.", { n: skipped }));
+        f.name ||= name;
+        f.color = color;
+        f.sel = null;
+        break;
+      }
+      case "fb-rule-add": (this.freeEdit.blocks[this.freeEdit.sel].rules ||= []).push({ op: ">", v: "", c: "red" }); break;
+      case "fb-rule-del": this.freeEdit.blocks[this.freeEdit.sel].rules.splice(Number(el.dataset.i), 1); break;
+      case "fb-show-add": this.freeEdit.blocks[this.freeEdit.sel].show = { e: "", op: "=", v: "on" }; this.freeEdit.target = "show"; this.freeSearch(""); break;
+      case "fb-show-del": delete this.freeEdit.blocks[this.freeEdit.sel].show; this.freeEdit.target = "entity"; break;
+      case "fb-ask": this.ask(el.dataset.q || ""); return;
+      case "fb-tap": {
+        const card = (this.area(this.page)?.cards || []).find((c) => c.id === el.dataset.card);
+        const b = card?.blocks?.[Number(el.dataset.i)], tap = b?.tap;
+        if (!tap) return;
+        const target = tap.e || b.entity, dom = target?.split(".")[0];
+        if (tap.do === "toggle" && target) { const s = this.st(target); if (s) s.s = s.s === "on" ? "off" : "on"; this.call(dom, "toggle", { entity_id: target }, target); }
+        else if (tap.do === "run" && target) { this.call(dom, ["button", "input_button"].includes(dom) ? "press" : "turn_on", { entity_id: target }); this.toast(`▶ ${this.st(target)?.n || target}`); return; }
+        else if (tap.do === "ask") { this.ask(tap.text); return; }
+        else if (tap.do === "room" && this.area(tap.area)) { this.page = tap.area; this.selected = tap.area; this.root.scrollTop = 0; }
+        break;
+      }
+      case "fb-add": {
+        const [kind, , , [w, h]] = BLOCKS.find(([k]) => k === el.dataset.k);
+        const f = this.freeEdit;
+        f.blocks.push({ kind, entity: "", entity2: "", label: "", w, h });
+        f.sel = f.blocks.length - 1;
+        f.target = "entity";
+        this.freeSearch("");
+        break;
+      }
+      case "fb-sel":
+        if (this._dragged) { this._dragged = false; return; } // the end of a drag, not a tap
+        this.freeEdit.sel = Number(el.dataset.i); this.freeEdit.target = "entity"; this.freeSearch(""); break;
+      case "fb-target": this.freeEdit.target = el.dataset.t; this.freeSearch(""); break;
+      case "fb-pick": {
+        const f = this.freeEdit, c = f.cands.find((x) => x.entity_id === eid);
+        if (c?.state) this.data.states[eid] ||= c.state; // shown at once, before the card is saved
+        const blk = f.blocks[f.sel];
+        if (f.target === "show") (blk.show ||= { op: "=", v: "on" }).e = eid;
+        else if (f.target === "tap") (blk.tap ||= { do: "toggle" }).e = eid;
+        else blk[f.target] = eid;
+        if (f.blocks[f.sel].kind === "band" && f.target === "entity") { f.target = "entity2"; this.freeSearch(""); }
+        break;
+      }
+      case "fb-size": Object.assign(this.freeEdit.blocks[this.freeEdit.sel], { w: Number(el.dataset.w), h: Number(el.dataset.h) }); break;
+      case "fb-move": {
+        const f = this.freeEdit, i = f.sel, j = i + Number(el.dataset.d);
+        if (j < 0 || j >= f.blocks.length) return;
+        [f.blocks[i], f.blocks[j]] = [f.blocks[j], f.blocks[i]];
+        f.sel = j;
+        break;
+      }
+      case "fb-del": this.freeEdit.blocks.splice(this.freeEdit.sel, 1); this.freeEdit.sel = null; break;
+      case "fb-color": this.freeEdit.color = el.dataset.c; break;
+      case "fb-style": this.freeEdit.style = el.dataset.s; break;
+      case "fb-save": {
+        const f = this.freeEdit;
+        if (!f.blocks.length) { this.toast(t("Aggiungi almeno un blocco")); return; }
+        if (f.blocks.some((b) => !NO_ENTITY.has(b.kind) && !b.entity) || f.blocks.some((b) => b.kind === "band" && !b.entity2)) {
+          this.toast(t("Scegli l'entità di ogni blocco")); return;
+        }
+        const blocks = f.blocks.map(({ kind, entity, entity2, label, w, h, min, max, rules, show, tap }) => ({
+          kind, entity: entity || "", entity2: entity2 || "", label, w, h,
+          ...(min != null && min !== "" ? { min: Number(min) } : {}), ...(max != null && max !== "" ? { max: Number(max) } : {}),
+          ...(rules?.some((r) => r.v !== "") ? { rules: rules.filter((r) => r.v !== "") } : {}),
+          ...(show?.e ? { show } : {}),
+          ...(tap?.do ? { tap: { do: tap.do, e: tap.e || "", text: tap.text || "", area: tap.area || "" } } : {}),
+        }));
+        try {
+          await this.api(`/api/casa/rooms/${encodeURIComponent(f.area)}/cards`, { method: "POST", body: JSON.stringify({ id: f.id, name: f.name || t("Card"), kind: "free", blocks, color: f.color, style: f.style || "", size: "wide", group: f.group || null }) });
+          this.freeEdit = null;
+          if (this.histAt) this.histAt[f.area] = 0; // its charts: ask for them now
+          await this.reload(true);
+        } catch (err) { this.toast(`⚠ ${err.message}`); }
+        return;
       }
       case "card-del": {
         const card = this.area(this.page).cards.find((c) => c.id === el.dataset.id);
@@ -909,6 +1196,32 @@ export class CasaView {
   }
 
   _input(e) {
+    const f = this.freeEdit;
+    if (f && e.target.dataset.fb && f.blocks[f.sel]) {
+      const path = e.target.dataset.fb.split("."), b = f.blocks[f.sel];
+      let o = b;
+      for (const k of path.slice(0, -1)) o = o[k] ??= {};
+      o[path.at(-1)] = e.target.value;
+      if (path.join(".") === "tap.do" && !e.target.value) delete b.tap;
+      if (e.target.tagName === "SELECT" && path.at(-1) === "op") { this.render(true); return; }
+      if (e.target.tagName === "SELECT" && path[0] === "tap") { if (b.tap?.do === "toggle" || b.tap?.do === "run") { f.target = "tap"; this.freeSearch(""); } this.render(true); return; }
+      const box = this.root.querySelector("#fb-preview");
+      if (box) box.innerHTML = this.freeCard(f, f);
+      return;
+    }
+    if (f && (e.target.id === "fb-draft-text" || e.target.id === "fb-paste")) {
+      f[e.target.id === "fb-paste" ? "paste" : "draft"] = e.target.value;
+      return;
+    }
+    if (f && ["fb-name", "fb-label", "fb-min", "fb-max", "fb-find"].includes(e.target.id)) {
+      const v = e.target.value;
+      if (e.target.id === "fb-find") { clearTimeout(this._find); this._find = setTimeout(() => this.freeSearch(v), 250); return; }
+      if (e.target.id === "fb-name") f.name = v;
+      else f.blocks[f.sel][{ "fb-label": "label", "fb-min": "min", "fb-max": "max" }[e.target.id]] = e.target.id === "fb-label" ? v : v === "" ? null : Number(v);
+      const box = this.root.querySelector("#fb-preview");
+      if (box) box.innerHTML = this.freeCard(f, f);
+      return;
+    }
     if (e.target.id === "epick-find") {
       clearTimeout(this._find);
       this._find = setTimeout(() => this.ePickSearch(e.target.value), 250);
@@ -984,8 +1297,10 @@ export class CasaView {
         <div class="hc-grid">${this.data.alarms.filter((e) => this.st(e)).map((e) => this.cardHTML(e)).join("")}</div></section></div>`;
     }
     if (this.toneOpen && this.st(this.toneOpen)) layer += this.toneHTML(this.toneOpen);
+    if (this.weatherOpen && this.data?.weather && this.st(this.data.weather)) layer += this.weatherHTML();
     if (this.pad) layer += this.padHTML();
     if (this.cardEdit) layer += this.cardEditHTML();
+    if (this.freeEdit) layer += this.freeEditHTML();
     if (this.renaming) layer += this.renameHTML();
     if (!this.pageEl || this.pageEl.parentNode !== this.root) {
       this.root.innerHTML = `<div class="casa-pagebox"></div><div class="casa-layer"></div>`;
@@ -1005,7 +1320,7 @@ export class CasaView {
       this.pruneLive();
     }
     document.body.classList.toggle("casa-sheet", !!(this.data && !this.page && this.selected && this.area(this.selected)));
-    document.body.classList.toggle("casa-modal-open", !!(this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen || this.energyOpen || this.toneOpen));
+    document.body.classList.toggle("casa-modal-open", !!(this.cardEdit || this.renaming || this.pad || this.layout || this.alarmOpen || this.energyOpen || this.toneOpen || this.weatherOpen || this.freeEdit));
     if (this.editing && this.cands) {
       const box = this.root.querySelector("#casa-cands");
       if (box) box.innerHTML = this.candsHTML();
@@ -1017,7 +1332,7 @@ export class CasaView {
     return `
       ${this.hudHTML()}
       <div class="casa-body">
-        <aside class="casa-col casa-left">${this.climateHTML()}</aside>
+        <aside class="casa-col casa-left">${this.climateHTML()}${this.activityHTML()}</aside>
         <main class="casa-center">${this.planHTML()}</main>
         <aside class="casa-col casa-right">${this.selected && this.area(this.selected) ? this.quickHTML(this.area(this.selected)) : this.overviewHTML()}</aside>
       </div>`;
@@ -1059,7 +1374,7 @@ export class CasaView {
         const temp = this.temp(a);
         const tag = this.lit(a) ? t("LUCE") : this.alerts(a).length ? t("APERTA") : "";
         return `<button class="plan-room ${cls}" style="${geo}" data-act="room" data-area="${a.id}" aria-label="${esc(a.name)}">
-          <b>${esc(a.name)}</b><span class="plan-meta"><span class="mono">${temp != null && !small ? num(temp) + "°" : ""}</span><span class="plan-tag">${small ? "" : tag}</span></span></button>`;
+          <b>${esc(a.name)}</b>${small ? "" : this.planIcons(a)}<span class="plan-meta"><span class="mono">${temp != null && !small ? num(temp) + "°" : ""}</span><span class="plan-tag">${small ? "" : tag}</span></span></button>`;
       }).join("");
       const tabs = floors.length > 1 ? `<div class="casa-floors">${floors.map((x, i) => `<button class="${i === this.floor ? "on" : ""}" data-act="floor" data-i="${i}">${esc(x.name)}</button>`).join("")}</div>` : `<div class="casa-floor-name">${esc(f.name)} · ${t("tocca una stanza")}</div>`;
       // The real drawing, faint under the hologram (light lines on the dark background).
@@ -1197,7 +1512,7 @@ export class CasaView {
     return `
       <section class="panel casa-panel casa-editor">
         <div class="casa-edit-col">
-          <div class="hc-edit-actions"><button class="hc-btn primary" data-act="card-new">+ ${t("Nuova card")}</button>
+          <div class="hc-edit-actions"><button class="hc-btn primary" data-act="card-new">+ ${t("Nuova card")}</button><button class="hc-btn primary" data-act="card-free">+ ${t("Card libera")}</button><button class="hc-btn" data-act="card-import">${t("Importa card")}</button>
             ${(a.order || []).length ? `<button class="hc-link" data-act="order-reset">${t("Ordine automatico")}</button>` : ""}</div>
           <p class="casa-muted">${t("Sotto, ogni card ha i suoi comandi: trascinala (⋮⋮) o spostala con ‹ › dentro il suo gruppo, rinominala, rendila larga o piccola. Una card nuova raccoglie più entità, ad esempio la stufa con i suoi orari, e va nel gruppo che scegli.")}</p>
           <h3>${t("Entità in {room}", { room: esc(a.name) })}</h3>
@@ -1328,6 +1643,104 @@ export class CasaView {
     if (n && this.cardEdit) this.cardEdit.name = n.value;
     if (g && this.cardEdit) this.cardEdit.group = g.value;
     if (en && this.cardEdit) this.cardEdit.enable = en.value === "auto" ? null : en.value;
+  }
+
+  // A card from Claude's draft or an import into the editor, with its entities' states.
+  takeCard(f, r) {
+    Object.assign(this.data.states, Object.fromEntries(Object.entries(r.states || {}).filter(([, s]) => s)));
+    f.blocks = r.blocks;
+    f.name = r.name || f.name;
+    f.color = r.color ?? f.color;
+    if (r.style != null) f.style = r.style; // an imported card keeps its own; Jarvis's draft doesn't choose
+    f.sel = r.blocks.findIndex((b) => !NO_ENTITY.has(b.kind) && !b.entity);
+    if (f.sel < 0) f.sel = null;
+    else this.freeSearch("");
+  }
+
+  // A question for Jarvis from a card: the chat at the bottom sends it (app.js listens).
+  ask(text) {
+    if (text?.trim()) window.dispatchEvent(new CustomEvent("hubnex-ask", { detail: text.trim() }));
+  }
+
+  // The free card editor: entities that suit the selected block, found as you type.
+  async freeSearch(q) {
+    const f = this.freeEdit;
+    if (!f) return;
+    f.q = q;
+    try {
+      f.cands = await (await this.api(`/api/casa/entities?all=1&q=${encodeURIComponent(q)}&area=${encodeURIComponent(f.area || "")}`)).json();
+    } catch { f.cands = []; }
+    const box = this.root.querySelector("#fb-cands");
+    if (box) box.innerHTML = this.freeCandsHTML();
+    else this.render(true);
+  }
+
+  freeCandsHTML() {
+    const f = this.freeEdit, b = f.blocks[f.sel];
+    if (!b) return "";
+    const tapFit = b.tap?.do === "run" ? (s) => ["scene", "script", "button"].includes(s.k) : (s) => ["light", "switch", "media", "climate"].includes(s.k);
+    const fits = f.target === "show" ? () => true : f.target === "tap" ? tapFit : BLOCKS.find(([k]) => k === b.kind)[4];
+    const cur = f.target === "show" ? b.show?.e : f.target === "tap" ? b.tap?.e : b[f.target];
+    const list = f.cands.filter((c) => c.state && fits(c.state)).slice(0, 40);
+    return list.map((c) => `<button class="fe-cand ${cur === c.entity_id ? "on" : ""}" data-act="fb-pick" data-e="${esc(c.entity_id)}"><span>${esc(c.name)}</span><small>${esc(c.area || "")}${c.area ? " · " : ""}${esc(c.state.s ?? "")}</small></button>`).join("")
+      || `<p class="casa-muted">${t("Nessuna entità adatta: prova a cercare.")}</p>`;
+  }
+
+  freeEditHTML() {
+    const f = this.freeEdit, b = f.blocks[f.sel];
+    const pal = BLOCKS.map(([k, name, hint]) => `<button class="fe-add" data-act="fb-add" data-k="${k}"><b>${name}</b><small>${hint}</small></button>`).join("")
+      + `<span class="hc-kick fe-tpl-k">${t("Parti da un modello")}</span><div class="fe-tpls">${TEMPLATES.map(([k, name]) => `<button data-act="fb-tpl" data-t="${k}">${name}</button>`).join("")}</div>`;
+    const colors = CARD_COLORS.map(([c, name]) => `<button class="fe-color ${c ? `fc-${c}` : ""} ${f.color === c ? "on" : ""}" data-act="fb-color" data-c="${c}" aria-label="${name}" title="${name}"></button>`).join("");
+    let props = `<p class="casa-muted">${t("Tocca un blocco della card per modificarlo, o aggiungine uno.")}</p>`;
+    if (b) {
+      const [, name] = BLOCKS.find(([k]) => k === b.kind);
+      const ent = (id, what) => {
+        const s = this.st(id);
+        return `<button class="fe-ent ${f.target === what ? "on" : ""}" data-act="fb-target" data-t="${what}"><span>${s ? esc(s.n) : t("da scegliere")}</span><small class="mono">${esc(id || "")}</small></button>`;
+      };
+      props = `<span class="hc-kick">${t("Blocco")}: ${name}</span>
+        ${NO_ENTITY.has(b.kind) ? "" : b.kind === "band"
+          ? `<label class="fe-lbl">${t("Inizio")}</label>${ent(b.entity, "entity")}<label class="fe-lbl">${t("Fine")}</label>${ent(b.entity2, "entity2")}`
+          : `<label class="fe-lbl">${t("Entità")}</label>${ent(b.entity, "entity")}`}
+        ${NO_ENTITY.has(b.kind) && !["show", "tap"].includes(f.target) ? "" : `<input id="fb-find" class="hc-input" placeholder="${t("Cerca…")}" value="${esc(f.q)}" autocomplete="off"><div class="fe-cands" id="fb-cands">${this.freeCandsHTML()}</div>`}
+        <label class="fe-lbl" for="fb-label">${b.kind === "text" ? t("Testo") : b.kind === "ask" ? t("La domanda per Jarvis") : t("Etichetta (vuota: il nome dell'entità)")}</label>
+        <input id="fb-label" class="hc-input" value="${esc(b.label || "")}" maxlength="60" autocomplete="off">
+        ${["ring", "bar"].includes(b.kind) ? `<div class="fe-row"><label class="fe-lbl">${t("Minimo")}<input id="fb-min" class="hc-input" type="number" value="${b.min ?? ""}"></label><label class="fe-lbl">${t("Massimo")}<input id="fb-max" class="hc-input" type="number" value="${b.max ?? ""}"></label></div>` : ""}
+        <label class="fe-lbl">${t("Dimensione")}</label>
+        <div class="fe-sizes">${BLOCK_SIZES.map(([w, h]) => `<button class="${b.w === w && b.h === h ? "on" : ""}" data-act="fb-size" data-w="${w}" data-h="${h}">${w}×${h}</button>`).join("")}</div>
+        ${NO_ENTITY.has(b.kind) ? "" : `<span class="hc-kick fe-sec">${t("Colore secondo il valore")}</span>
+        ${(b.rules || []).map((r, i) => `<div class="fe-rule"><select data-fb="rules.${i}.op">${COMPARES.map(([o, l]) => `<option value="${o}" ${r.op === o ? "selected" : ""}>${l}</option>`).join("")}</select>
+          ${valueField(`rules.${i}.v`, this.st(b.entity), r.op, r.v)}<select data-fb="rules.${i}.c">${CARD_COLORS.slice(1).map(([c, l]) => `<option value="${c}" ${r.c === c ? "selected" : ""}>${l}</option>`).join("")}</select>
+          <button class="hc-link" data-act="fb-rule-del" data-i="${i}" aria-label="${t("Togli")}">×</button></div>`).join("")}
+        ${(b.rules || []).length < 4 ? `<button class="hc-link" data-act="fb-rule-add">+ ${t("regola di colore")}</button>` : ""}`}
+        <span class="hc-kick fe-sec">${t("Mostra solo se")}</span>
+        ${b.show ? `${ent(b.show.e, "show")}<div class="fe-rule"><select data-fb="show.op">${COMPARES.map(([o, l]) => `<option value="${o}" ${b.show.op === o ? "selected" : ""}>${l}</option>`).join("")}</select>${valueField("show.v", this.st(b.show.e), b.show.op, b.show.v)}<button class="hc-link" data-act="fb-show-del" aria-label="${t("Togli")}">×</button></div>
+          <small class="casa-muted">${t("Es. uguale a acceso: si vede solo quando è acceso o rileva qualcosa.")}</small>` : `<button class="hc-link" data-act="fb-show-add">+ ${t("condizione")}</button>`}
+        <span class="hc-kick fe-sec">${t("Al tocco")}</span>
+        <select class="hc-select" data-fb="tap.do">${TAPS.map(([d, l]) => `<option value="${d}" ${(b.tap?.do || "") === d ? "selected" : ""}>${l}</option>`).join("")}</select>
+        ${["toggle", "run"].includes(b.tap?.do) ? `<label class="fe-lbl">${t("Su cosa (vuoto: l'entità del blocco)")}</label>${ent(b.tap.e, "tap")}` : ""}
+        ${b.tap?.do === "ask" ? `<input class="hc-input" data-fb="tap.text" value="${esc(b.tap.text || "")}" placeholder="${t("La domanda per Jarvis")}">` : ""}
+        ${b.tap?.do === "room" ? `<select class="hc-select" data-fb="tap.area">${this.data.areas.map((a) => `<option value="${a.id}" ${b.tap.area === a.id ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select>` : ""}
+        <div class="fe-row fe-actions"><button class="hc-btn" data-act="fb-move" data-d="-1">‹ ${t("Prima")}</button><button class="hc-btn" data-act="fb-move" data-d="1">${t("Dopo")} ›</button><button class="hc-btn" data-act="fb-del">${t("Togli")}</button></div>`;
+    }
+    return `<div class="casa-modal fe-modal" role="dialog" aria-label="${t("Card libera")}"><section class="panel casa-panel fe-panel">
+      <h3>${t("Card libera")} <button class="casa-x" data-act="fb-close" aria-label="${t("Chiudi")}">×</button></h3>
+      ${f.importing ? `<div class="fe-import"><label class="fe-lbl" for="fb-paste">${t("Incolla qui una card esportata da HubNEX")}</label>
+        <textarea id="fb-paste" class="hc-input" rows="6" spellcheck="false">${esc(f.paste || "")}</textarea>
+        <button class="hc-btn primary" data-act="fb-import">${t("Importa")}</button></div>` : ""}
+      <div class="fe-draft ${f.busy ? "busy" : ""}"><span class="fe-orb" aria-hidden="true"></span>
+        <input id="fb-draft-text" class="hc-input" placeholder="${t("Descrivila a Jarvis: es. la stufa con temperatura, accensione, orari e pellet")}" value="${esc(f.draft || "")}" maxlength="1000" autocomplete="off" ${f.busy ? "disabled" : ""}>
+        <button class="hc-btn" data-act="fb-draft" ${f.busy ? "disabled" : ""}>${f.busy ? t("Jarvis compone…") : t("Crea")}</button></div>
+      <div class="fe-top"><input id="fb-name" class="hc-input" placeholder="${t("Nome della card")}" value="${esc(f.name)}" maxlength="60" autocomplete="off">
+        <span class="fe-colors">${colors}</span>
+        <span class="fe-style" role="group" aria-label="${t("Stile")}"><button class="${f.style ? "" : "on"}" data-act="fb-style" data-s="">${t("Riquadri")}</button><button class="${f.style === "flat" ? "on" : ""}" data-act="fb-style" data-s="flat">${t("Pulito")}</button></span>
+        <button class="hc-btn" data-act="fb-export" ${f.blocks.length ? "" : "disabled"}>${t("Esporta")}</button><button class="hc-btn primary" data-act="fb-save">${t("Salva card")}</button></div>
+      ${f.exported ? `<textarea class="hc-input fe-export" rows="4" readonly spellcheck="false">${esc(f.exported)}</textarea>` : ""}
+      <div class="fe-cols">
+        <div class="fe-pal"><span class="hc-kick">${t("Blocchi")}</span>${pal}</div>
+        <div class="fe-prev"><span class="hc-kick">${t("Anteprima · griglia da 4 colonne, 2 sul telefono")}</span><div id="fb-preview">${this.freeCard(f, f)}</div></div>
+        <div class="fe-props" id="fb-props">${props}</div>
+      </div></section></div>`;
   }
 
   async cardSearch(q) {

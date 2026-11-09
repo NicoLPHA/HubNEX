@@ -44,8 +44,8 @@ add("media_player.tv", "soggiorno", "playing", friendly_name="TV Soggiorno", med
 add("switch.presa_tv", "soggiorno", "on", device="dev-tv", friendly_name="Presa TV")
 add("sensor.presa_tv_potenza", None, "120", device="dev-tv", device_class="power", unit_of_measurement="W", friendly_name="Potenza TV")
 add("binary_sensor.presenza_soggiorno", "soggiorno", "on", 3, device_class="occupancy", friendly_name="Presenza soggiorno")
-add("lock.ingresso", "corridoio", "locked", friendly_name="Porta ingresso", code_format="^\\d{4}$")
-add("lock.garage", "corridoio", "locked", friendly_name="Porta garage")
+add("lock.ingresso", "corridoio", "locked", 22, friendly_name="Porta ingresso", code_format="^\\d{4}$")
+add("lock.garage", "corridoio", "locked", 140, friendly_name="Porta garage")
 add("light.cucina", "cucina", "on", brightness=204, supported_color_modes=["brightness"], friendly_name="Soffitto cucina")
 add("light.sottopensile", "cucina", "off", supported_color_modes=["onoff"], friendly_name="Sottopensile")
 add("sensor.temp_cucina", "cucina", "22.1", device_class="temperature", unit_of_measurement="°C", friendly_name="Temperatura cucina")
@@ -74,7 +74,10 @@ add("scene.esco", None, "scening", friendly_name="Esco")
 add("scene.rientro", None, "scening", friendly_name="Rientro")
 add("sensor.potenza_casa", None, "1840", device_class="power", unit_of_measurement="W", friendly_name="Potenza casa")
 add("sensor.energia_oggi", None, "9.6", device_class="energy", unit_of_measurement="kWh", friendly_name="Energia oggi")
-add("weather.casa", None, "sunny", temperature=14, friendly_name="Meteo")
+add("weather.casa", None, "partlycloudy", temperature=14, humidity=62, wind_speed=11, wind_speed_unit="km/h", friendly_name="Meteo")
+# the dishwasher finished a while ago (its plug's power dropped)
+add("switch.lavastoviglie", "cucina", "on", 300, device="dev-dish", friendly_name="Lavastoviglie")
+add("sensor.lavastoviglie_potenza", None, "2", 48, device="dev-dish", device_class="power", unit_of_measurement="W", friendly_name="Potenza lavastoviglie")
 add("input_datetime.stufa_accensione", None, "06:30:00", has_date=False, has_time=True, friendly_name="Stufa accensione")
 add("input_datetime.stufa_spegnimento", None, "22:00:00", has_date=False, has_time=True, friendly_name="Stufa spegnimento")
 add("input_number.stufa_potenza", "soggiorno", "3", min=1, max=5, step=1, mode="slider", friendly_name="Potenza stufa")
@@ -91,6 +94,7 @@ add("sensor.energia_prelevata", None, "7426.14", device_class="energy", unit_of_
 add("input_boolean.stufa_automatica", None, "on", friendly_name="Stufa automatica")
 add("input_boolean.stufa_weekend", None, "off", friendly_name="Stufa weekend")
 add("input_boolean.stufa_notte", None, "on", friendly_name="Stufa notte")
+add("input_number.sacchi_pellet", "soggiorno", "7", 600, min=0, max=100, step=1, mode="box", unit_of_measurement="sacchi", friendly_name="Sacchi pellet")
 add("input_select.stufa_modo", "soggiorno", "Comfort", options=["Eco", "Comfort", "Notte"], friendly_name="Modalità stufa")
 # a robot vacuum and its map (an image entity of the same device, as Roborock does)
 T.DEVICES.append({"id": "dev-robot", "name": "Robot aspirapolvere", "area_id": "corridoio"})
@@ -131,7 +135,8 @@ NAMES_EN = {
     "Umidità bagno": "Bathroom humidity", "Umidità cucina": "Kitchen humidity", "Notte": "Night",
     "Robot aspirapolvere": "Robot vacuum", "Mappa robot": "Robot map", "Altoparlante cucina": "Kitchen speaker",
     "Ingresso Veicolo in movimento": "Entrance vehicle moving", "Ingresso Persona": "Entrance person",
-    "Pulisce il soggiorno": "Cleaning the living room", "Silenziosa": "Quiet", "Bilanciata": "Balanced",
+    "Pulisce il soggiorno": "Cleaning the living room", "Lavastoviglie": "Dishwasher", "Sacchi pellet": "Pellet bags",
+    "Potenza lavastoviglie": "Dishwasher power", "Silenziosa": "Quiet", "Bilanciata": "Balanced",
 }
 if EN:  # the same house, in English
     for a in T.AREAS:
@@ -172,11 +177,11 @@ s = Settings(db_path=d + "/t.db", agents_file=str(ROOT / "config" / ("agents.en.
 
 
 class _SlowStream(_Stream):
-    """A stream that takes its time, as Claude does while it thinks."""
+    """A stream that takes its time, as Claude does while it thinks (DEMO_WORK=4: four times longer)."""
 
     def __init__(self, resp, delay):
         super().__init__(resp)
-        self.delay = delay
+        self.delay = delay * float(os.environ.get("DEMO_WORK") or 1)
 
     async def __aenter__(self):
         import asyncio
@@ -212,9 +217,34 @@ SCRIPT = {
 }
 
 
+def demo_card(request: str) -> dict:
+    """What the demo's Claude composes when asked for a card: the stove (plus one entity made up,
+    which HubNEX must leave out)."""
+    return {"name": "Stove" if EN else "Stufa", "color": "warm", "blocks": [
+        {"kind": "value", "entity": "climate.soggiorno", "label": "", "w": 2, "h": 2, "rules": [{"op": ">", "v": "23", "c": "red"}, {"op": "<", "v": "19", "c": "cool"}]},
+        {"kind": "toggle", "entity": "input_boolean.stufa_automatica", "label": "", "w": 1, "h": 1},
+        {"kind": "ring", "entity": "input_number.stufa_potenza", "label": "", "w": 1, "h": 1, "min": 1, "max": 5},
+        {"kind": "bar", "entity": "input_number.sacchi_pellet", "label": "Pellet", "w": 2, "h": 1, "min": 0, "max": 20,
+         "rules": [{"op": "<", "v": "5", "c": "red"}], "tap": {"do": "ask", "text": "Quando devo ordinare il pellet?"}},
+        {"kind": "band", "entity": "input_datetime.stufa_accensione", "entity2": "input_datetime.stufa_spegnimento", "label": "", "w": 4, "h": 1},
+        {"kind": "select", "entity": "input_select.stufa_modo", "label": "", "w": 2, "h": 1},
+        {"kind": "toggle", "entity": "switch.stufa_inventata", "label": "", "w": 1, "h": 1},
+        {"kind": "ask", "entity": "", "label": "Quanto pellet mi resta?", "w": 2, "h": 1},
+    ]}
+
+
 class DemoClaude(FakeClient):
     """Claude stand-in: one polite sentence, whatever is asked; a request for a quote plays the
     team at work (Jarvis delegates to Sales and the Accountant, then sums up)."""
+
+    async def _create(self, **kwargs):
+        import json as _json
+        self.requests.append(kwargs)
+        if "Componi card" in str(kwargs.get("system")):
+            import asyncio
+            await asyncio.sleep(1.5)  # as if Claude were thinking
+            return response([text_block(_json.dumps(demo_card(str(kwargs["messages"][-1]["content"]))))], "end_turn")
+        return response([text_block("{}")], "end_turn")
 
     def _stream(self, **kwargs):
         from types import SimpleNamespace as NS
@@ -286,6 +316,25 @@ def seed_cards() -> None:
 seed_cards()
 
 
+def seed_deadlines() -> None:
+    """A few work deadlines, for the "today" card (made up)."""
+    now = datetime.now()
+    rows = [
+        (-1, "Invio verbale verifica illuminazione di sicurezza", "Send the emergency lighting test report"),
+        (0, "Sopralluogo quadro elettrico, ore 15:00", "Site visit to the switchboard, 3 pm"),
+        (1, "Consegna offerta contratto di manutenzione", "Deliver the maintenance contract offer"),
+        (4, "Rinnovo polizza RC professionale", "Renew the professional liability policy"),
+        (20, "Verifica impianto di terra", "Earthing system inspection"),
+    ]
+    for days, it, en in rows:
+        due = (now + timedelta(days=days)).strftime("%Y-%m-%d")
+        hq.store._conn.execute("INSERT INTO deadlines (title, due, created) VALUES (?, ?, ?)", (en if EN else it, due, time.time()))
+    hq.store._conn.commit()
+
+
+seed_deadlines()
+
+
 async def demo_phones():
     return [{"service": "mobile_app_pixel_9", "name": "Pixel 9"}, {"service": "mobile_app_ipad", "name": "iPad"}]
 
@@ -299,6 +348,12 @@ class REST:
 
     async def close(self):
         pass
+
+    async def forecast(self, eid):
+        days = [("partlycloudy", 17, 9, 10), ("rainy", 14, 10, 80), ("cloudy", 15, 9, 30), ("sunny", 18, 8, 0), ("sunny", 19, 9, 0), ("partlycloudy", 17, 10, 10)]
+        start = datetime.now(timezone.utc)
+        return [{"datetime": (start + timedelta(days=i)).isoformat(), "condition": c, "temperature": hi, "templow": lo, "precipitation_probability": p}
+                for i, (c, hi, lo, p) in enumerate(days)]
 
     async def call_service(self, domain, service, data, by_owner=False):
         eid = data.get("entity_id")
@@ -347,6 +402,13 @@ class REST:
                 pts.append((t.isoformat(), str(round(w))))
                 t += timedelta(minutes=10)
             return {"sensor.potenza_casa": pts}
+        if eids == ["input_number.sacchi_pellet"]:  # a delivery of 15, 6 days ago, then about 1.4 a day
+            pts, v = [], 33
+            for d in range(30, 0, -1):
+                v = v + 15 if d == 6 else v - (2 if d % 3 == 0 else 1)  # 1-2 bags a day
+                pts.append(((now - timedelta(days=d)).isoformat(), str(max(v, 0))))
+            pts.append((now.isoformat(), hq.watcher.states[eids[0]]["state"]))
+            return {eids[0]: pts}
         for i, e in enumerate(eids):
             base = float(hq.watcher.states[e]["state"])
             out[e] = [((now - timedelta(minutes=30 * k)).isoformat(), str(round(base + math.sin(k / 4 + i) * base * 0.06, 2))) for k in range(48, -1, -1)]

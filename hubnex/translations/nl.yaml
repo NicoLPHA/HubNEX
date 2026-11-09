@@ -9,6 +9,27 @@ configuration:
   model_voice:
     name: Model voor snelle opdrachten
     description: De snelle route voor verzoeken over het huis (dashboard en Assist). Haiku is het snelst; ingewikkelde vragen gaan nog steeds naar het model van Jarvis. Leeg = geen snelle route.
+  openai_api_key:
+    name: OpenAI API-sleutel
+    description: Voor modellen die als openai:naam zijn geschreven (platform.openai.com).
+  openai_base_url:
+    name: Adres van de OpenAI API
+    description: Leeg = dat van OpenAI zelf. Wijzig het alleen voor een dienst die OpenAI nabootst met dezelfde sleutel.
+  ollama_url:
+    name: Ollama-adres
+    description: Voor lokale modellen die als ollama:naam zijn geschreven, bijv. http://192.168.1.20:11434. Gratis en zonder cloud; je hebt een model nodig dat tools kan gebruiken (qwen3, llama3.1, mistral-small).
+  compat_base_url:
+    name: Adres van een andere compatibele dienst
+    description: Voor modellen die als compat:naam zijn geschreven. Elke OpenAI-compatibele server, tot /v1 - LM Studio (http://IP:1234/v1), OpenRouter (https://openrouter.ai/api/v1), Gemini (https://generativelanguage.googleapis.com/v1beta/openai), Mistral, DeepSeek, Groq.
+  compat_api_key:
+    name: Sleutel van de compatibele dienst
+    description: De sleutel van die dienst; leeg als hij er geen vraagt (LM Studio).
+  other_price_input:
+    name: Invoerprijs van andere modellen ($ per miljoen tokens)
+    description: Om de uitgaven van openai- en compat-modellen mee te tellen, volgens de prijslijst van de aanbieder. 0 = niet meegeteld. Ollama-modellen zijn altijd gratis.
+  other_price_output:
+    name: Uitvoerprijs van andere modellen ($ per miljoen tokens)
+    description: Zoals hierboven, voor de tokens van het antwoord.
   anthropic_credit_usd:
     name: Anthropic-tegoed ($)
     description: Je saldo op console.anthropic.com. Het dashboard trekt de geschatte kosten van elk verzoek ervan af. Vul na het opwaarderen het nieuwe saldo in. 0 = alleen de uitgaven tonen.

@@ -1,5 +1,97 @@
 # Changelog
 
+## 1.20.2
+- Card libera, stile **Pulito** come le card composte: etichette piccole, valori di misura
+  media, una linea sopra ogni blocco che si accende quando l'entità è attiva, orari con −15/+15
+  accanto, interruttori con il nome sulla stessa riga, lo stato della card nell'intestazione
+  (accesa · attiva fino alle…).
+- **La linea in alto** di tutte le card (libere e composte) segue le stesse regole: arancione
+  quando qualcosa è acceso o un sensore rileva, rossa per un allarme (porta o finestra aperta,
+  acqua, fumo, gas); in una card con un interruttore principale, come la stufa, decide lui.
+
+## 1.20.1
+- Card libera: **stile Pulito**, senza riquadri, come le card composte, e di partenza per le
+  card nuove; **Riquadri** resta da scegliere nell'editor. Le card già create restano come
+  sono. Lo stile viaggia anche con Esporta / Importa.
+
+## 1.20.0
+- **Card libera**, terza parte:
+  - **Descrivila a Jarvis**: scrivi la card che vuoi e Jarvis la compone con le entità vere
+    della casa (le entità inventate vengono scartate); si apre nell'editor da controllare;
+  - **Esporta / Importa card**: una card diventa testo da condividere e si incolla in un'altra
+    casa, dove i blocchi con entità mancanti restano da scegliere;
+  - nelle condizioni e nelle regole i valori si scelgono da un **elenco tradotto** (acceso,
+    aperta, in riproduzione…) invece di scrivere `on` o `playing`.
+
+## 1.19.0
+- **Card libera**, seconda parte:
+  - blocchi **media** (copertina, titolo, comandi, volume), **telecamera** (dal vivo) e
+    **Domanda a Jarvis** (una domanda pronta che parte in chat con un tocco);
+  - per ogni blocco: **colore secondo il valore** (fino a 4 regole), **mostra solo se**
+    (un'entità vale qualcosa) e **azione al tocco** (accendi/spegni, scena o script, chiedi a
+    Jarvis, apri una stanza);
+  - **modelli pronti**: Stufa, Ingresso, Lavanderia, Clima stanza, Energia, Musica, riempiti
+    con le entità della stanza;
+  - i blocchi si spostano **trascinandoli**, con il dito o con il mouse.
+
+## 1.18.0
+- **Card libera** (prima parte): una card a blocchi su una griglia da 4 colonne, 2 sul
+  telefono. Blocchi: valore grande, anello, interruttore, pulsante, cursore, grafico, barra,
+  fascia oraria, selettore, stato e testo; per ognuno entità, etichetta, dimensione (da 1×1 a
+  4×2), minimo e massimo. Nome e colore della card, anteprima dal vivo nell'editor. Si crea da
+  Modifica stanza → + Card libera.
+
+## 1.17.0
+- **Card Scorta** per il pellet e simili: quanti ne restano, consumo al giorno e giorni
+  rimasti (dallo storico di Home Assistant), ultima consegna, "−1 caricato" e "+consegna".
+  La riconosce da sola un aiutante Numero o un Contatore con "pellet", "sacchi" o "scorta"
+  nel nome; per gli altri si sceglie il tipo "Scorta". Sotto la soglia scelta la card diventa
+  rossa e arriva la notifica **Scorte da riordinare**.
+- **Contatori** e **timer** di Home Assistant riconosciuti nelle stanze.
+- **Aggiungi entità**: la ricerca non si ferma più a 60 risultati, ogni entità di Home
+  Assistant si può mettere in una stanza.
+
+## 1.16.2
+- HQ: il fascio di luce da Jarvis a un agente resta acceso **per tutto il lavoro**, pulsando,
+  con dei punti luminosi che scorrono verso l'agente; quando l'agente ha finito sfuma. Prima
+  durava un secondo e mezzo all'inizio. Tornando sull'HQ, o cambiando sede, mentre un agente
+  lavora, il suo fascio c'è subito.
+
+## 1.16.1
+- Chat: niente più "Failed to fetch" con le richieste lunghe (agenti che cercano e verificano
+  sul web). La dashboard non tiene aperta una sola richiesta per tutta la risposta, che un
+  proxy (Home Assistant, Nabu Casa, l'app) poteva chiudere dopo un minuto o due: riceve
+  subito un numero di lavoro e chiede la risposta con richieste brevi. Se la rete cade un
+  momento, riprova da sola.
+
+## 1.16.0
+- Vista Casa più ricca:
+  - **Meteo** nel cruscotto, con le previsioni dei prossimi giorni in un popup (da Home
+    Assistant);
+  - **Oggi e prossimi giorni**: le scadenze dei prossimi 7 giorni, con la spunta per chiuderle.
+    Solo per il proprietario: i familiari con accesso alla sola casa non le vedono;
+  - **icone sulla piantina**: presenza, musica, robot al lavoro, lavatrice in funzione;
+  - **Elettrodomestici**: in funzione con la potenza, e "finito … fa";
+  - **Ultimi eventi**: porte, finestre, serrature, allarme e persone delle ultime 24 ore.
+
+## 1.15.1
+- **Ricerche web regolabili per agente**: in `agents.yaml`, `max_searches: 3` limita le ricerche
+  web di Jarvis o di un agente per ogni richiesta (da 1 a 20; se manca restano 5, come prima).
+  Ogni ricerca porta pagine da leggere: con meno ricerche la spesa scende, soprattutto per gli
+  agenti tecnici. Nella documentazione, i consigli per spendere meno.
+
+## 1.15.0
+- **Altri fornitori AI**: Jarvis e ogni agente possono usare anche **OpenAI**, un **modello
+  locale** con Ollama o LM Studio (gratis, senza cloud) o qualsiasi servizio compatibile con
+  OpenAI (OpenRouter, Gemini, Mistral, DeepSeek, Groq). Il modello si scrive con il prefisso:
+  `openai:gpt-5-mini`, `ollama:qwen3:14b`, `compat:nome-modello`; senza prefisso è Claude,
+  come prima. Si possono mescolare, per esempio Jarvis su Claude e la posta su un modello
+  locale. Nuove opzioni per chiavi e indirizzi; la chiave Anthropic diventa facoltativa.
+- Con gli altri modelli la lettura delle pagine web la fa HubNEX (solo indirizzi pubblici), i
+  PDF arrivano come testo; la ricerca web e i pensieri visibili restano solo con Claude.
+- Spesa: i modelli di Ollama costano zero, per OpenAI e gli altri si inserisce il prezzo di
+  listino. Il credito Anthropic scala solo le chiamate a Claude.
+
 ## 1.14.3
 - Telecamere dentro Home Assistant: le miniature dal vivo usano il video di Home Assistant
   (lo stesso della vista grande in HD), non più l'MJPEG che con molte telecamere non arriva.

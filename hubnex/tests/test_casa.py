@@ -537,8 +537,43 @@ def test_cards_composed_in_a_room_and_helpers_set_from_the_dashboard(settings, m
         assert client.post("/api/casa/rooms/soggiorno/cards", json={"name": "X", "entities": ["light.inesistente"]}).status_code == 422
         bad = {"name": "Stufa", "entities": ["input_datetime.stufa_accensione"], "enable": "light.lampada"}
         assert client.post("/api/casa/rooms/soggiorno/cards", json=bad).status_code == 422  # its switch must be in the card
+        # a free card: blocks on the grid; its entities are its blocks'
+        free = {"name": "Stufa libera", "kind": "free", "color": "warm", "blocks": [
+            {"kind": "band", "entity": "input_datetime.stufa_accensione", "entity2": "input_datetime.stufa_spegnimento", "w": 4},
+            {"kind": "text", "label": "Inverno", "w": 4},
+            {"kind": "ring", "entity": "input_datetime.stufa_accensione", "min": 0, "max": 5},
+        ]}
+        r = client.post("/api/casa/rooms/soggiorno/cards", json=free)
+        assert r.json() == {"ok": True, "id": "c2"}
+        assert client.post("/api/casa/rooms/soggiorno/cards", json={**free, "blocks": []}).status_code == 422
+        assert client.post("/api/casa/rooms/soggiorno/cards", json={**free, "blocks": [{"kind": "razzo", "entity": "x.y"}]}).status_code == 422
+        assert client.post("/api/casa/rooms/soggiorno/cards", json={**free, "blocks": [{"kind": "value", "entity": "light.inesistente"}]}).status_code == 422
+        assert client.post("/api/casa/rooms/soggiorno/cards", json={**free, "blocks": [{"kind": "value", "entity": "input_datetime.stufa_accensione", "w": 5}]}).status_code == 422
+        # part two: colour rules, a condition, a tap; their entities belong to the card too
+        w.states["light.lampada"] = st("light.lampada", "on", friendly_name="Lampada")
+        smart = {"name": "Regole", "kind": "free", "blocks": [
+            {"kind": "value", "entity": "input_datetime.stufa_accensione", "rules": [{"op": ">", "v": "21", "c": "red"}],
+             "show": {"e": "light.lampada", "op": "=", "v": "on"}, "tap": {"do": "ask", "text": "Quanto pellet mi resta?"}},
+            {"kind": "ask", "label": "Che tempo fa?"},
+            {"kind": "state", "entity": "input_datetime.stufa_spegnimento", "tap": {"do": "toggle", "e": "light.lampada"}},
+        ]}
+        r = client.post("/api/casa/rooms/soggiorno/cards", json=smart)
+        assert r.status_code == 200, r.text
+        bad_rule = {**smart, "blocks": [{"kind": "value", "entity": "light.lampada", "rules": [{"op": "~", "v": "1", "c": "red"}]}]}
+        assert client.post("/api/casa/rooms/soggiorno/cards", json=bad_rule).status_code == 422
+        bad_tap = {**smart, "blocks": [{"kind": "value", "entity": "light.lampada", "tap": {"do": "explode"}}]}
+        assert client.post("/api/casa/rooms/soggiorno/cards", json=bad_tap).status_code == 422
+        got = next(c for c in next(a for a in client.get("/api/casa").json()["areas"] if a["id"] == "soggiorno")["cards"] if c["id"] == r.json()["id"])
+        assert got["entities"] == ["input_datetime.stufa_accensione", "light.lampada", "input_datetime.stufa_spegnimento"]
+        assert got["blocks"][0]["rules"] == [{"op": ">", "v": "21", "c": "red"}] and got["blocks"][0]["show"]["e"] == "light.lampada"
+        assert "rules" not in got["blocks"][1] and got["blocks"][1]["label"] == "Che tempo fa?"
+        client.post(f"/api/casa/rooms/soggiorno/cards/{r.json()['id']}/remove")
         view = client.get("/api/casa").json()
         sogg = next(a for a in view["areas"] if a["id"] == "soggiorno")
+        card = sogg["cards"][1]
+        assert card["kind"] == "free" and card["color"] == "warm" and len(card["blocks"]) == 3
+        assert card["entities"] == ["input_datetime.stufa_accensione", "input_datetime.stufa_spegnimento"]
+        assert card["blocks"][2] == {"kind": "ring", "entity": "input_datetime.stufa_accensione", "entity2": "", "label": "", "w": 1, "h": 1, "min": 0.0, "max": 5.0}
         assert sogg["cards"][0]["name"] == "Stufa" and sogg["cards"][0]["group"] == "climate" and sogg["order"] == []
         assert view["states"]["input_datetime.stufa_accensione"]["k"] == "datetime"  # sent although in no area
         assert view["states"]["input_datetime.stufa_accensione"]["a"]["has_time"] is True
@@ -562,7 +597,7 @@ def test_cards_composed_in_a_room_and_helpers_set_from_the_dashboard(settings, m
         client.post("/api/casa/call", json={"domain": "input_datetime", "service": "set_datetime", "data": {"entity_id": "input_datetime.stufa_accensione", "time": "07:00:00"}})
         assert calls[-1] == ("input_datetime", "set_datetime", {"entity_id": "input_datetime.stufa_accensione", "time": "07:00:00"})
         client.post("/api/casa/rooms/soggiorno/cards/c1/remove")
-        assert [c["id"] for c in next(a for a in client.get("/api/casa").json()["areas"] if a["id"] == "soggiorno")["cards"]] == ["c2"]
+        assert [c["id"] for c in next(a for a in client.get("/api/casa").json()["areas"] if a["id"] == "soggiorno")["cards"]] == ["c2", "c3"]
         client.portal.call(lambda: task.cancel())
 
 
@@ -610,3 +645,100 @@ def test_vacuum_map_is_found_on_the_same_device():
     assert casa.vacuum_map("vacuum.roborock_s8") == "camera.roborock_map"
     ha.states = {"vacuum.robot": {}, "camera.ingresso": {}}
     assert casa.vacuum_map("vacuum.robot") is None
+
+
+async def test_the_forecast_comes_from_home_assistant_service():
+    import json as _json
+
+    import httpx
+
+    from hubnex.integrations.homeassistant import HomeAssistant
+
+    seen = {}
+
+    def handle(req):
+        seen.update(url=str(req.url), body=_json.loads(req.content))
+        return httpx.Response(200, json={"changed_states": [], "service_response": {
+            "weather.casa": {"forecast": [{"datetime": "2026-11-08T00:00:00Z", "condition": "rainy", "temperature": 14, "templow": 9}]}}})
+
+    ha = HomeAssistant("http://ha:8123", "tok")
+    ha._client = httpx.AsyncClient(base_url="http://ha:8123/api", transport=httpx.MockTransport(handle))
+    days = await ha.forecast("weather.casa")
+    assert days[0]["condition"] == "rainy"
+    assert seen["url"].endswith("/api/services/weather/get_forecasts?return_response")
+    assert seen["body"] == {"entity_id": "weather.casa", "type": "daily"}
+
+
+def test_stock_pace_from_the_history():
+    from datetime import datetime, timedelta, timezone
+
+    from hubnex.main import stock_stats
+
+    now = datetime(2026, 11, 20, 12, tzinfo=timezone.utc)
+    day = lambda d: (now - timedelta(days=d)).isoformat()  # noqa: E731
+    pts = [(day(10), "20"), (day(8), "17"), (day(6), "14"), (day(4), "26"), (day(2), "23"), (day(0), "20"), (day(0), "unavailable")]
+    out = stock_stats(pts, now)
+    assert out["per_day"] == 1.2  # 12 used in 10 days, the delivery doesn't count
+    assert out["days_left"] == 16
+    assert out["last_delivery"] == day(4)
+    assert stock_stats([(day(1), "5")], now) == {"per_day": None, "days_left": None, "last_delivery": None}
+
+
+def test_counters_are_stocks_by_name_and_any_entity_can_be_searched():
+    from types import SimpleNamespace as NS
+
+    from hubnex.casa import Casa
+
+    casa = Casa.__new__(Casa)
+    casa.adjust = {"kind": {}, "names": {}, "extra": {}, "hidden": {}}
+    states = {f"automation.regola_{i}": {"state": "on", "attributes": {}} for i in range(120)}
+    states["counter.carico_pellet"] = {"state": "12", "attributes": {"friendly_name": "Carico pellet", "minimum": 0}}
+    states["counter.visite"] = {"state": "3", "attributes": {"friendly_name": "Visite"}}
+    casa.ha = NS(states=states, entities={}, areas={}, area_of=lambda e: None)
+    assert casa.compact("counter.carico_pellet")["k"] == "stock"
+    assert casa.compact("counter.visite")["k"] == "number"
+    found = casa.candidates("")
+    assert len(found) == 122, "no limit at 60: every entity can be added to a room"
+
+
+def test_jarvis_composes_a_free_card_and_cards_travel_as_text(settings, make_hq):
+    import json as _json
+
+    draft = {"name": "Soggiorno", "color": "warm", "blocks": [
+        {"kind": "toggle", "entity": "light.lampada", "label": "", "w": 1, "h": 1, "rules": [{"op": "=", "v": "on", "c": "warm"}]},
+        {"kind": "toggle", "entity": "light.inventata", "label": "", "w": 1, "h": 1},  # made up: left out
+        {"kind": "ask", "entity": "", "label": "Che luci ho acceso?", "w": 2, "h": 1},
+        {"kind": "state", "entity": "switch.irrigazione", "label": "", "w": 2, "h": 1, "show": {"e": "sensor.nessuno", "op": "=", "v": "on"}},
+    ]}
+    hq = make_hq([response([text_block(_json.dumps(draft))], "end_turn")])
+    settings.trusted_proxy = None
+    with TestClient(create_app(settings, hq=hq, start_workers=False)) as client:
+        w, ws, task = client.portal.call(connected)
+        hq.casa.ha = hq.watcher = w
+        r = client.post("/api/casa/rooms/soggiorno/cards/draft", json={"text": "le luci del soggiorno e l'irrigazione"})
+        assert r.status_code == 200, r.text
+        got = r.json()
+        assert got["name"] == "Soggiorno" and got["color"] == "warm" and got["dropped"] == 1
+        assert [b["entity"] for b in got["blocks"]] == ["light.lampada", "", "switch.irrigazione"]
+        assert "show" not in got["blocks"][2]  # its condition named an entity that doesn't exist
+        assert set(got["states"]) == {"light.lampada", "switch.irrigazione"} and got["states"]["light.lampada"]["k"] == "light"
+        req = hq.client.requests[0]
+        assert "output_config" in req and req["output_config"]["format"]["type"] == "json_schema"
+        prompt = req["messages"][0]["content"]
+        assert "light.lampada | Lampada da terra | light" in prompt and "le luci del soggiorno" in prompt
+        assert prompt.index("light.lampada") < prompt.index("light.lampadario")  # the room first
+        assert client.post("/api/casa/rooms/nessuna/cards/draft", json={"text": "una card"}).status_code == 404
+
+        # export from one house, import into another: missing entities wait to be chosen
+        shared = {"hubnex_card": 1, "name": "Da un amico", "color": "cool", "blocks": [
+            {"kind": "toggle", "entity": "light.lampada", "w": 1, "h": 1},
+            {"kind": "value", "entity": "sensor.casa_amico", "w": 2, "h": 1, "tap": {"do": "toggle", "e": "light.amico"}},
+            {"kind": "boom"},
+        ]}
+        got = client.post("/api/casa/cards/import", json=shared).json()
+        assert got["missing"] == 1 and got["dropped"] == 1
+        assert got["blocks"][1]["entity"] == "" and got["blocks"][1]["tap"]["e"] == ""
+        assert got["style"] is None  # not given: the editor keeps its own (clean, for a new card)
+        assert client.post("/api/casa/cards/import", json={**shared, "style": "flat"}).json()["style"] == "flat"
+        assert client.post("/api/casa/cards/import", json={"name": "x"}).status_code == 422
+        client.portal.call(lambda: task.cancel())

@@ -27,7 +27,7 @@ KINDS = {
     "person": "person", "device_tracker": "person", "remote": "switch",
     # helpers the owner sets from the dashboard (the stove's start time, a target, a mode…)
     "input_datetime": "datetime", "time": "datetime", "date": "datetime", "datetime": "datetime",
-    "input_number": "number", "number": "number", "input_select": "select", "select": "select",
+    "input_number": "number", "number": "number", "counter": "number", "timer": "sensor", "input_select": "select", "select": "select",
     "input_text": "text", "text": "text",
 }
 ATTRS = (
@@ -40,12 +40,18 @@ ATTRS = (
     "fan_speed", "fan_speed_list", "status", "source_list", "shuffle", "repeat", "is_volume_muted",
     "media_album_name", "app_name", "media_series_title",
     "current_humidity", "battery_level", "hvac_action",
+    "humidity", "wind_speed", "wind_speed_unit",  # the weather
+    "minimum", "maximum",  # counters
     "has_date", "has_time", "min", "max", "step", "mode", "options",
     "last_period", "last_reset", "meter_period",  # utility meters: the previous period, its start
 )
 # What the owner can say an entity really is, whatever its Home Assistant domain
 # (a relay "switch" that drives a light, a gate opened by an impulse…).
-SHOW_AS = {"light", "switch", "gate", "siren", "sensor"}
+SHOW_AS = {"light", "switch", "gate", "siren", "sensor", "stock"}
+# A number or counter with one of these in its name is a stock (pellet bags, water bottles…):
+# shown as such without being asked.
+STOCK_WORDS = re.compile(r"pellet|sacch|scorta|scorte|stock|bags?\b", re.I)
+STOCK_DEFAULT = {"delivery": 15, "low": 5}
 ALERT_CLASSES = {"door", "window", "opening", "garage_door", "smoke", "moisture", "gas", "safety", "problem", "carbon_monoxide"}
 
 EXAMPLE_LAYOUT = """\
@@ -357,11 +363,30 @@ class Casa:
             kinds.pop(entity_id, None)
         await self.store.put("casa_adjust", self.adjust)
 
+    def stock_of(self, entity_id: str) -> dict:
+        """A stock's settings, or the defaults."""
+        return {**STOCK_DEFAULT, **self.adjust.get("stock", {}).get(entity_id, {})}
+
+    def stocks(self) -> list[str]:
+        """The entities shown as a stock (pellet bags…): by name, or chosen by the owner."""
+        return sorted(e for e in self.ha.states if (self.compact(e) or {}).get("k") == "stock")
+
+    async def set_stock(self, entity_id: str, delivery: int, low: int) -> None:
+        """A stock's settings: how many come in a delivery, below how many to warn."""
+        self.adjust.setdefault("stock", {})[entity_id] = {"delivery": delivery, "low": low}
+        await self.store.put("casa_adjust", self.adjust)
+
     # cards the owner composes in a room, their order, names and sizes (HubNEX only)
-    async def save_card(self, area_id: str, card_id: str | None, name: str, entities: list[str], size: str, group: str | None = None, enable: str | None = None, nochart: list[str] | None = None) -> str:
+    async def save_card(self, area_id: str, card_id: str | None, name: str, entities: list[str], size: str, group: str | None = None, enable: str | None = None, nochart: list[str] | None = None, blocks: list[dict] | None = None, color: str = "", style: str = "") -> str:
         cards = self.adjust.setdefault("cards", {}).setdefault(area_id, [])
         card_id = card_id or f"c{max([int(c['id'][1:]) for c in cards if c['id'][1:].isdigit()] or [0]) + 1}"
-        card = {"id": card_id, "name": name.strip()[:60] or "Card", "entities": list(dict.fromkeys(entities))[:12], "size": size}
+        card = {"id": card_id, "name": name.strip()[:60] or "Card", "entities": list(dict.fromkeys(entities))[:24], "size": size}
+        if blocks is not None:  # a free card: its blocks on a 4-column grid
+            card.update(kind="free", blocks=blocks[:24])
+            if color:
+                card["color"] = color
+            if style:
+                card["style"] = style
         if group:
             card["group"] = group
         if enable is not None:  # "" = the owner said: no switch, the times always apply
@@ -457,6 +482,8 @@ class Casa:
         )
         native = KINDS.get(entity_id.split(".", 1)[0], "other")
         shown = self.adjust.get("kind", {}).get(entity_id)
+        if not shown and native == "number" and STOCK_WORDS.search(f"{entity_id} {name}"):
+            shown = "stock"
         out = {
             "s": s.get("state"),
             "n": name,
@@ -585,13 +612,15 @@ class Casa:
             "nochart": list(self.adjust.get("nochart", [])),  # sensors whose chart the owner turned off
             "energy_panel": energy_cfg,
             "weather": weather,
+            "stock": {**{e: dict(STOCK_DEFAULT) for e, s in states.items() if s and s["k"] == "stock"},
+                      **self.adjust.get("stock", {})},  # bags in a delivery, warning threshold
             "energy": energy,
             "states": {e: s for e, s in states.items() if s},
             "layout_error": self.layout_error,
             "layout_file": self.host_path(),
         }
 
-    def candidates(self, query: str = "", area_id: str | None = None, limit: int = 60, include_here: bool = False) -> list[dict[str, Any]]:
+    def candidates(self, query: str = "", area_id: str | None = None, limit: int = 500, include_here: bool = False) -> list[dict[str, Any]]:
         """Entities that could be added to a room, for the dashboard's search: everything Home
         Assistant has, also what it hides (e.g. players hidden by Music Assistant) or files as
         diagnostic; the usual devices first."""

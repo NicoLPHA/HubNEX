@@ -39,9 +39,9 @@ SERVER_TOOLS: dict[str, tuple[str, str]] = {
 }
 
 
-def server_tool(name: str, model: str) -> dict:
+def server_tool(name: str, model: str, max_uses: int = 5) -> dict:
     current, basic = SERVER_TOOLS[name]
-    return {"type": basic if "haiku" in model else current, "name": name, "max_uses": 5}
+    return {"type": basic if "haiku" in model else current, "name": name, "max_uses": max_uses}
 
 REGISTRY: dict[str, Tool] = {}
 
@@ -66,6 +66,6 @@ def to_text(value: Any) -> str:
 
 
 # Import the modules that register tools.
-from hubnex.tools import boss, common, homeassistant, mail  # noqa: E402,F401
+from hubnex.tools import boss, common, homeassistant, mail, web  # noqa: E402,F401
 
 __all__ = ["REGISTRY", "SERVER_TOOLS", "Tool", "ToolContext", "server_tool", "to_text"]

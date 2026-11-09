@@ -29,6 +29,11 @@ eigen rol: mail, administratie, technisch onderzoek, huis, beveiliging… Je pra
   Home Assistant in het dashboard.
 - **Geen eigen initiatief zonder jouw opdracht**: routines staan standaard uit, er wordt niets in
   huis gedaan zonder dat je erom vraagt, en vaste regels gelden voor het hele team.
+- **Andere AI-aanbieders**: elke agent kan ook op **OpenAI** of op een **lokaal model** draaien, via Ollama
+  of LM Studio (gratis, zonder cloud), of op elke OpenAI-compatibele dienst (OpenRouter, Gemini,
+  Mistral…): schrijf het model als `openai:gpt-5-mini` of `ollama:qwen3:14b`. Claude blijft de
+  aanbevolen keuze: zoeken op het web en de zichtbare gedachten van Jarvis bestaan alleen met Claude.
+- **Vrije kaarten, voorraden en weer** in de weergave Thuis, en kaarten die je aan Jarvis beschrijft.
 - **Italiaans, Engels en Nederlands**: het dashboard volgt de taal van Home Assistant van elke
   gebruiker; de assistent en de add-on volgen de optie **Taal**.
 
@@ -51,7 +56,8 @@ de agents en Claude Haiku voor mail en snelle opdrachten. De opdrachten van de w
 met Assist, de eenvoudige opdrachten van Home Assistant gebruiken geen tegoed.
 
 > **Privacy:** alles wat je tegen de assistent zegt of typt, en de toestand van de huisapparaten die
-> hij nodig heeft, gaat naar de Anthropic API. Mail, Telegram en spraak (ElevenLabs) gebruiken
+> hij nodig heeft, gaat naar de Anthropic API (of naar de andere aanbieder die je kiest; bij een lokaal
+> model op je eigen netwerk blijft het lokaal). Mail, Telegram en spraak (ElevenLabs) gebruiken
 > daarnaast hun eigen diensten. Zie [`SECURITY.md`](SECURITY.md) en de aanbevelingen in de handleiding.
 
 ## Zonder Home Assistant (Docker)

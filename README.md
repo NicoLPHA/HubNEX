@@ -48,6 +48,11 @@ You need an Anthropic account with credit: HubNEX uses Claude Sonnet for the ass
 agents and Claude Haiku for mail and quick commands. The Home view's commands and, with Assist,
 Home Assistant's simple commands use no credit.
 
+**Other AI providers.** Every agent can also run on **OpenAI** or on a **local model** through
+Ollama or LM Studio (free, no cloud), or on any OpenAI-compatible service (OpenRouter, Gemini,
+Mistral…): write the model as `openai:gpt-5-mini` or `ollama:qwen3:14b`. Claude stays the
+recommended choice: web search and Jarvis' visible thoughts are Claude-only. See the docs.
+
 ## Without Home Assistant (Docker)
 
 ```bash

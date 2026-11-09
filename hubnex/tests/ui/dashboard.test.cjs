@@ -184,6 +184,202 @@ test("luci: la card resta semplice, colore e temperatura nel popup", { timeout: 
   await done(page);
 });
 
+test("vista Casa: meteo, oggi, icone sulla piantina, elettrodomestici, ultimi eventi", { timeout: 30000 }, async () => {
+  const page = await open();
+  await casa(page);
+  // the weather in the HUD, the forecast in a popup
+  await page.waitForFunction(() => /9°\/17°/.test(document.querySelector(".hud-wx")?.textContent || ""));
+  await page.click("[data-act='weather']");
+  await page.waitForSelector(".casa-wx-modal");
+  assert.equal(await page.locator(".wx-day").count(), 6, "sei giorni di previsioni");
+  assert.match(await page.textContent(".wx-day >> nth=1"), /Domani.*Pioggia · 80%/s, "niente «pioggia» ripetuto");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".casa-wx-modal", { state: "detached" });
+  // today: the owner's deadlines, the late one first
+  const today = page.locator(".hc-today");
+  assert.equal(await today.count(), 4, "al massimo quattro, entro sette giorni");
+  assert.match(await today.first().textContent(), /scaduta/i);
+  // what's going on in the rooms
+  assert.equal(await page.locator(".plan-room[data-area='soggiorno'] .plan-icons .pi").count(), 2, "presenza e musica");
+  assert.equal(await page.locator(".plan-room[data-area='lavanderia'] .plan-icons .pi").count(), 1, "la lavatrice in funzione");
+  assert.equal(await page.locator(".plan-room[data-area='cucina'] .plan-icons .pi").count(), 1, "il bollitore non ha icona");
+  // appliances and recent events
+  const appl = await page.textContent(".casa-right");
+  assert.match(appl, /Lavatrice.*in funzione/s);
+  assert.match(appl, /Lavastoviglie.*finito \d+ min fa/s);
+  assert.match(await page.textContent(".casa-left"), /Ultimi eventi.*Porta ingresso.*bloccata.*min fa/s);
+  // ticking a deadline off
+  await today.first().locator("[data-act='ddone']").click();
+  await page.waitForFunction(() => document.querySelectorAll(".hc-today").length === 3 && !/Invio verbale/.test(document.querySelector(".casa-right").textContent));
+  await done(page);
+});
+
+test("card libera: si costruisce a blocchi e funziona", { timeout: 40000 }, async () => {
+  const page = await open();
+  await casa(page);
+  await page.locator(".plan-room[data-area='soggiorno']").click();
+  await page.click(".casa-quick [data-act='open']");
+  await page.click("[data-act='edit']");
+  await page.click("[data-act='card-free']");
+  await page.fill("#fb-name", "Prova libera");
+  await page.click("[data-act='fb-color'][data-c='green']");
+  // an interruttore: only switches and lights are offered
+  await page.click("[data-act='fb-add'][data-k='toggle']");
+  await page.fill("#fb-find", "presa tv");
+  await page.waitForSelector("[data-act='fb-pick'][data-e='switch.presa_tv']");
+  assert.equal(await page.locator("#fb-cands [data-e='sensor.temp_cucina']").count(), 0, "un sensore non è un interruttore");
+  await page.click("[data-act='fb-pick'][data-e='switch.presa_tv']");
+  // a big value, 2×2, with its own label
+  await page.click("[data-act='fb-add'][data-k='value']");
+  await page.fill("#fb-find", "clima");
+  await page.click("[data-act='fb-pick'][data-e='climate.soggiorno']");
+  await page.click("[data-act='fb-size'][data-w='2'][data-h='2']");
+  await page.fill("#fb-label", "Qui");
+  assert.match(await page.textContent("#fb-preview"), /QUI|Qui/);
+  // a block without its entity can't be saved
+  await page.click("[data-act='fb-add'][data-k='state']");
+  await page.click("[data-act='fb-save']");
+  await page.waitForSelector(".casa-toast");
+  await page.click("[data-act='fb-del']");
+  await page.click("[data-act='fb-save']");
+  await page.waitForSelector(".fe-panel", { state: "detached" });
+  const card = page.locator(".hc-free:has-text('Prova libera')");
+  await card.waitFor();
+  assert.ok(await card.evaluate((el) => el.classList.contains("fc-green") && el.classList.contains("flat")), "verde e pulita, lo stile di partenza");
+  assert.equal(await card.locator(".fb").count(), 2);
+  assert.equal(await card.locator(".fb[data-w='2'][data-h='2']").count(), 1, "il valore grande 2×2");
+  // its switch works from the card
+  await card.locator(".casa-switch").click();
+  await page.waitForFunction(() => /spento/.test(document.querySelector(".hc-free .k-toggle")?.textContent || ""));
+  // and it opens again in the editor
+  await card.locator("[data-act='card-edit']").click();
+  await page.waitForSelector(".fe-panel");
+  assert.equal(await page.inputValue("#fb-name"), "Prova libera");
+  await page.click("[data-act='fb-close']");
+  await done(page);
+});
+
+test("card libera: modello, colore secondo il valore, mostra solo se, domanda a Jarvis", { timeout: 40000 }, async () => {
+  const page = await open();
+  await casa(page);
+  await page.locator(".plan-room[data-area='soggiorno']").click();
+  await page.click(".casa-quick [data-act='open']");
+  await page.click("[data-act='edit']");
+  await page.click("[data-act='card-free']");
+  await page.click("[data-act='fb-tpl'][data-t='stufa']");
+  assert.ok(await page.locator(".fe-prev .fb").count() >= 3, "il modello ha messo i blocchi della stanza");
+  assert.equal(await page.inputValue("#fb-name"), "Stufa");
+  // above 21 the temperature turns red
+  await page.click(".fe-prev .k-value");
+  await page.click("[data-act='fb-rule-add']");
+  await page.selectOption("[data-fb='rules.0.op']", ">");
+  await page.fill("[data-fb='rules.0.v']", "21");
+  await page.selectOption("[data-fb='rules.0.c']", "red");
+  assert.equal(await page.locator(".fe-prev .k-value.tone-red").count(), 1);
+  // a block shown only while the kitchen speaker is off: hidden now, dimmed in the editor
+  await page.click("[data-act='fb-add'][data-k='media']");
+  await page.fill("#fb-find", "altoparlante");
+  await page.click("[data-act='fb-pick'][data-e='media_player.cucina']");
+  await page.click("[data-act='fb-show-add']");
+  await page.click("[data-act='fb-pick'][data-e='media_player.cucina']");
+  await page.selectOption("[data-fb='show.v']", "off");
+  assert.equal(await page.locator(".fe-prev .k-media.hid").count(), 1);
+  await page.click("[data-act='fb-add'][data-k='ask']");
+  await page.fill("#fb-label", "Quanto pellet mi resta?");
+  await page.click("[data-act='fb-save']");
+  await page.waitForSelector(".fe-panel", { state: "detached" });
+  const card = page.locator(".hc-free:has-text('Stufa')");
+  await card.waitFor();
+  assert.equal(await card.locator(".k-media").count(), 0, "nascosto: l'altoparlante sta suonando");
+  assert.equal(await card.locator(".k-value.tone-red").count(), 1);
+  await card.locator(".fb-ask").click();
+  await page.waitForFunction(() => /Quanto pellet mi resta\?/.test(document.querySelector("#chat-log")?.textContent || ""));
+  // the card goes away: its entities (the pellet) belong to the room again for the next tests
+  await page.evaluate(async () => {
+    const view = await (await fetch("api/casa")).json();
+    for (const c of view.areas.find((a) => a.id === "soggiorno").cards.filter((c) => c.kind === "free")) {
+      await fetch(`api/casa/rooms/soggiorno/cards/${c.id}/remove`, { method: "POST" });
+    }
+  });
+  await done(page);
+});
+
+test("card libera: Jarvis la compone, si esporta e si importa, valori da un elenco", { timeout: 40000 }, async () => {
+  const page = await open();
+  await casa(page);
+  await page.locator(".plan-room[data-area='soggiorno']").click();
+  await page.click(".casa-quick [data-act='open']");
+  await page.click("[data-act='edit']");
+  await page.click("[data-act='card-free']");
+  await page.fill("#fb-draft-text", "la stufa con tutto");
+  await page.click("[data-act='fb-draft']");
+  await page.waitForFunction(() => document.querySelectorAll(".fe-prev .fb").length >= 6, null, { timeout: 15000 });
+  assert.equal(await page.inputValue("#fb-name"), "Stufa");
+  assert.match(await page.textContent(".casa-toast"), /scartato/, "l'entità inventata è stata tolta");
+  // a condition chosen from a translated list
+  await page.click(".fe-prev .k-select");
+  await page.click("[data-act='fb-show-add']");
+  await page.fill("#fb-find", "automatica");
+  await page.click("[data-act='fb-pick'][data-e='input_boolean.stufa_automatica']");
+  const opts = await page.locator("select[data-fb='show.v'] option").allTextContents();
+  assert.ok(opts.includes("acceso") && opts.includes("spento"), opts.join(","));
+  // export, then import it with an entity this house doesn't have
+  await page.click("[data-act='fb-export']");
+  const text = await page.inputValue(".fe-export");
+  assert.equal(JSON.parse(text).hubnex_card, 1);
+  await page.click("[data-act='fb-close']");
+  await page.click("[data-act='card-import']");
+  await page.fill("#fb-paste", text.replace("input_select.stufa_modo", "input_select.altra_casa"));
+  await page.click("[data-act='fb-import']");
+  await page.waitForFunction(() => /sceglila tu/.test(document.querySelector(".casa-toast")?.textContent || ""));
+  assert.equal(await page.locator(".fe-prev .fb.sel").count(), 1, "il blocco senza entità è già selezionato");
+  await page.click("[data-act='fb-close']");
+  await done(page);
+});
+
+test("le card si accendono in alto: arancione se qualcosa è acceso, rosso per un allarme", { timeout: 30000 }, async () => {
+  const page = await open();
+  await casa(page);
+  await page.evaluate(async () => {
+    const post = (body) => fetch("api/casa/rooms/camera_da_letto/cards", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    await post({ name: "Finestra", kind: "free", style: "flat", blocks: [{ kind: "state", entity: "binary_sensor.finestra_camera", w: 2, h: 1 }] });
+    await post({ name: "Lampada", kind: "free", style: "flat", blocks: [{ kind: "state", entity: "light.lampada_terra", w: 2, h: 1 }] });
+  });
+  await page.locator(".plan-room[data-area='camera_da_letto']").click();
+  await page.click(".casa-quick [data-act='open']");
+  await page.waitForSelector(".hc-free:has-text('Lampada')");
+  assert.equal(await page.locator(".hc-free.alert:has-text('Finestra')").count(), 1, "la finestra aperta: linea rossa");
+  assert.equal(await page.locator(".hc-free.on:has-text('Lampada')").count(), 1, "la lampada accesa: linea arancione");
+  await page.evaluate(async () => {
+    const view = await (await fetch("api/casa")).json();
+    for (const c of view.areas.find((a) => a.id === "camera_da_letto").cards) await fetch(`api/casa/rooms/camera_da_letto/cards/${c.id}/remove`, { method: "POST" });
+  });
+  await done(page);
+});
+
+test("card scorta: pellet con giorni rimasti, −1 caricato, consegna e soglia", { timeout: 30000 }, async () => {
+  const page = await open();
+  await casa(page);
+  await page.locator(".plan-room[data-area='soggiorno']").click();
+  await page.click(".casa-quick [data-act='open']");
+  const card = page.locator(".hc-stock");
+  await card.waitFor();
+  await page.waitForFunction(() => /circa \d+ giorni/.test(document.querySelector(".hc-stock")?.textContent || ""));
+  assert.match(await card.textContent(), /7\s*sacchi.*al giorno.*ultima consegna/s);
+  for (let i = 0; i < 2; i++) { await card.locator("[data-act='stock-use']").click(); await page.waitForTimeout(250); }
+  await page.waitForFunction(() => document.querySelector(".hc-stock.low") && /5\s*sacchi/.test(document.querySelector(".hc-stock").textContent));
+  assert.match(await page.textContent(".hc-stock"), /Da ordinare/i);
+  await page.locator(".hc-stock [data-act='stock-add']").click();
+  await page.waitForFunction(() => /20\s*sacchi/.test(document.querySelector(".hc-stock")?.textContent || "") && !document.querySelector(".hc-stock.low"));
+  // the owner's numbers: a delivery of 10, warn below 25
+  await page.click(".hc-stock [data-act='stock-cfg']");
+  await page.fill(".hc-stock [name=delivery]", "10");
+  await page.fill(".hc-stock [name=low]", "25");
+  await page.click(".hc-stock [data-act='stock-save']");
+  await page.waitForFunction(() => /\+10/.test(document.querySelector(".hc-stock [data-act='stock-add']")?.textContent || "") && document.querySelector(".hc-stock.low"));
+  await done(page);
+});
+
 test("card: robot con mappa, telecamera composta live con i sensori, media completo", { timeout: 30000 }, async () => {
   const page = await open();
   await casa(page);
@@ -298,7 +494,7 @@ test("notifiche della casa: regole, canali, prova", { timeout: 30000 }, async ()
   await page.click("#ha-prefs");
   await page.click("#pref-alerts");
   await page.waitForSelector(".al-rule");
-  assert.equal(await page.locator(".al-rule").count(), 7, "sette regole");
+  assert.equal(await page.locator(".al-rule").count(), 8, "otto regole, con le scorte");
   assert.match(await page.textContent(".al-active"), /Finestra camera/, "la finestra aperta col riscaldamento");
   assert.match(await page.textContent(".al-phones"), /Pixel 9/);
   await page.click("[data-al-on='night']");

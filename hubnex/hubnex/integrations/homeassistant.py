@@ -142,6 +142,14 @@ class HomeAssistant:
 
         return r.headers.get("content-type", "multipart/x-mixed-replace"), chunks()
 
+    async def forecast(self, entity_id: str) -> list[dict]:
+        """The daily forecast of a weather entity (Home Assistant's weather.get_forecasts)."""
+        res = await self._request(
+            "POST", "/services/weather/get_forecasts?return_response",
+            json={"entity_id": entity_id, "type": "daily"},
+        )
+        return (((res or {}).get("service_response") or {}).get(entity_id) or {}).get("forecast") or []
+
     async def call_service(self, domain: str, service: str, data: dict | None = None, by_owner: bool = False) -> list[dict]:
         """`by_owner`: pressed by the owner in the dashboard, so the services Jarvis may not
         call on his own (unlocking, disarming) are allowed too."""

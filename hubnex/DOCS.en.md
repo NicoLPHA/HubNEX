@@ -220,6 +220,70 @@ when open, "for how long"), sensors with the chart of the last 24 hours, people,
 the card; the **alarm** is disarmed with the keypad. The **rooms are Home Assistant's areas**:
 the entities of an area (or of its device) appear in the room by themselves.
 
+Around the floor plan, at a glance:
+
+- **Weather** in the HUD: condition, temperature, low/high and rain; a tap opens the forecast for
+  the next days, with humidity and wind. It uses Home Assistant's `weather.*` entity.
+- **Today and next days**: your and the agents' deadlines in the next 7 days, with a tick to close
+  them. Only you see it: Home Assistant users with access to the house only don't.
+- **On the floor plan**, under the room's name: a person where there is presence or motion, a note
+  where something is playing, the robot where it cleans, a washing machine where the washing
+  machine or dishwasher is running.
+- **Appliances**: washing machine, dishwasher, dryer, oven and kettle on a plug that measures
+  power (recognised by name): "running" and, for 3 hours, "finished … ago".
+- **Recent events**: the last changes in the last 24 hours of doors, windows, locks, alarm and
+  people.
+
+**Stocks (pellet and the like).** A Home Assistant *Number* helper or *Counter* with "pellet",
+"bags" or "stock" in its name becomes a **Stock** card; for others pick "Stock" as the type when
+editing the room. It shows how many are left, how many go per day and the last delivery (from
+the last 30 days of history), the **days left**; **−1 loaded** when you use one, **+delivery**
+when the pellet arrives. In **Settings** choose how many come in a delivery and below how many to
+warn: then the card turns red and the **Stocks to reorder** notification comes (a rule in the
+house notifications).
+
+**Free card.** With **Edit room → + Free card** you build a card from blocks on a 4-column grid
+(2 on a phone). Blocks: **big value**, **ring gauge**, **switch**, **button** (scene, script,
+button), **slider** (brightness or a number), **chart** of the last 24 hours, **bar**, **time
+band** (a start and an end time), **selector**, **state** (how it is and since when) and
+**text**. For each block choose the entity (the search offers only the suitable ones), a label,
+the size (1×1 to 4×2) and, for ring and bar, minimum and maximum; **Before/After** move it. The
+card has a name, a colour and a style (**Clean**, the default: the blocks right on the card;
+**Boxes**: each in its own); in the middle of the editor you see the preview with the real
+values. **Edit** opens it again.
+
+More blocks: **media** (cover art, title, controls and volume), **camera** (live; a tap opens it
+big) and **Question for Jarvis** (a ready question: a tap sends it to the chat). For each block you
+can also set:
+
+- **Colour by value**: up to 4 rules, e.g. "above 23 → red", "below 19 → blue", "equal to open →
+  orange";
+- **Show only if**: the block appears only while an entity has a value (e.g. the TV "equal to
+  playing"); in the editor it stays visible, dimmed;
+- **On tap**: turn on/off, run a scene or script, ask Jarvis, open another room.
+
+Values are Home Assistant's: `on`, `off`, `open`, `playing`… or a number. To start quickly there
+are **templates** (Stove, Entrance, Laundry, Room climate, Energy, Music), which take the room's
+suitable entities; blocks can also be moved by **dragging** them.
+
+The **line on top** of every card (free or composed) lights up by itself: amber while something is
+on or a sensor detects, red for an alarm (door or window open, water, smoke, gas). In a card with a
+main switch, like the stove, that switch decides; the colour rules set by hand add to these.
+
+**Describe it to Jarvis**: at the top of the editor write what you want ("the stove with
+temperature, power, times and pellet; red above 23 degrees") and tap **Create**: Jarvis composes
+the card with the house's real entities (made-up ones are left out) and opens it in the editor, to
+check and save. It is one Claude request, a few cents.
+
+**Export / Import card**: **Export** copies the card as text, to share; **Edit room → Import
+card** pastes it into another house, and blocks whose entities aren't there are left to choose. In
+conditions and rules, with "equal to" and "not equal to", the value is picked from a list (on/off,
+open/closed, playing…).
+
+**Adding entities.** With **Edit room → Add entity** you can put any Home Assistant entity in a
+room, also one without an area or of a kind HubNEX doesn't draw (it shows its state). Helpers are
+born without an area: set it in Home Assistant or add them from here.
+
 - **Floor plan**: **⚙ Floor plan** opens the editor.
   1. **Upload floor plan**: a photo or a PDF of the plan (white margins are trimmed by
      themselves). It stays only in the add-on's folder.
@@ -399,6 +463,43 @@ rest_command:
   assistant on its own; from the dashboard you can do it, with a confirmation or the code.
 - The keys stay only in the add-on's configuration and in `agents.yaml`, on your Home Assistant.
 
+## Other AI providers: OpenAI and local models
+
+Claude stays the recommended choice, but Jarvis and every agent can also use **OpenAI** or a
+**local model** (Ollama, LM Studio), free and cloud-free. You pick the model by name, with the
+provider's prefix:
+
+| Write | Provider | Options to fill in |
+|---|---|---|
+| `claude-sonnet-5-5` | Anthropic (as before) | Anthropic API key |
+| `openai:gpt-5-mini` | OpenAI | OpenAI API key |
+| `ollama:qwen3:14b` | Ollama, on your computer or server | Ollama address, e.g. `http://192.168.1.20:11434` |
+| `compat:model-name` | Any OpenAI-compatible service: LM Studio, OpenRouter, Gemini, Mistral, DeepSeek, Groq | Address (up to `/v1`) and, if needed, key |
+
+Write it in **Jarvis model**, **Jarvis Mail model** and **Quick command model**, or for a single
+agent in `agents.yaml` with `model: ollama:qwen3:14b`. You can mix them: for example Jarvis on
+Claude and mail on a free local model. If you only use other providers, the Anthropic key can
+stay empty.
+
+Addresses for `compat`, for example:
+
+- LM Studio: `http://PC-IP:1234/v1`
+- OpenRouter: `https://openrouter.ai/api/v1` (models like `compat:openai/gpt-5-mini`)
+- Gemini: `https://generativelanguage.googleapis.com/v1beta/openai` (models like `compat:gemini-2.5-flash`)
+
+**What changes compared to Claude**
+
+- **Web search** exists only with Claude. **Reading a page** from a link (`web_fetch`) is done
+  by HubNEX itself and works with all of them, public addresses only.
+- **Photos** reach the models that can see them; **PDFs** arrive as text.
+- Jarvis' **thoughts** in the 3D view appear only with Claude.
+- **Spend**: Ollama models cost nothing. For `openai` and `compat` ones, enter the list price in
+  **Other models' input/output price** ($ per million tokens), otherwise they aren't counted.
+  The **Anthropic credit** counts down Claude's calls only.
+- **Quality**: Jarvis uses many tools (house, memory, team). Small local models use them worse:
+  for real use you need models of at least 14 billion parameters that support tools (qwen3,
+  llama3.1, mistral-small). With smaller ones, give them only simple agents, such as mail.
+
 ## Anthropic credit
 
 The **Claude credit** tile is an **estimate**: in `anthropic_credit_usd` write the balance you
@@ -425,7 +526,14 @@ The figures are HubNEX's estimate at list price for every call: the exact bill i
 console.anthropic.com.
 
 To spend little: the mail agent uses the cheap model; with Assist simple commands are done by
-Home Assistant; routines and web searches cost credit, use them when needed.
+Home Assistant; routines and web searches cost credit, use them when needed. In
+`agents.yaml`, for Jarvis and for each agent:
+
+- `effort: medium` instead of `high`: it still reasons, but at less length;
+- `max_searches: 3`: at most 3 web searches per request instead of 5. Each search brings in
+  result pages, which are then read again at every step;
+- when you change topic in the chat, close the conversation (×): new questions don't drag the
+  last exchanges along.
 
 ## Data and backup
 

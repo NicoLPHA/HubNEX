@@ -7,6 +7,8 @@ import os
 import json
 import base64
 import hmac
+import secrets
+import time
 import mimetypes
 import logging
 from contextlib import asynccontextmanager
@@ -52,6 +54,9 @@ class ChatIn(BaseModel):
     channel: str = "dashboard"
     voice: bool = False  # the answer will be spoken (Assist): keep it short
     speak: bool = False  # the dashboard will read the answer aloud too
+    # The dashboard doesn't wait on one long request (a proxy may cut it after a minute or
+    # two): it gets a job id at once and asks for the answer with short requests.
+    background: bool = False
 
 
 class TaskIn(BaseModel):
@@ -96,13 +101,68 @@ class RoomTempIn(BaseModel):
 
 
 class KindIn(BaseModel):
-    kind: Literal["light", "switch", "gate", "siren", "sensor"] | None = None  # None: as in Home Assistant
+    kind: Literal["light", "switch", "gate", "siren", "sensor", "stock"] | None = None  # None: as in Home Assistant
+
+
+class StockIn(BaseModel):
+    delivery: int = Field(ge=1, le=1000)  # how many come in a delivery
+    low: int = Field(ge=0, le=1000)  # warn below this
+
+
+BLOCK_KINDS = Literal["value", "ring", "toggle", "button", "slider", "chart", "bar", "band", "select", "state", "text", "camera", "media", "ask"]
+CARD_COLOR = Literal["", "warm", "cool", "green", "violet", "red"]
+COMPARE = Literal["<", ">", "=", "!="]
+
+
+class RuleIn(BaseModel):
+    """A colour by value: when the block's entity is below / above / equal to `v`."""
+    op: COMPARE
+    v: str = Field(max_length=60)
+    c: CARD_COLOR
+
+
+class ShowIn(BaseModel):
+    """The block is shown only when this entity compares so."""
+    e: str = Field(max_length=255)
+    op: COMPARE = "="
+    v: str = Field(default="on", max_length=60)
+
+
+class TapIn(BaseModel):
+    """What a tap on the block does."""
+    do: Literal["toggle", "run", "ask", "room"]
+    e: str = Field(default="", max_length=255)  # toggle / run: which entity (empty: the block's)
+    text: str = Field(default="", max_length=300)  # ask: the question for Jarvis
+    area: str = Field(default="", max_length=100)  # room: which one
+
+
+class BlockIn(BaseModel):
+    """A block of a free card: what it shows, of which entity, how big on the 4-column grid."""
+    kind: BLOCK_KINDS
+    entity: str = Field(default="", max_length=255)
+    entity2: str = Field(default="", max_length=255)  # the band's end time
+    label: str = Field(default="", max_length=60)
+    w: int = Field(default=1, ge=1, le=4)
+    h: int = Field(default=1, ge=1, le=2)
+    min: float | None = None  # ring and bar: their scale
+    max: float | None = None
+    rules: list[RuleIn] = Field(default_factory=list, max_length=4)
+    show: ShowIn | None = None
+    tap: TapIn | None = None
+
+
+class DraftIn(BaseModel):
+    text: str = Field(min_length=3, max_length=1000)
 
 
 class CardIn(BaseModel):
     id: str | None = Field(default=None, pattern=r"^c[0-9]{1,4}$")
     name: str = Field(max_length=60)
-    entities: list[str] = Field(min_length=1, max_length=12)
+    entities: list[str] = Field(default_factory=list, max_length=24)
+    kind: Literal["composed", "free"] = "composed"
+    blocks: list[BlockIn] = Field(default_factory=list, max_length=24)
+    color: CARD_COLOR = ""
+    style: Literal["", "flat"] = ""  # free card: blocks in boxes, or flat (no boxes)
     size: Literal["small", "wide"] = "wide"
     group: str | None = Field(default=None, pattern=r"^[a-z]{1,20}$")  # the room's group it sits in (None: of its first entity)
     enable: str | None = Field(default=None, max_length=255)  # the switch that turns the card's times on ("automatica"); "" = none
@@ -155,9 +215,67 @@ HOUSE_DOMAINS = {
     "light", "switch", "fan", "cover", "climate", "lock", "alarm_control_panel", "media_player",
     "scene", "script", "button", "input_button", "input_boolean", "input_select", "input_number",
     "select", "number", "vacuum", "valve", "siren", "humidifier", "water_heater", "lawn_mower",
-    "input_datetime", "time", "date", "datetime", "input_text", "text",
+    "input_datetime", "time", "date", "datetime", "input_text", "text", "counter",
 }
 HOUSE_EVENTS = {"ha", "casa_changed"}
+
+
+def clean_card(hq, data: dict, keep_missing: bool) -> dict:
+    """A card from outside (Claude's draft, an import) made safe for the editor: valid blocks only,
+    entities that exist; `keep_missing`: a missing one leaves its block empty instead of dropping it."""
+    known = hq.watcher.states
+    blocks, dropped, missing = [], 0, 0
+    for b in (data.get("blocks") or [])[:24]:
+        try:
+            blk = BlockIn(**b) if isinstance(b, dict) else None
+        except ValueError:
+            blk = None
+        if blk is None:
+            dropped += 1
+            continue
+        if blk.show and blk.show.e not in known:
+            blk.show = None
+        if blk.tap and blk.tap.e and blk.tap.e not in known:
+            blk.tap.e = ""
+        gone = [f for f in ("entity", "entity2") if getattr(blk, f) and getattr(blk, f) not in known]
+        need = blk.kind not in ("text", "ask") and (not blk.entity or blk.entity in gone or blk.kind == "band" and (not blk.entity2 or "entity2" in gone))
+        if gone or need:
+            if not keep_missing:
+                dropped += 1  # an entity that doesn't exist (made up, or of another house)
+                continue
+            for f in gone:
+                setattr(blk, f, "")
+            missing += 1
+        blocks.append({k: v for k, v in blk.model_dump(exclude_none=True).items() if v != []})
+    used = {e for b in blocks for e in (b.get("entity"), b.get("entity2"), (b.get("show") or {}).get("e"), (b.get("tap") or {}).get("e")) if e}
+    color = data.get("color") if data.get("color") in ("", "warm", "cool", "green", "violet", "red") else ""
+    return {
+        "name": str(data.get("name") or "")[:60], "color": color, "style": data.get("style") if data.get("style") in ("", "flat") else None, "blocks": blocks, "dropped": dropped, "missing": missing,
+        "states": {e: hq.casa.compact(e) for e in used},  # so the editor shows them at once
+    }
+
+
+def stock_stats(points: list[tuple[str, str]], now: datetime) -> dict:
+    """From a stock's history: how many go per day (what went down, over the days seen), the
+    days left at that pace, and when the last delivery came (the last rise)."""
+    vals = []
+    for t, v in points:
+        try:
+            vals.append((datetime.fromisoformat(t.replace("Z", "+00:00")), float(v)))
+        except (TypeError, ValueError):
+            continue  # unavailable, unknown
+    if len(vals) < 2:
+        return {"per_day": None, "days_left": None, "last_delivery": None}
+    used = sum(max(0.0, a[1] - b[1]) for a, b in zip(vals, vals[1:]))
+    rises = [b[0] for a, b in zip(vals, vals[1:]) if b[1] > a[1]]
+    days = max(1.0, (now - vals[0][0]).total_seconds() / 86400)
+    per_day = used / days if used else None
+    left = vals[-1][1]
+    return {
+        "per_day": round(per_day, 2) if per_day else None,
+        "days_left": int(left / per_day) if per_day else None,
+        "last_delivery": rises[-1].isoformat() if rises else None,
+    }
 
 
 def house_service(domain: str, service: str) -> bool:
@@ -333,6 +451,8 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
     async def state(hq: HQ = Depends(get_hq)):
         return await hq.snapshot()
 
+    chat_jobs: dict[str, dict] = {}  # job id -> {"at": time, "done": bool, "out": answer, "error": text}
+
     @app.post("/api/chat", dependencies=[Depends(full)])
     async def chat(body: ChatIn, hq: HQ = Depends(get_hq)):
         # Dashboard: Home Assistant's own sentences first, then the quick route, then Jarvis.
@@ -341,16 +461,49 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         files = attachments_for(hq, body.attachments)
         if not body.text.strip() and not files:
             raise HTTPException(422, tr("scrivi un messaggio o allega un file"))
-        reply, spoken, by = await hq.converse(
-            body.channel, body.text, voice=body.voice, spoken=body.speak,
-            quick=body.voice or dashboard, local=dashboard, attachments=files,
-        )
-        if body.voice and reply:
-            reply = for_voice(reply)  # Assist reads it aloud: units and symbols as words
-        out = {"reply": reply or tr("L'agente ha risposto direttamente nel gruppo Telegram."), "by": by}
-        if spoken:
-            out["spoken"] = spoken  # what the voice says of a long answer ("riassunto")
-        return out
+
+        async def answer() -> dict:
+            reply, spoken, by = await hq.converse(
+                body.channel, body.text, voice=body.voice, spoken=body.speak,
+                quick=body.voice or dashboard, local=dashboard, attachments=files,
+            )
+            if body.voice and reply:
+                reply = for_voice(reply)  # Assist reads it aloud: units and symbols as words
+            out = {"reply": reply or tr("L'agente ha risposto direttamente nel gruppo Telegram."), "by": by}
+            if spoken:
+                out["spoken"] = spoken  # what the voice says of a long answer ("riassunto")
+            return out
+
+        if not body.background:
+            return await answer()
+        now = time.time()
+        for k in [k for k, j in chat_jobs.items() if now - j["at"] > 3600]:
+            del chat_jobs[k]  # answers nobody came back for
+        job_id = secrets.token_urlsafe(9)
+        job = chat_jobs[job_id] = {"at": now, "done": False}
+
+        async def run() -> None:
+            try:
+                job["out"] = await answer()
+            except Exception as exc:
+                log.exception("chat failed")
+                job["error"] = str(exc) or exc.__class__.__name__
+            job["done"] = True
+
+        job["task"] = asyncio.create_task(run())
+        return {"job": job_id}
+
+    @app.get("/api/chat/{job_id}", dependencies=[Depends(full)])
+    async def chat_job(job_id: str):
+        job = chat_jobs.get(job_id)
+        if job is None:
+            raise HTTPException(404, tr("risposta non trovata"))
+        if not job["done"]:
+            return {"done": False}
+        chat_jobs.pop(job_id, None)
+        if "error" in job:
+            raise HTTPException(502, job["error"])
+        return {"done": True, **job["out"]}
 
     @app.get("/api/agents/{agent_id}", dependencies=[Depends(full)])
     async def agent_detail(agent_id: str, hq: HQ = Depends(get_hq)):
@@ -471,6 +624,26 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         if not hq.watcher.enabled:
             raise HTTPException(503, tr("Home Assistant non configurato"))
 
+    forecast_cache: dict = {}
+
+    @app.get("/api/casa/forecast", dependencies=[Depends(auth)])
+    async def casa_forecast(hq: HQ = Depends(get_hq)):
+        """The weather forecast for the house view, asked to Home Assistant at most every 30 min."""
+        need_ha(hq)
+        eid = hq.casa.build().get("weather")
+        if not eid:
+            return {"forecast": []}
+        hit = forecast_cache.get(eid)
+        if hit and time.time() - hit[0] < 1800:
+            return {"forecast": hit[1]}
+        try:
+            days = await hq.ha.forecast(eid)
+        except Exception as exc:  # an old Home Assistant or a weather service without forecast
+            log.info("forecast unavailable: %s", exc)
+            days = []
+        forecast_cache[eid] = (time.time(), days)
+        return {"forecast": days}
+
     @app.get("/api/casa", dependencies=[Depends(auth)])
     async def casa(hq: HQ = Depends(get_hq)):
         need_ha(hq)
@@ -527,6 +700,27 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         except HomeAssistantError as exc:
             raise HTTPException(502, str(exc))
         return {eid: downsample(points) for eid, points in raw.items()}
+
+    @app.get("/api/casa/stock/{entity_id}", dependencies=[Depends(auth)])
+    async def casa_stock(entity_id: str, hq: HQ = Depends(get_hq)):
+        """How fast a stock goes (last 30 days of its history): per day, days left, last delivery."""
+        need_ha(hq)
+        if entity_id not in hq.watcher.states:
+            raise HTTPException(404, tr("entità sconosciuta"))
+        try:
+            raw = (await hq.ha.history([entity_id], 24 * 30)).get(entity_id, [])
+        except HomeAssistantError as exc:
+            raise HTTPException(502, str(exc))
+        return stock_stats(raw, datetime.now().astimezone())
+
+    @app.post("/api/casa/entities/{entity_id}/stock", dependencies=[Depends(full)])
+    async def casa_stock_set(entity_id: str, body: StockIn, hq: HQ = Depends(get_hq)):
+        need_ha(hq)
+        if entity_id not in hq.watcher.states:
+            raise HTTPException(404, tr("entità sconosciuta"))
+        await hq.casa.set_stock(entity_id, body.delivery, body.low)
+        hq.emit({"type": "casa_changed"})
+        return {"ok": True}
 
     @app.get("/api/casa/energy", dependencies=[Depends(auth)])
     async def casa_energy(hq: HQ = Depends(get_hq)):
@@ -594,14 +788,57 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
         need_ha(hq)
         if area_id not in hq.watcher.areas:
             raise HTTPException(404, tr("area sconosciuta"))
+        if body.kind == "free":
+            if not body.blocks:
+                raise HTTPException(422, tr("aggiungi almeno un blocco"))
+            # its entities are those of its blocks (a text block has none)
+            body.entities = list(dict.fromkeys(
+                e for b in body.blocks
+                for e in (b.entity, b.entity2, b.show.e if b.show else "", b.tap.e if b.tap else "") if e
+            ))
+        elif not body.entities:
+            raise HTTPException(422, tr("aggiungi almeno un'entità"))
         unknown = [e for e in body.entities if e not in hq.watcher.states]
         if unknown:
             raise HTTPException(422, f"{tr('entità sconosciute')}: {', '.join(unknown)}")
         if body.enable and body.enable not in body.entities:
             raise HTTPException(422, tr("l'interruttore degli orari deve essere nella card"))
-        card_id = await hq.casa.save_card(area_id, body.id, body.name, body.entities, body.size, body.group, body.enable, body.nochart)
+        card_id = await hq.casa.save_card(
+            area_id, body.id, body.name, body.entities, body.size, body.group, body.enable, body.nochart,
+            blocks=[{k: v for k, v in b.model_dump(exclude_none=True).items() if v != []} for b in body.blocks] if body.kind == "free" else None,
+            color=body.color, style=body.style,
+        )
         hq.emit({"type": "casa_changed"})
         return {"ok": True, "id": card_id}
+
+    @app.post("/api/casa/rooms/{area_id}/cards/draft", dependencies=[Depends(full)])
+    async def casa_card_draft(area_id: str, body: DraftIn, hq: HQ = Depends(get_hq)):
+        """A free card described in words: Claude composes it with the house's real entities.
+        It comes back for the editor; nothing is saved until the owner does."""
+        from hubnex.cardgen import CARD_SCHEMA, SYSTEM, card_prompt, entity_lines
+
+        need_ha(hq)
+        area = hq.watcher.areas.get(area_id)
+        if area is None:
+            raise HTTPException(404, tr("area sconosciuta"))
+        rooms = [(a, v.get("name") or a) for a, v in hq.watcher.areas.items()]
+        prompt = card_prompt(area.get("name") or area_id, entity_lines(hq.casa, area_id), body.text, rooms)
+        try:
+            raw = await complete(hq.client, model=hq.settings.model, system=SYSTEM, prompt=prompt, effort="low",
+                                 schema=CARD_SCHEMA, on_usage=hq.usage_for("cards"))
+            data = json.loads(raw)
+        except Exception as exc:
+            raise HTTPException(502, f"{tr('card non riuscita')}: {exc}")
+        return clean_card(hq, data, keep_missing=False)
+
+    @app.post("/api/casa/cards/import", dependencies=[Depends(full)])
+    async def casa_card_import(body: dict, hq: HQ = Depends(get_hq)):
+        """A card shared as text (Esporta): its blocks for the editor; the entities this house
+        doesn't have are left empty, to be chosen."""
+        need_ha(hq)
+        if not isinstance(body, dict) or body.get("hubnex_card") != 1 or not isinstance(body.get("blocks"), list):
+            raise HTTPException(422, tr("non è una card di HubNEX"))
+        return clean_card(hq, body, keep_missing=True)
 
     @app.post("/api/casa/rooms/{area_id}/cards/{card_id}/remove", dependencies=[Depends(full)])
     async def casa_card_delete(area_id: str, card_id: str, hq: HQ = Depends(get_hq)):

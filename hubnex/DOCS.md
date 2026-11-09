@@ -215,6 +215,72 @@ telecamere. Le **serrature** con un codice in Home Assistant chiedono il codice 
 le altre una conferma nella card; l'**allarme** si disinserisce con il tastierino. Le **stanze sono le aree di Home
 Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nella stanza.
 
+Intorno alla piantina, a colpo d'occhio:
+
+- **Meteo** nel cruscotto: condizione, temperatura, minima/massima e pioggia; un tocco apre le
+  previsioni dei prossimi giorni, con umidità e vento. Usa l'entità `weather.*` di Home Assistant.
+- **Oggi e prossimi giorni**: le scadenze tue e degli agenti nei prossimi 7 giorni, con la spunta
+  per chiuderle. Lo vedi solo tu: gli utenti di Home Assistant con accesso alla sola casa no.
+- **Sulla piantina**, sotto il nome della stanza: una persona dove c'è presenza o movimento, una
+  nota dove suona qualcosa, il robot dove pulisce, una lavatrice dove lavatrice o lavastoviglie
+  sono in funzione.
+- **Elettrodomestici**: lavatrice, lavastoviglie, asciugatrice, forno e bollitore con una presa
+  che misura la potenza (riconosciuti dal nome): "in funzione" e, per 3 ore, "finito … fa".
+- **Ultimi eventi**: le ultime variazioni delle ultime 24 ore di porte, finestre, serrature,
+  allarme e persone.
+
+**Scorte (pellet e simili).** Un aiutante *Numero* o un *Contatore* di Home Assistant con
+"pellet", "sacchi" o "scorta" nel nome diventa una card **Scorta**; per gli altri scegli
+"Scorta" nel tipo, modificando la stanza. Mostra quanti ne restano, quanti se ne usano al giorno
+e da quando (dallo storico degli ultimi 30 giorni), i **giorni rimasti** e l'ultima consegna;
+**−1 caricato** quando ne usi uno, **+consegna** quando arriva il pellet. In **Imposta** scegli
+quanti ne arrivano in una consegna e sotto quanti avvisarti: allora la card diventa rossa e
+arriva la notifica **Scorte da riordinare** (regola nelle Notifiche della casa).
+
+**Card libera.** Con **Modifica stanza → + Card libera** costruisci una card a blocchi su una
+griglia da 4 colonne (2 sul telefono). Blocchi: **valore grande**, **indicatore ad anello**,
+**interruttore**, **pulsante** (scena, script, pulsante), **cursore** (luminosità o numero),
+**grafico** delle ultime 24 ore, **barra**, **fascia oraria** (un orario di inizio e uno di fine),
+**selettore**, **stato** (com'è e da quanto) e **testo**. Per ogni blocco scegli l'entità (la
+ricerca propone solo quelle adatte), un'etichetta, la dimensione (da 1×1 a 4×2) e, per anello e
+barra, minimo e massimo; **Prima/Dopo** lo spostano. La card ha un nome, un colore e uno stile
+(**Pulito**, di partenza: i blocchi direttamente sulla card; **Riquadri**: ognuno nel suo); al centro
+dell'editor vedi l'anteprima con i valori veri. Si riapre con **Modifica**.
+
+Altri blocchi: **media** (copertina, titolo, comandi e volume), **telecamera** (dal vivo, un tocco
+la apre in grande) e **Domanda a Jarvis** (una domanda pronta: un tocco la manda in chat). Per
+ogni blocco puoi anche impostare:
+
+- **Colore secondo il valore**: fino a 4 regole, es. "sopra 23 → rosso", "sotto 19 → azzurro",
+  "uguale a open → arancio";
+- **Mostra solo se**: il blocco compare solo quando un'entità vale qualcosa (es. la TV "uguale a
+  playing"); nell'editor resta visibile, sbiadito;
+- **Al tocco**: accendi/spegni, avvia una scena o uno script, chiedi a Jarvis, apri un'altra stanza.
+
+I valori sono quelli di Home Assistant: `on`, `off`, `open`, `playing`… oppure un numero. Per
+partire veloce ci sono i **modelli** (Stufa, Ingresso, Lavanderia, Clima stanza, Energia, Musica),
+che prendono le entità adatte della stanza; i blocchi si spostano anche **trascinandoli**.
+
+La **linea in alto** di ogni card (libera o composta) si accende da sola: arancione quando qualcosa
+è acceso o un sensore rileva, rossa per un allarme (porta o finestra aperta, acqua, fumo, gas). In
+una card con un interruttore principale, come la stufa, decide lui; le regole di colore impostate
+a mano si aggiungono a queste.
+
+**Descrivila a Jarvis**: in cima all'editor scrivi cosa vuoi ("la stufa con temperatura,
+accensione, orari e pellet; rossa sopra 23 gradi") e tocca **Crea**: Jarvis compone la card con
+le entità vere della casa (quelle che non esistono vengono scartate) e la apre nell'editor, da
+controllare e salvare. È una richiesta a Claude, pochi centesimi.
+
+**Esporta / Importa card**: **Esporta** copia la card come testo, da condividere; **Modifica
+stanza → Importa card** la incolla in un'altra casa, e i blocchi con entità che lì non ci sono
+restano da scegliere. Nelle condizioni e nelle regole, con "uguale a" e "diverso da", il valore
+si sceglie da un elenco (acceso/spento, aperta/chiusa, in riproduzione…).
+
+**Aggiungere entità.** Con **Modifica stanza → Aggiungi entità** puoi mettere in una stanza
+qualsiasi entità di Home Assistant, anche senza area o di un tipo che HubNEX non disegna
+(compare con il suo stato). Gli aiutanti nascono senza area: assegnala in Home Assistant oppure
+aggiungili da qui.
+
 - **Piantina**: **⚙ Piantina** apre l'editor.
   1. **Carica planimetria**: una foto o un PDF della pianta (i margini bianchi vengono
      tolti da soli). Resta solo nella cartella dell'add-on.
@@ -398,6 +464,44 @@ rest_command:
 - Le chiavi stanno solo nella configurazione dell'add-on e in `agents.yaml`, sul tuo Home
   Assistant.
 
+## Altri fornitori AI: OpenAI e modelli locali
+
+Claude resta il consigliato, ma Jarvis e ogni agente possono usare anche **OpenAI** o un
+**modello locale** (Ollama, LM Studio), gratis e senza cloud. Il modello si sceglie per nome,
+con il prefisso del fornitore:
+
+| Scrivi | Fornitore | Opzioni da compilare |
+|---|---|---|
+| `claude-sonnet-5-5` | Anthropic (come prima) | Chiave API Anthropic |
+| `openai:gpt-5-mini` | OpenAI | Chiave API OpenAI |
+| `ollama:qwen3:14b` | Ollama, sul tuo computer o server | Indirizzo di Ollama, es. `http://192.168.1.20:11434` |
+| `compat:nome-modello` | Qualsiasi servizio compatibile con OpenAI: LM Studio, OpenRouter, Gemini, Mistral, DeepSeek, Groq | Indirizzo (fino a `/v1`) e, se serve, chiave |
+
+Si scrive in **Modello di Jarvis**, **Modello di Jarvis Mail** e **Modello per i comandi
+rapidi**, oppure per un singolo agente in `agents.yaml` con `model: ollama:qwen3:14b`. Si
+possono mescolare: per esempio Jarvis su Claude e la posta su un modello locale gratuito. Se
+usi solo altri fornitori, la chiave Anthropic può restare vuota.
+
+Esempi di indirizzi per `compat`:
+
+- LM Studio: `http://IP-DEL-PC:1234/v1`
+- OpenRouter: `https://openrouter.ai/api/v1` (modelli come `compat:openai/gpt-5-mini`)
+- Gemini: `https://generativelanguage.googleapis.com/v1beta/openai` (modelli come `compat:gemini-2.5-flash`)
+
+**Cosa cambia rispetto a Claude**
+
+- La **ricerca web** c'è solo con Claude. La **lettura di una pagina** da un link (`web_fetch`)
+  la fa HubNEX stesso e funziona con tutti, solo su indirizzi pubblici.
+- Le **foto** arrivano ai modelli che le vedono; i **PDF** arrivano come testo.
+- I **pensieri** di Jarvis nella vista 3D compaiono solo con Claude.
+- **Spesa**: i modelli di Ollama costano zero. Per quelli `openai` e `compat` scrivi il prezzo
+  del listino in **Prezzo input/output altri modelli** ($ per milione di token), altrimenti non
+  vengono contati. Il **credito Anthropic** scala solo le chiamate a Claude.
+- **Qualità**: Jarvis usa molti strumenti (casa, memoria, team). I modelli locali piccoli li
+  usano peggio: per un uso vero servono modelli da almeno 14 miliardi di parametri che
+  supportano gli strumenti (qwen3, llama3.1, mistral-small). Con quelli più piccoli, meglio
+  affidargli solo agenti semplici, come la posta.
+
 ## Credito Anthropic
 
 Il riquadro **Credito Claude** è una **stima**: in `anthropic_credit_usd` scrivi il saldo che
@@ -423,7 +527,14 @@ Le cifre sono la stima di HubNEX con i prezzi di listino di ogni chiamata: il co
 console.anthropic.com.
 
 Per spendere poco: l'agente della posta usa il modello economico; con Assist i comandi semplici
-li fa Home Assistant; le routine e le ricerche web consumano, usale quando servono.
+li fa Home Assistant; le routine e le ricerche web consumano, usale quando servono. In
+`agents.yaml`, per Jarvis e per ogni agente:
+
+- `effort: medium` invece di `high`: ragiona ancora, ma si dilunga meno;
+- `max_searches: 3`: al massimo 3 ricerche web per richiesta invece di 5. Ogni ricerca porta
+  dentro pagine di risultati, che poi vengono rilette a ogni passaggio;
+- quando cambi argomento in chat, chiudi la conversazione (×): le domande nuove non si
+  trascinano dietro gli ultimi scambi.
 
 ## Dati e backup
 

@@ -14,8 +14,11 @@
 #  Sempre inclusi: memory_save, memory_search, deadline_add, deadline_list
 #
 #  Modelli: tutti usano "model_jarvis" della configurazione, l'agente con id "mail" usa
-#  "model_mail". Per un singolo agente: model: claude-...
+#  "model_mail". Per un singolo agente: model: claude-...  oppure con un altro fornitore:
+#  model: openai:gpt-5-mini | ollama:qwen3:14b | compat:nome-modello  (vedi la documentazione)
 #  effort: low | medium | high | xhigh | max   (più alto = più ragionamento, più costo)
+#  max_searches: 3   ricerche web per richiesta (da 1 a 20, se manca 5): ognuna porta pagine
+#                    da leggere e costa, con 2-3 di solito basta
 #
 #  Routine: { every: "6h", task: "..." }  oppure  { at: "09:00", days: [mon,tue,wed,thu,fri], task: "..." }
 #  Sono SPENTE finché non aggiungi  enabled: true. Una routine può solo guardare e riferire:
