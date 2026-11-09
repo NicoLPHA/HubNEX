@@ -181,3 +181,25 @@ def test_the_activity_feed_and_telegram_buttons_speak_dutch(dutch):
     assert i18n.tr_sys("Ricordo: {topic}", topic="x") == "Herinnering: x"
     [row] = action_buttons(7)
     assert [label for label, _ in row] == ["✅ Bevestig", "❌ Annuleren"]
+
+async def test_deadline_warnings_follow_the_language(make_hq):
+    from datetime import datetime
+
+    from hubnex.scheduler import Scheduler
+    from tests.conftest import FakeTeam
+
+    for lang, soon, late in (("it", "scade il 10/11 alle 09:00", "è SCADUTA"), ("nl", "verloopt op 10/11 om 09:00", "VERLOPEN")):
+        i18n.set_system_lang(lang)
+        try:
+            team = FakeTeam()
+            hq = make_hq([], team=team)
+            await hq.store.deadline_add("Btw", "2026-11-10T09:00", None, None, "")
+            await hq.store.deadline_add("Offerte", "2026-11-01T09:00", None, None, "")
+            await Scheduler(hq).check_deadlines(datetime(2026, 11, 9, 12, 0, tzinfo=hq.tz))
+            texts = [p["text"] for p in team.posts]
+            assert any(soon in t and "*Btw*" in t for t in texts), texts
+            assert any(late in t and "*Offerte*" in t for t in texts), texts
+            assert all("Scadenza" in t for t in texts) == (lang == "it")
+            assert all("Deadline" in t for t in texts) == (lang == "nl")
+        finally:
+            i18n.set_system_lang("it")

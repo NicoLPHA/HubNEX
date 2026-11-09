@@ -194,4 +194,7 @@ EN: dict[str, str] = {
     "Nuova scadenza: {title} ({due})": "New deadline: {title} ({due})",
     "Altoparlante": "Speaker",
     "Notifica di prova: se la senti, gli avvisi della casa arrivano anche dall'altoparlante.": "Test notification: if you hear this, the house alerts also come from the speaker.",
+    "è SCADUTA": "OVERDUE",
+    "scade il {day} alle {time}": "is due on {day} at {time}",
+    "Scadenza: *{title}* {when}.": "Deadline: *{title}* {when}.",
 }

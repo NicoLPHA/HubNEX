@@ -190,7 +190,7 @@ export class AlertsView {
       </div>
       <div class="al-body">
         <div class="al-chips">${chip("app", t("App"))}${chip("telegram", "Telegram", !d.telegram)}${chip("ha", t("Home Assistant"))}${chip("speaker", t("Altoparlante"), !d.cfg.speaker.on)}</div>
-        ${params.length ? `<div class="al-params">${params.join("")}</div>` : ""}
+        ${params.length ? `<div class="al-params">${params.map((x) => `<span>${x}</span>`).join("")}</div>` : ""}
         <button type="button" class="hc-link" data-al-list="${id}" aria-expanded="${this.openList.has(id)}">${id === "power" && !watched.length ? t("Nessun sensore di potenza: sceglilo in Energia → Configura") : t("Controlla {n} di {tot}", { n: on, tot: watched.length })}</button>
         ${list}
       </div>

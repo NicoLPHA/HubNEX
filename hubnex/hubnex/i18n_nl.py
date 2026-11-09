@@ -194,4 +194,7 @@ NL: dict[str, str] = {
     "Nuova scadenza: {title} ({due})": "Nieuwe deadline: {title} ({due})",
     "Altoparlante": "Speaker",
     "Notifica di prova: se la senti, gli avvisi della casa arrivano anche dall'altoparlante.": "Testmelding: als je dit hoort, komen de meldingen van het huis ook uit de speaker.",
+    "è SCADUTA": "VERLOPEN",
+    "scade il {day} alle {time}": "verloopt op {day} om {time}",
+    "Scadenza: *{title}* {when}.": "Deadline: *{title}* {when}.",
 }

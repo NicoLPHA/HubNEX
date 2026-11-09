@@ -4,6 +4,7 @@ taking screenshots and the browser tests. No real house, no API key, nothing lea
     python dev/demo.py 8765            # then open http://127.0.0.1:8765
     python dev/demo.py 8765 casa.yaml  # with your own floor plan file
     DEMO_LANG=en python dev/demo.py 8765   # an English house and an English-speaking add-on
+    DEMO_SYSTEM_LANG=nl python dev/demo.py 8765   # the add-on's own messages in another language (it, en, nl)
 """
 import io, math, os, random, re, sys, tempfile, time
 from datetime import datetime, timedelta, timezone
@@ -173,7 +174,7 @@ if EN:
     for it, en in sorted(NAMES_EN.items(), key=lambda x: -len(x[0])):
         LAYOUT = LAYOUT.replace(it, en)
 open(d + "/casa.yaml", "w").write(open(layout).read() if layout else LAYOUT)
-s = Settings(db_path=d + "/t.db", agents_file=str(ROOT / "config" / ("agents.en.yaml" if EN else "agents.yaml")), language="en" if EN else "it", casa_file=d + "/casa.yaml", ha_url="http://supervisor/core", ha_token="tok")
+s = Settings(db_path=d + "/t.db", agents_file=str(ROOT / "config" / ("agents.en.yaml" if EN else "agents.yaml")), language=os.environ.get("DEMO_SYSTEM_LANG") or ("en" if EN else "it"), casa_file=d + "/casa.yaml", ha_url="http://supervisor/core", ha_token="tok")
 
 
 class _SlowStream(_Stream):

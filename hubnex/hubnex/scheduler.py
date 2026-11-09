@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta
 
 from hubnex.config import Routine
 from hubnex.hq import HQ
+from hubnex.i18n import tr_sys
 
 log = logging.getLogger("hubnex.scheduler")
 
@@ -98,6 +99,6 @@ class Scheduler:
             except ValueError:
                 continue
             if due - now <= DEADLINE_WARNING:
-                when = "è SCADUTA" if due < now else f"scade il {due:%d/%m alle %H:%M}"
-                await self.hq.notify(f"⏰ Scadenza: *{d['title']}* {when}." + (f"\n{d['notes']}" if d["notes"] else ""))
+                when = tr_sys("è SCADUTA") if due < now else tr_sys("scade il {day} alle {time}", day=f"{due:%d/%m}", time=f"{due:%H:%M}")
+                await self.hq.notify("⏰ " + tr_sys("Scadenza: *{title}* {when}.", title=d["title"], when=when) + (f"\n{d['notes']}" if d["notes"] else ""))
                 await self.hq.store.deadline_mark_notified(d["id"])
