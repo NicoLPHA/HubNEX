@@ -49,7 +49,7 @@ kant-en-klare image van iemand anders gedownload). De eerste installatie duurt d
 minuten langer.
 
 De volledige handleiding (team, connectors, spraak, Telegram, mail, weergave Thuis) staat in
-[`hubnex/DOCS.nl.md`](hubnex/DOCS.nl.md).
+[`hubnex/DOCS.md`](hubnex/DOCS.md), ook te zien op het tabblad **Documentatie** van de add-on.
 
 Je hebt een Anthropic-account met tegoed nodig: HubNEX gebruikt Claude Sonnet voor de assistent en
 de agents en Claude Haiku voor mail en snelle opdrachten. De opdrachten van de weergave Thuis en,

@@ -80,7 +80,7 @@ DEFAULT_AGENTS_NL = DEFAULT_AGENTS.with_name("agents.nl.yaml")
 def ha_language(storage: str = "/homeassistant/.storage/core.config") -> str | None:
     """Home Assistant's language, read from its configuration (the add-on maps it)."""
     try:
-        return json.loads(Path(storage).read_text())["data"].get("language")
+        return json.loads(Path(storage).read_text(encoding="utf-8"))["data"].get("language")
     except (OSError, ValueError, KeyError, TypeError):
         return None
 
@@ -94,6 +94,9 @@ def ha_timezone(storage: str = "/homeassistant/.storage/core.config") -> str | N
         return None
 
 
+# The add-on's configuration screen shows these values; the code keeps working with its own (Italian) ones, and
+# still accepts those, so an older .env or options file keeps working.
+PRIORITY = {"laag": "bassa", "gemiddeld": "media", "hoog": "alta", "bassa": "bassa", "media": "media", "alta": "alta"}
 DEFAULT_MODEL = "claude-sonnet-5-5"
 DEFAULT_MAIL_MODEL = "claude-haiku-5-5"
 DEFAULT_VOICE_MODEL = "claude-haiku-5-5"  # Assist: speed first
@@ -131,10 +134,10 @@ def _load_addon_options(options_file: str = "/data/options.json", config_dir: st
         # The example team in the owner's language: the option, else Home Assistant's.
         lang = os.environ.get("HUBNEX_LANGUAGE", "auto")
         if lang not in ("it", "en", "nl"):
-            lang = ha_language() or "it"
+            lang = ha_language() or "nl"
         example = DEFAULT_AGENTS if lang.startswith("it") else DEFAULT_AGENTS_NL if lang.startswith("nl") else DEFAULT_AGENTS_EN
         shutil.copy(example, agents)
-    os.environ.setdefault("HUBNEX_AGENTS_FILE", str(agents if agents.exists() else DEFAULT_AGENTS))
+    os.environ.setdefault("HUBNEX_AGENTS_FILE", str(agents if agents.exists() else DEFAULT_AGENTS_NL))
     if Path(config_dir).is_dir():  # the floor plan must survive updates: keep it in /config
         os.environ.setdefault("HUBNEX_CASA_FILE", str(Path(config_dir) / "casa.yaml"))
     return True
@@ -262,7 +265,7 @@ class Settings:
                 from_name=e("MAIL_FROM_NAME", ""),
                 signature=e("MAIL_SIGNATURE", ""),
                 check_interval_minutes=int(e("MAIL_CHECK_INTERVAL_MINUTES") or 5),
-                notify_min_priority=(e("MAIL_NOTIFY_MIN_PRIORITY") or "media").lower(),
+                notify_min_priority=PRIORITY.get((e("MAIL_NOTIFY_MIN_PRIORITY") or "gemiddeld").strip().lower(), "media"),
                 mail_ignore=tuple(x.strip().lower() for x in (e("MAIL_IGNORE") or "").replace(";", ",").split(",") if x.strip()),
             ),
             elevenlabs_key=e("ELEVENLABS_API_KEY", ""),
@@ -270,14 +273,14 @@ class Settings:
             elevenlabs_model=e("ELEVENLABS_MODEL") or "eleven_flash_v2_5",
             voice_tts_entity=(e("VOICE_TTS_ENTITY") or "").strip(),
             voice_tts_voice=(e("VOICE_TTS_VOICE") or "").strip(),
-            language=(e("HUBNEX_LANGUAGE") or "auto").strip().lower(),
-            voice_answers="riassunto" if (e("VOICE_ANSWERS") or "").strip().lower() == "riassunto" else "completa",
-            timezone=e("TZ") or ha_timezone() or "Europe/Rome",  # the env, else Home Assistant's, else Italy's
+            language=(e("HUBNEX_LANGUAGE") or "nl").strip().lower(),  # Dutch unless told otherwise
+            voice_answers="riassunto" if (e("VOICE_ANSWERS") or "").strip().lower() in ("riassunto", "samenvatting") else "completa",
+            timezone=e("TZ") or ha_timezone() or "Europe/Amsterdam",  # the env, else Home Assistant's, else the Netherlands'
             db_path=e("HUBNEX_DB") or "data/hubnex.db",
-            agents_file=e("HUBNEX_AGENTS_FILE") or "config/agents.yaml",
+            agents_file=e("HUBNEX_AGENTS_FILE") or "config/agents.nl.yaml",
             casa_file=e("HUBNEX_CASA_FILE", ""),
             trusted_proxy=INGRESS_PROXY_IP if addon else None,
-            non_admin_access="completo" if (e("HUBNEX_NON_ADMIN_ACCESS") or "").strip().lower() == "completo" else "casa",
+            non_admin_access="completo" if (e("HUBNEX_NON_ADMIN_ACCESS") or "").strip().lower() in ("completo", "volledig") else "casa",
         )
 
 

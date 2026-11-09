@@ -307,3 +307,49 @@ def test_the_time_zone_comes_from_home_assistant(tmp_path):
     storage.write_text("{}", encoding="utf-8")
     assert ha_timezone(str(storage)) is None
     assert ha_timezone(str(tmp_path / "missing")) is None
+
+def test_the_configuration_screen_uses_dutch_values_and_the_code_keeps_its_own(monkeypatch):
+    from hubnex.config import Settings
+
+    for var in ("TZ", "HUBNEX_LANGUAGE", "HUBNEX_AGENTS_FILE", "MAIL_NOTIFY_MIN_PRIORITY", "VOICE_ANSWERS", "HUBNEX_NON_ADMIN_ACCESS"):
+        monkeypatch.delenv(var, raising=False)
+    s = Settings.from_env()
+    assert (s.mail.notify_min_priority, s.voice_answers, s.non_admin_access) == ("media", "completa", "casa")
+    assert s.language == "nl" and s.timezone == "Europe/Amsterdam" and s.agents_file.endswith("agents.nl.yaml"), "Dutch unless told otherwise"
+    for var, dutch, internal in (("MAIL_NOTIFY_MIN_PRIORITY", "hoog", "alta"), ("MAIL_NOTIFY_MIN_PRIORITY", "laag", "bassa"),
+                                 ("VOICE_ANSWERS", "samenvatting", "riassunto"), ("HUBNEX_NON_ADMIN_ACCESS", "volledig", "completo")):
+        monkeypatch.setenv(var, dutch)
+        s = Settings.from_env()
+        got = {"MAIL_NOTIFY_MIN_PRIORITY": s.mail.notify_min_priority, "VOICE_ANSWERS": s.voice_answers, "HUBNEX_NON_ADMIN_ACCESS": s.non_admin_access}[var]
+        assert got == internal, (var, dutch)
+        monkeypatch.delenv(var)
+    # an older options file or .env with the old values keeps working
+    monkeypatch.setenv("MAIL_NOTIFY_MIN_PRIORITY", "alta")
+    monkeypatch.setenv("VOICE_ANSWERS", "riassunto")
+    monkeypatch.setenv("HUBNEX_NON_ADMIN_ACCESS", "completo")
+    s = Settings.from_env()
+    assert (s.mail.notify_min_priority, s.voice_answers, s.non_admin_access) == ("alta", "riassunto", "completo")
+
+
+def test_the_manifest_is_dutch_and_its_list_defaults_are_choices():
+    import pathlib
+
+    import yaml
+
+    manifest = yaml.safe_load((pathlib.Path(__file__).parent.parent / "config.yaml").read_text(encoding="utf-8"))
+    for key, default in manifest["options"].items():
+        kind = str(manifest["schema"][key]).rstrip("?")
+        if kind.startswith("list("):
+            assert default in kind[5:-1].split("|"), f"{key}: {default!r} is not one of {kind}"
+    assert manifest["options"]["language"] == "nl"
+    assert {"laag", "gemiddeld", "hoog"} == set(manifest["schema"]["notify_min_priority"][5:-1].split("|"))
+    assert "Het AI-hoofdkwartier" in manifest["description"]
+
+
+def test_the_add_on_documentation_tab_shows_the_dutch_handbook():
+    import pathlib
+
+    docs = pathlib.Path(__file__).parent.parent
+    assert "Eerste start" in (docs / "DOCS.md").read_text(encoding="utf-8")
+    assert "Primo avvio" in (docs / "DOCS.it.md").read_text(encoding="utf-8")
+    assert "First start" in (docs / "DOCS.en.md").read_text(encoding="utf-8")

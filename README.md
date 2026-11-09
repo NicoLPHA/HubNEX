@@ -41,8 +41,8 @@ its own role: mail, administration, technical research, home, security… You ta
    **Show in sidebar**.
 
 The full guide (team, connectors, voice, Telegram, mail, Home view) is in
-[`hubnex/DOCS.en.md`](hubnex/DOCS.en.md) (Italian: [`hubnex/DOCS.md`](hubnex/DOCS.md), the
-add-on's **Documentation** tab).
+[`hubnex/DOCS.en.md`](hubnex/DOCS.en.md) (Dutch: [`hubnex/DOCS.md`](hubnex/DOCS.md), the add-on's
+**Documentation** tab; Italian: [`hubnex/DOCS.it.md`](hubnex/DOCS.it.md)).
 
 You need an Anthropic account with credit: HubNEX uses Claude Sonnet for the assistant and the
 agents and Claude Haiku for mail and quick commands. The Home view's commands and, with Assist,

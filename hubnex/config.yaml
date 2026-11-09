@@ -1,7 +1,7 @@
 name: HubNEX
 version: "1.20.2"
 slug: hubnex
-description: Il quartier generale AI per casa e lavoro - un team di agenti Claude, plancia 3D di Home Assistant, Telegram, voce e connettori MCP.
+description: Het AI-hoofdkwartier voor thuis en werk - een team van Claude-agents, een 3D-dashboard in Home Assistant, Telegram, spraak en MCP-connectors.
 url: https://github.com/NicoLPHA/HubNEX
 # Fork: niente immagine già pronta dell'autore originale (ghcr.io/p1pp89/...). Senza `image:` Home Assistant
 # costruisce l'add-on dal Dockerfile di QUESTO repository, quindi gira esattamente il codice che vedi qui.
@@ -25,7 +25,7 @@ panel_title: HubNEX
 ports:
   8765/tcp: null
 ports_description:
-  8765/tcp: Dashboard e API (facoltativa, richiede hq_token)
+  8765/tcp: Dashboard en API (optioneel, vereist hq_token)
 # /config dentro l'add-on = cartella addon_configs/<id>_hubnex (contiene agents.yaml)
 map:
   - addon_config:rw
@@ -62,7 +62,7 @@ options:
   mail_from_name: ""
   mail_signature: ""
   check_interval_minutes: 5
-  notify_min_priority: media
+  notify_min_priority: gemiddeld
   mail_ignore: ""
   hq_token: ""
   elevenlabs_api_key: ""
@@ -70,12 +70,12 @@ options:
   elevenlabs_model: eleven_flash_v2_5
   voice_tts_entity: ""
   voice_tts_voice: ""
-  voice_answers: completa
-  language: auto
+  voice_answers: volledig
+  language: nl
   ha_blocked_services: lock.unlock,lock.open,alarm_control_panel.alarm_disarm
   calendar_entities: ""
   install_assist_integration: true
-  non_admin_access: casa
+  non_admin_access: huis
 schema:
   anthropic_api_key: password?
   model_jarvis: str
@@ -104,7 +104,7 @@ schema:
   mail_from_name: str?
   mail_signature: str?
   check_interval_minutes: int(1,120)
-  notify_min_priority: list(bassa|media|alta)
+  notify_min_priority: list(laag|gemiddeld|hoog)
   mail_ignore: str?
   hq_token: password?
   elevenlabs_api_key: password?
@@ -112,9 +112,9 @@ schema:
   elevenlabs_model: str?
   voice_tts_entity: str?
   voice_tts_voice: str?
-  voice_answers: list(completa|riassunto)
-  language: list(auto|it|en|nl)
+  voice_answers: list(volledig|samenvatting)
+  language: list(nl|auto|en|it)
   ha_blocked_services: str?
   calendar_entities: str?
   install_assist_integration: bool
-  non_admin_access: list(casa|completo)
+  non_admin_access: list(huis|volledig)

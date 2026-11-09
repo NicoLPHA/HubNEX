@@ -1,597 +1,643 @@
 # HubNEX
 
-*Italiano · [English](https://github.com/NicoLPHA/HubNEX/blob/main/hubnex/DOCS.en.md) · [Nederlands](https://github.com/NicoLPHA/HubNEX/blob/main/hubnex/DOCS.nl.md)*
+*[Italiano](DOCS.it.md) · [English](DOCS.en.md) · Nederlands*
 
-Il quartier generale AI per casa e lavoro: un assistente (di serie si chiama **Jarvis**) con il
-suo team di agenti Claude, una dashboard 3D nella barra laterale di Home Assistant, la plancia
-della casa, il gruppo Telegram, la voce e i connettori per i programmi del tuo lavoro.
+Het AI-hoofdkwartier voor thuis en werk: een assistent (standaard **Jarvis** genoemd) met een team
+van Claude-agents, een 3D-dashboard in de zijbalk van Home Assistant, het dashboard van het huis,
+een Telegram-groep, spraak en connectors voor de programma's die je op je werk gebruikt.
 
-## Primo avvio
+## Eerste start
 
-1. Nella scheda **Configurazione** inserisci almeno la **chiave API Anthropic**
-   (console.anthropic.com → API Keys), avvia l'add-on e attiva **Mostra nella barra laterale**.
-2. Apri **HubNEX** dalla barra laterale: vedi il quartier generale con l'assistente e gli agenti.
-3. Scrivigli nella chat in basso. Per la casa usa già Home Assistant: non serve creare token,
-   l'add-on accede tramite il Supervisor.
-4. Racconta chi sei e come lavori in `agents.yaml` (sotto): più sa, più è utile.
+1. Vul op het tabblad **Configuratie** minstens de **Anthropic API-sleutel** in
+   (console.anthropic.com → API Keys), start de add-on en zet **Toon in zijbalk** aan.
+2. Open **HubNEX** in de zijbalk: je ziet het hoofdkwartier met de assistent en zijn agents.
+3. Schrijf in de chat onderaan. Voor het huis gebruikt hij al Home Assistant: je hoeft geen token
+   aan te maken, de add-on loopt via de Supervisor.
+4. Vertel in `agents.yaml` (hieronder) wie je bent en hoe je werkt: hoe meer hij weet, hoe nuttiger
+   hij is.
 
-Tutto il resto è facoltativo e si aggiunge quando vuoi, in quest'ordine consigliato:
+**Taal**: de add-on spreekt de taal van Home Assistant (Italiaans, Nederlands, anders Engels); de
+optie **Taal** kiest die met de hand. Bij de eerste start staat het voorbeeldbestand `agents.yaml` in
+dezelfde taal.
 
-| Cosa | Dove | Sezione |
+Al het andere is optioneel en kun je op elk moment toevoegen, in deze voorgestelde volgorde:
+
+| Wat | Waar | Hoofdstuk |
 | --- | --- | --- |
-| Il tuo team, la tua azienda | `agents.yaml` | Il team |
-| Piantina della casa | Casa → ⚙ Piantina | Vista Casa |
-| Parlare con Assist (app, speaker) | integrazione HubNEX + Assistenti vocali | Voce |
-| Voce nella dashboard | opzione *Voce da Home Assistant* o ElevenLabs | Voce |
-| Gruppo Telegram | opzioni dei bot | Il gruppo Telegram |
-| Posta di lavoro | opzioni IMAP/SMTP | Posta di lavoro |
-| I programmi del lavoro | `connectors` in `agents.yaml` | Connettori |
-| Tablet o telefono fuori da HA | Token HQ e porta | Usarla fuori da Home Assistant |
+| Je team, je bedrijf | `agents.yaml` | Het team |
+| Plattegrond van het huis | Thuis → ⚙ Plattegrond | Weergave Thuis |
+| Praten via Assist (app, speakers) | HubNEX-integratie + Spraakassistenten | Spraak |
+| Spraak in het dashboard | optie *Stem van Home Assistant* of ElevenLabs | Spraak |
+| Telegram-groep | de opties van de bots | De Telegram-groep |
+| Zakelijke mailbox | IMAP/SMTP-opties | Zakelijke mailbox |
+| De programma's van je werk | `connectors` in `agents.yaml` | Connectors |
+| Tablet of telefoon buiten HA | HQ-token en poort | Gebruik buiten Home Assistant |
 
-Ogni opzione della scheda **Configurazione** ha la sua spiegazione accanto al campo.
+Elke optie op het tabblad **Configuratie** heeft naast het veld een uitleg.
 
-## Il team: `agents.yaml`
+## Het team: `agents.yaml`
 
-Al primo avvio viene creato `agents.yaml` nella cartella di configurazione dell'add-on,
-`/addon_configs/<id>_hubnex/agents.yaml`. Lo apri con l'add-on **File editor** o **Studio Code
-Server**, oppure via Samba nella condivisione `addon_configs`. Dopo una modifica **riavvia
-l'add-on**.
+Bij de eerste start wordt `agents.yaml` aangemaakt in de configuratiemap van de add-on,
+`/addon_configs/<id>_hubnex/agents.yaml`. Open het met de add-on **File editor** of **Studio Code
+Server**, of via Samba in de share `addon_configs`. **Start de add-on opnieuw op** na een wijziging.
 
-- `boss`: l'assistente che coordina tutto: nome, carattere, istruzioni, strumenti.
-- `companies`: le tue "aziende" (il lavoro, la casa, un'associazione…), con reparti e agenti.
-  Ogni agente ha un ruolo, istruzioni e gli strumenti che può usare.
-- `connectors`: i programmi del tuo lavoro (vedi **Connettori**).
-- Routine: compiti che un agente fa da solo a orari fissi. Sono **spente** finché non scrivi
-  `enabled: true`.
+- `boss`: de assistent die alles coördineert: naam, karakter, instructies, tools.
+- `companies`: jouw "bedrijven" (werk, thuis, een vereniging…), met afdelingen en agents. Elke agent
+  heeft een rol, instructies en de tools die hij mag gebruiken.
+- `connectors`: de programma's van je werk (zie **Connectors**).
+- Routines: taken die een agent op vaste tijden zelf uitvoert. Ze staan **uit** totdat je
+  `enabled: true` schrijft.
 
-Il file d'esempio è commentato riga per riga.
+Het Nederlandse voorbeeldteam is voor het **huis** (Jarvis Butler en Jarvis Wacht). Voor zakelijke
+mail staat onderaan een kant-en-klaar blok **WERK** in commentaar (Jarvis Mail en Jarvis Boekhouder): haal
+bij alle regels tussen `# >>> WERK` en `# <<< WERK` de eerste `# ` weg om het te gebruiken. Zonder de agent
+met id `mail` zet HubNEX de mailbox uit en meldt dat in het logboek.
 
-## Connettori: i programmi del tuo lavoro
+Laat agents weg die je niet nodig hebt: een agent is alleen nuttig als hij sensoren of gegevens heeft om
+naar te kijken. Een beveiligingsagent zonder deur-, raam- of alarmsensoren heeft niets te doen.
 
-HubNEX si collega ai programmi che usi al lavoro (gestionale, calendario, CRM, Notion,
-database…) tramite **MCP** (Model Context Protocol), lo standard aperto per collegare le AI ai
-programmi. Molti software hanno già un "server MCP", e chi sviluppa un gestionale può
-aggiungerne uno.
+Het voorbeeldbestand is regel voor regel van commentaar voorzien. Instructies mag je in elke taal
+schrijven: de assistent antwoordt hoe dan ook in de taal van de add-on.
+
+## Connectors: de programma's van je werk
+
+HubNEX koppelt met de programma's die je op je werk gebruikt (boekhoudsoftware, agenda, CRM, Notion,
+databases…) via **MCP** (Model Context Protocol), de open standaard om AI aan programma's te koppelen.
+Veel programma's hebben al een "MCP-server", en wie er een ontwikkelt kan er een toevoegen.
 
 In `agents.yaml`:
 
 ```yaml
 connectors:
-  - name: Gestionale                    # nome mostrato a te e agli agenti
-    url: https://esempio.it/mcp         # indirizzo del server MCP
-    token: la-tua-chiave                # se il server la chiede (Authorization: Bearer …)
-    agents: [boss, tecnico]             # chi lo può usare (omesso = tutti; boss = l'assistente)
+  - name: Boekhouding                   # naam die jij en de agents zien
+    url: https://example.com/mcp        # adres van de MCP-server
+    token: jouw-sleutel                 # als de server er een vraagt (Authorization: Bearer …)
+    agents: [boss, technical]           # wie het mag gebruiken (weggelaten = iedereen; boss = de assistent)
 ```
 
-HubNEX legge da solo quali strumenti offre il programma e li dà agli agenti indicati.
+HubNEX leest zelf welke tools het programma aanbiedt en geeft ze aan de genoemde agents.
 
-- Gli strumenti che **leggono** li usano liberamente.
-- Quelli che **modificano** i dati non partono subito: ti vengono mostrati con un riepilogo e
-  **✅ Conferma / ❌ Annulla**, nel gruppo Telegram e nel pannello "Da approvare" della
-  dashboard. Partono solo dopo il tuo ok, una volta sola anche se premi due volte.
-- Come lo capisce: il server dichiara quali strumenti sono di sola lettura. Se non lo dichiara,
-  sono di sola lettura quelli che iniziano con `get`, `list`, `search`, `read`, `find`… e tutti
-  gli altri chiedono conferma. Puoi correggere con `free: [nome]` (mai conferma) e
-  `always_confirm: [nome]` (sempre), oppure `confirm: always` per l'intero connettore.
-- `/stato` nel gruppo Telegram dice se ogni connettore risponde e quanti strumenti offre; gli
-  errori compaiono anche nell'attività della dashboard.
+- Tools die **lezen** worden vrij gebruikt.
+- Tools die gegevens **wijzigen** worden niet meteen uitgevoerd: je ziet een samenvatting met
+  **✅ Bevestig / ❌ Annuleer**, in de Telegram-groep en in het paneel "Ter goedkeuring" van het
+  dashboard. Ze lopen pas na jouw akkoord, en maar één keer, ook als je twee keer drukt.
+- Hoe het dat weet: de server geeft aan welke tools alleen-lezen zijn. Doet hij dat niet, dan zijn de
+  alleen-lezen tools die waarvan de naam begint met `get`, `list`, `search`, `read`, `find`… en alle
+  andere vragen om bevestiging. Je kunt dit corrigeren met `free: [naam]` (nooit vragen) en
+  `always_confirm: [naam]` (altijd vragen), of met `confirm: always` voor de hele connector.
+- `/stato` in de Telegram-groep laat weten of elke connector antwoordt en hoeveel tools hij
+  aanbiedt; fouten verschijnen ook in de activiteit van het dashboard.
 
-## Voce
+## Spraak
 
-Puoi parlare con l'assistente in tre modi. Tutti sono facoltativi.
+Je kunt op drie manieren met de assistent praten. Alles is optioneel.
 
-**1. Assist di Home Assistant** (app, smart speaker, parola di attivazione)
+**1. Assist van Home Assistant** (app, slimme speakers, wake word)
 
-L'add-on installa da solo l'integrazione **HubNEX**, che rende l'assistente un *agente di
-conversazione* di Assist. Il riconoscimento e la voce li fa Home Assistant, con il motore che
-preferisci: Piper (locale e gratuito), Home Assistant Cloud, ElevenLabs, Google…
+De add-on installeert zelf de **HubNEX**-integratie, waardoor de assistent een *gespreksagent* van
+Assist wordt. Spraakherkenning en stem zijn van Home Assistant, met de engine van je voorkeur: Piper
+(lokaal en gratis), Home Assistant Cloud, ElevenLabs, Google…
 
-1. Avvia l'add-on: arriva una notifica. **Riavvia Home Assistant**.
-2. Impostazioni → Dispositivi e servizi: compare **HubNEX rilevato** → *Configura* → *Invia*.
-3. Impostazioni → Assistenti vocali → il tuo assistente → **Agente di conversazione**: scegli
-   l'assistente di HubNEX e lascia attivo **"Preferisci gestire i comandi localmente"**: i
-   comandi semplici ("accendi la luce della cucina") li esegue Home Assistant, subito e senza
-   consumare credito; tutto il resto va all'assistente.
+1. Start de add-on: er komt een melding. **Start Home Assistant opnieuw op**.
+2. Instellingen → Apparaten & diensten: **HubNEX ontdekt** verschijnt → *Instellen* → *Verzenden*.
+3. Instellingen → Spraakassistenten → je assistent → **Gespreksagent**: kies de assistent van HubNEX
+   en laat **"Opdrachten bij voorkeur lokaal afhandelen"** aan staan: eenvoudige opdrachten ("doe de
+   keukenlamp aan") voert Home Assistant uit, direct en zonder tegoed te gebruiken; al het andere gaat
+   naar de assistent.
 
-Se l'integrazione non viene rilevata: Dispositivi e servizi → Aggiungi → "HubNEX", con
-l'indirizzo dell'add-on (`http://<hostname dell'add-on>:8765`, l'hostname è nella pagina
-dell'add-on) e il **Token HQ**. Di solito basta riavviare l'add-on HubNEX.
+Als de integratie niet wordt ontdekt: Apparaten & diensten → Toevoegen → "HubNEX", met het adres van
+de add-on (`http://<hostnaam van de add-on>:8765`, de hostnaam staat op de pagina van de add-on) en
+het **HQ-token**. Meestal is het genoeg om de HubNEX-add-on opnieuw op te starten.
 
-Le risposte a voce sono brevi (al massimo due frasi). Ogni richiesta, da Assist o dalla
-dashboard, segue la strada più veloce possibile:
+Gesproken antwoorden zijn kort (hooguit twee zinnen), in de taal die Assist spreekt. Elk verzoek,
+van Assist of van het dashboard, neemt de snelst mogelijke weg:
 
-1. **Home Assistant da solo** ("accendi la luce della cucina"): istantaneo, senza AI. Assist lo
-   fa già; la dashboard lo prova per prima. Esponi le entità ad Assist e dai loro un alias con
-   il nome che pronunci. Serrature, allarme e porte non passano mai di qui.
-2. **La via rapida** per le altre richieste sulla casa: il **Modello per i comandi rapidi** (di
-   serie Haiku) con l'elenco delle entità e del loro stato già in mano. Nella chat, sotto la
-   risposta, compare la scritta RISPOSTA RAPIDA (o HOME ASSISTANT per il punto 1).
-3. **Jarvis** con il suo modello e tutte le istruzioni per tutto il resto: domande complesse,
-   lavoro, agenti, serrature e allarme (con la conferma).
+1. **Home Assistant zelf** ("doe de keukenlamp aan"): direct, zonder AI. Assist doet dit al; het
+   dashboard probeert het eerst. Stel de entiteiten beschikbaar voor Assist en geef ze een alias met
+   de naam die je zegt. Sloten, het alarm en deuren gaan nooit deze weg.
+2. **De snelle route** voor de andere verzoeken over het huis: het **Model voor snelle opdrachten**
+   (standaard Haiku) met de lijst van entiteiten en hun toestanden al bij de hand. In de chat staat
+   onder het antwoord SNEL ANTWOORD (of HOME ASSISTANT bij punt 1).
+3. **Jarvis** met zijn model en al zijn instructies voor al het andere: ingewikkelde vragen, werk,
+   agents, sloten en het alarm (met bevestiging).
 
-**2. Dashboard** (microfono e altoparlante nella barra in basso)
+**2. Dashboard** (microfoon en speaker in de onderste balk)
 
-- Quello che dici lo riconosce il browser (gratis). I browser lo permettono solo su `https://`:
-  funziona dall'app di Home Assistant e da Nabu Casa, non da `http://homeassistant.local`.
-- L'assistente risponde con la voce scelta nella configurazione:
-  - **Voce da Home Assistant**: scrivi un motore di sintesi vocale di Home Assistant, per
-    esempio `tts.piper` (locale, gratuito) o `tts.home_assistant_cloud`. Ha la precedenza.
-    In **Voce del motore di Home Assistant** puoi scegliere la voce per nome (per esempio
-    `Rinaldo` o `Diego` con Home Assistant Cloud): se il nome non esiste, il messaggio d'errore
-    elenca quelle disponibili. La lingua è quella di Home Assistant;
-  - oppure **ElevenLabs**: chiave API (elevenlabs.io → Profilo → API Keys), ID della voce
-    (Voices → la voce → ID) e modello (`eleven_flash_v2_5`, il più economico, parla italiano).
-- Se la voce non parte, sotto la risposta compare il motivo.
-- Prima di leggere, il testo viene preparato per l'ascolto: niente simboli, emoji o link,
-  unità e sigle in parole (Ω → "ohm", kW → "chilowatt", MT/BT → "media e bassa tensione"),
-  date per esteso, una pausa per ogni punto di un elenco. Lo scritto resta com'è.
-- **Risposte a voce**: `completa` (la voce legge tutta la risposta) oppure `riassunto`: per le
-  risposte lunghe la voce dice solo il succo in una o due frasi e il testo scritto resta
-  completo. Le risposte brevi vengono lette per intero. Vale per la dashboard con
-  l'altoparlante acceso e per i vocali di Telegram; Assist risponde già in due frasi.
+- Wat je zegt wordt herkend door de browser (gratis). Browsers staan dat alleen toe op `https://`: het
+  werkt vanuit de Home Assistant-app en via Nabu Casa, niet vanaf `http://homeassistant.local`.
+- De assistent antwoordt met de stem die in de configuratie is gekozen:
+  - **Stem van Home Assistant**: schrijf een van de tekst-naar-spraak-engines van Home Assistant, bijv.
+    `tts.piper` (lokaal, gratis) of `tts.home_assistant_cloud`. Die heeft voorrang. Bij **Stem van de
+    engine van Home Assistant** kun je de stem op naam kiezen (bijv. `Colette` of `Fenna` bij Home
+    Assistant Cloud): bestaat de naam niet, dan noemt de foutmelding de beschikbare stemmen. De taal is
+    die van Home Assistant;
+  - of **ElevenLabs**: API-sleutel (elevenlabs.io → Profile → API Keys), stem-ID (Voices → de stem →
+    ID) en model (`eleven_flash_v2_5`, het goedkoopste).
+- Start de stem niet, dan staat de reden onder het antwoord.
+- Voordat de tekst wordt voorgelezen, wordt hij geschikt gemaakt voor luisteren: geen symbolen,
+  emoji of links, eenheden en afkortingen in woorden (Ω → "ohm", kWh → "kilowattuur"), datums
+  uitgeschreven, een pauze bij elk punt van een lijst. De geschreven tekst blijft zoals hij is.
+- **Gesproken antwoorden**: `completa` (de stem leest het hele antwoord) of `riassunto` (samenvatting):
+  bij lange antwoorden zegt de stem alleen de kern in een of twee zinnen en blijft de geschreven tekst
+  compleet. Korte antwoorden worden helemaal voorgelezen. Het geldt voor het dashboard met de speaker
+  aan en voor Telegram-spraakberichten; Assist antwoordt al in twee zinnen.
 
-**3. Telegram**: mandi un vocale, viene trascritto con ElevenLabs e l'assistente risponde anche
-a voce (`telegram_voice_replies`). La trascrizione dei vocali richiede ElevenLabs.
+**3. Telegram**: stuur een spraakbericht, het wordt met ElevenLabs uitgeschreven en de assistent
+antwoordt ook met spraak (`telegram_voice_replies`). Voor het uitschrijven is ElevenLabs nodig.
 
-**Note su ElevenLabs (piano gratuito):** le voci prese dalla libreria pubblica non si possono
-usare tramite API; l'account può essere bloccato per "attività insolita" anche con caratteri
-disponibili. In questi casi il messaggio d'errore lo dice.
+**Over ElevenLabs (gratis abonnement):** stemmen uit de openbare bibliotheek zijn niet via de API te
+gebruiken; het account kan worden geblokkeerd wegens "ongebruikelijke activiteit", ook als er nog
+tekens over zijn. In die gevallen zegt de foutmelding dat.
 
-## Il gruppo Telegram
+## De Telegram-groep
 
-Un gruppo con **un bot per l'assistente** e, facoltativo, **uno per l'agente della posta**. Gli
-agenti senza un bot proprio parlano tramite l'assistente, con il loro nome davanti.
+Een groep met **één bot voor de assistent** en eventueel **één voor de mailagent**. Agents zonder
+eigen bot spreken via de assistent, met hun naam ervoor.
 
-1. Crea i bot con @BotFather (`/newbot`) e disattiva la privacy di gruppo (*Bot Settings →
-   Group Privacy → Turn off*), poi aggiungili a un gruppo.
-2. Metti i token nella configurazione, avvia e scrivi `/id` nel gruppo: ti dice l'ID del gruppo
-   (numero negativo, `allowed_chat_id`) e il tuo (`allowed_user_id`). I bot ignorano tutti gli
-   altri.
+1. Maak de bots met @BotFather (`/newbot`) en zet de groepsprivacy uit (*Bot Settings → Group Privacy →
+   Turn off*), voeg ze daarna toe aan een groep.
+2. Zet de tokens in de configuratie, start en stuur `/id` in de groep: dat geeft het ID van de groep
+   (een negatief getal, `allowed_chat_id`) en het jouwe (`allowed_user_id`). De bots negeren iedereen
+   anders.
 
-Uso:
+Gebruik:
 
-- Messaggio normale → risponde l'assistente, che fa da sé o delega. L'agente a cui delega
-  risponde direttamente nel gruppo.
-- Rispondi a un messaggio dell'agente della posta, o scrivi `@nome_bot_mail` → risponde lui.
-- Rispondi a una **bozza** con cosa cambiare ("più formale") → arriva la nuova versione.
-- Comandi: `/id`, `/stato`, `/posta` (controlla subito la posta), `/regole`.
+- Een gewoon bericht → de assistent antwoordt, door het zelf te doen of te delegeren. De agent aan wie
+  hij delegeert antwoordt rechtstreeks in de groep.
+- Antwoord op een bericht van de mailagent, of schrijf `@naam_van_de_mailbot` → die antwoordt.
+- Antwoord op een **concept** met wat er moet veranderen ("formeler") → de nieuwe versie komt.
+- Opdrachten: `/id`, `/stato` (status), `/posta` (controleer nu de mail), `/regole` (je regels).
 
-Un bot può essere ascoltato da un solo programma: due installazioni con gli stessi token vanno
-in conflitto.
+Een bot kan maar door één programma worden beluisterd: twee installaties met dezelfde tokens
+botsen.
 
-## Allegati: foto e documenti
+## Bijlagen: foto's en documenten
 
-Puoi mandare all'assistente e agli agenti **foto, PDF e file di testo** (txt, csv, md, json):
-utile, per esempio, dal cantiere.
+Je kunt de assistent en de agents **foto's, pdf's en tekstbestanden** (txt, csv, md, json) sturen:
+handig bijvoorbeeld vanaf een bouwplaats.
 
-- **Telegram**: invia una foto, un album o un file, con la richiesta nella didascalia ("guarda
-  questa crepa: è da preoccuparsi?"). Oppure rispondi a una foto già inviata con la domanda. Come
-  per i messaggi, va all'assistente; per un agente con un bot suo, rispondi a un suo messaggio o
-  scrivi `@nome_bot` nella didascalia. Senza testo, l'assistente guarda e ti chiede cosa serve.
-- **Dashboard**: la graffetta accanto al campo della chat (dal telefono anche la fotocamera); puoi
-  anche incollare uno screenshot o trascinare i file sulla chat. Le foto grandi vengono
-  rimpicciolite prima dell'invio, per consumare meno dati.
-- **API**: `POST /api/attachments?name=foto.jpg` con il file come corpo → `{"id": …}`; poi
-  `"attachments": ["id"]` in `/api/chat` o in `/api/agents/{id}/task`.
+- **Telegram**: stuur een foto, een album of een bestand, met het verzoek in het onderschrift ("kijk
+  naar deze scheur: moet ik me zorgen maken?"). Of antwoord op een eerder gestuurde foto met de vraag.
+  Net als bij berichten gaat het naar de assistent; voor een agent met een eigen bot antwoord je op een
+  bericht van hem of schrijf je `@botnaam` in het onderschrift. Zonder tekst kijkt de assistent en
+  vraagt hij wat je nodig hebt.
+- **Dashboard**: de paperclip naast het chatveld (op een telefoon ook de camera); je kunt ook een
+  schermafbeelding plakken of bestanden op de chat slepen. Grote foto's worden vóór het verzenden
+  verkleind, om minder data te gebruiken.
+- **API**: `POST /api/attachments?name=foto.jpg` met het bestand als body → `{"id": …}`; daarna
+  `"attachments": ["id"]` in `/api/chat` of `/api/agents/{id}/task`.
 
-L'assistente vede gli allegati e, quando delega un lavoro, li passa all'agente insieme al
-compito. La conversazione ne conserva solo una nota con il loro codice (`#1a2b3c4d`): le foto non
-si pagano di nuovo a ogni messaggio e chiunque del team può riguardarle quando servono ("nella
-foto di prima…").
+De assistent ziet de bijlagen en geeft ze, als hij een klus delegeert, samen met de taak door aan de
+agent. Het gesprek bewaart alleen een notitie met hun code (`#1a2b3c4d`): foto's worden niet bij elk
+bericht opnieuw betaald, en iedereen in het team kan ze zo nodig opnieuw bekijken ("op de foto van
+daarnet…").
 
-Limiti: 20 MB per file (lo stesso limite dei bot Telegram), PDF fino a 100 pagine, 10 allegati
-per messaggio. Le foto sono ruotate come scattate e ridotte a 1568 pixel sul lato lungo (quello
-che Claude legge comunque). Word ed Excel non si leggono direttamente: salvali in PDF (o CSV per
-un foglio). Ogni foto costa circa quanto 1.500 parole di testo; un PDF circa 1.500–3.000 per
-pagina. Gli allegati restano 30 giorni in `/data/allegati`, poi vengono cancellati.
+Grenzen: 20 MB per bestand (dezelfde grens als Telegram-bots), pdf's tot 100 pagina's, 10 bijlagen per
+bericht. Foto's worden gedraaid zoals ze zijn genomen en geschaald tot 1568 pixels aan de lange kant
+(wat Claude toch al leest). Word- en Excel-bestanden worden niet direct gelezen: sla ze op als pdf (of
+csv voor een spreadsheet). Elke foto kost ongeveer evenveel als 1.500 woorden tekst; een pdf ongeveer
+1.500–3.000 per pagina. Bijlagen worden 30 dagen bewaard in `/data/allegati` en daarna verwijderd.
 
-## Agende
+## Agenda's
 
-Con lo strumento `calendar_events` gli agenti possono leggere le tue **agende di Home Assistant**, per esempio
-Google Calendar, e rispondere a domande ("Cosa ho giovedì?", "Quando siamo liberi entrambi?"). Lo strumento è
-**di sola lettura**: non può creare, modificare né cancellare nulla.
+Met de tool `calendar_events` kunnen agents je **agenda's uit Home Assistant** lezen, bijvoorbeeld Google
+Agenda, en er vragen over beantwoorden ("Wat heb ik donderdag?", "Wanneer hebben we allebei tijd?"). De tool
+is **alleen lezen**: hij kan niets aanmaken, wijzigen of verwijderen.
 
-1. Le agende devono essere in Home Assistant. Con Google Calendar **ogni agenda dell'account** (anche quelle
-   condivise, come quella del partner) diventa un'entità `calendar.<nome>`. Per usare l'agenda di un'altra
-   persona, chiedile di condividerla con il tuo account Google. Controlla in Impostazioni → Dispositivi e
-   servizi → Google Calendar quali agende ci sono.
-2. Dai lo strumento agli agenti che ne hanno bisogno, in `agents.yaml`: `tools: [..., calendar_events]`.
-3. Scegli quali agende HubNEX può leggere con l'opzione **Agende consentite** (`calendar_entities`), per
-   esempio `calendar.nico, calendar.danielle`. Vuoto = **tutte** le agende di Home Assistant (anche compleanni,
-   festività, lavoro). Le altre non vengono mostrate, nemmeno se un agente le chiede.
+1. Zorg dat de agenda's in Home Assistant staan. Bij Google Agenda wordt **elke agenda van het account**
+   (ook gedeelde, zoals die van een partner) een eigen entiteit `calendar.<naam>`. Wil je de agenda van iemand
+   anders gebruiken, laat die persoon hem dan met jouw Google-account delen. Controleer onder Instellingen →
+   Apparaten & diensten → Google Agenda welke agenda's er zijn.
+2. Geef de tool aan de agents die hem nodig hebben, in `agents.yaml`: `tools: [..., calendar_events]`.
+   Zonder dat kan een agent geen afspraken lezen.
+3. Kies welke agenda's HubNEX mag lezen met de optie **Toegestane agenda's** (`calendar_entities`), bijvoorbeeld
+   `calendar.nico, calendar.danielle`. Leeg betekent **alle** agenda's van Home Assistant, ook verjaardagen,
+   feestdagen of werk. Een andere agenda wordt dan niet getoond, ook niet als een agent erom vraagt.
 
-Ogni appuntamento riporta il nome della sua agenda. Il testo degli appuntamenti sono dati, non ordini. Gli
-appuntamenti vanno al fornitore AI: aggiungi l'agenda di un'altra persona solo con il suo consenso. Non dare
-`calendar_events` a un agente che può anche agire sulla casa (`ha_call_service`).
+Bij elke afspraak staat de naam van de agenda, zodat Jarvis weet van wie ze zijn. De titel, het begin- en
+eindtijdstip, de plaats en een ingekorte omschrijving worden gelezen; de tekst in een afspraak is **data, geen
+opdracht** (een uitnodiging van iemand anders kan er alles in zetten). De afspraken gaan naar de AI-aanbieder:
+zet de agenda van een ander er alleen in met diens toestemming. Geef `calendar_events` niet aan een agent die ook
+huisacties mag uitvoeren (`ha_call_service`): tekst uit een uitnodiging zou hem kunnen proberen te sturen.
 
-## Posta di lavoro
+## Zakelijke mailbox
 
-Imposta IMAP/SMTP del tuo provider (server, porte SSL 993/465, utente, password).
+Stel de IMAP/SMTP van je provider in (servers, SSL-poorten 993/465, gebruiker, wachtwoord).
 
-- Ogni `check_interval_minutes` controlla la casella, classifica le nuove email (alta, media,
-  bassa) e ti avvisa da `notify_min_priority` in su. Le email non vengono segnate come lette.
-- **Mittenti da non segnalare** (`mail_ignore`): separati da virgola, un indirizzo
-  (`offerte@negozio.it`), un dominio (`@newsletter.it`) o una parola dell'indirizzo (`noreply`).
-  Le loro email restano nella casella e Jarvis Mail le legge se glielo chiedi, ma non arriva
-  nessun messaggio su Telegram e non vengono nemmeno classificate (niente credito Claude).
-- **Niente parte senza di te**: ogni risposta è una bozza con Invia, Salva in Bozze, Modifica,
-  Scarta, su Telegram e nella dashboard.
-- **Firma**: puoi incollare quella in HTML del tuo programma di posta.
-- Nelle istruzioni dell'agente della posta elenca i tuoi **clienti importanti**: le loro email
-  hanno priorità alta.
+- Elke `check_interval_minutes` controleert hij de mailbox, sorteert de nieuwe e-mails (hoge,
+  gemiddelde, lage prioriteit: `alta`, `media`, `bassa`) en meldt ze je vanaf `notify_min_priority`.
+  E-mails worden niet als gelezen gemarkeerd.
+- **Afzenders die niet gemeld worden** (`mail_ignore`): gescheiden door komma's, een adres
+  (`aanbiedingen@winkel.nl`), een domein (`@nieuwsbrief.nl`) of een woord uit het adres (`noreply`).
+  Hun e-mails blijven in de mailbox en Jarvis Mail leest ze als je erom vraagt, maar er komt geen
+  Telegram-bericht en ze worden niet eens gesorteerd (geen Claude-tegoed).
+- **Er gaat niets uit zonder jou**: elk antwoord is een concept met Verstuur, Bewaar in Concepten,
+  Wijzig, Verwerp, op Telegram en in het dashboard.
+- **Handtekening**: je kunt de HTML-handtekening uit je mailprogramma plakken.
+- Zet in de instructies van de mailagent je **belangrijke klanten**: hun e-mails krijgen hoge
+  prioriteit.
 
-## Vista Casa
+## Weergave Thuis
 
-Il pulsante **⌂ Casa** apre la plancia di Home Assistant. In alto il **cruscotto**: chi è in
-casa, allarme, clima medio, luci accese, energia e telecamere; sotto le scene. Ogni entità ha la
-sua **card**: luci (tocca la card, barra della luminosità; se la lampadina li ha, il pallino
-accanto allo stato apre temperatura colore e colori), clima con quadrante, tapparelle con la
-finestra disegnata, valvole, media con copertina, avanzamento, casuale/ripeti, volume e sorgente, **robot
-aspirapolvere** con la sua mappa (dove il robot si vede muovere), stato, batteria e comandi,
-prese con il consumo, porte e finestre
-(rosse quando aperte, "da quanto"), sensori con il grafico delle ultime 24 ore, persone,
-telecamere. Le **serrature** con un codice in Home Assistant chiedono il codice sul tastierino,
-le altre una conferma nella card; l'**allarme** si disinserisce con il tastierino. Le **stanze sono le aree di Home
-Assistant**: le entità di un'area (o del suo dispositivo) compaiono da sole nella stanza.
+De knop **⌂ Thuis** opent het dashboard van Home Assistant. Bovenaan de **HUD**: wie er thuis is,
+alarm, gemiddeld klimaat, lampen aan, energie en camera's; daaronder de scènes. Elke entiteit heeft
+zijn **kaart**: lampen (tik op de kaart, helderheidsbalk; als de lamp ze heeft, opent het bolletje bij
+de status kleurtemperatuur en kleuren), klimaat met een draaiknop, rolluiken met het getekende raam,
+kleppen, media met hoes, voortgang, willekeurig/herhalen, volume en bron, **robotstofzuigers** met
+hun kaart (waar de robot zich beweegt), status, batterij en opdrachten, stopcontacten met hun
+verbruik, deuren en ramen (rood als ze open zijn, "hoe lang al"), sensoren met de grafiek van de
+laatste 24 uur, personen, camera's. **Sloten** met een code in Home Assistant vragen er op een
+toetsenbord om, de andere om een bevestiging in de kaart; het **alarm** schakel je uit met het
+toetsenbord. De **kamers zijn de gebieden van Home Assistant**: de entiteiten van een gebied (of van
+zijn apparaat) verschijnen vanzelf in de kamer.
 
-Intorno alla piantina, a colpo d'occhio:
+Rond de plattegrond, in één oogopslag:
 
-- **Meteo** nel cruscotto: condizione, temperatura, minima/massima e pioggia; un tocco apre le
-  previsioni dei prossimi giorni, con umidità e vento. Usa l'entità `weather.*` di Home Assistant.
-- **Oggi e prossimi giorni**: le scadenze tue e degli agenti nei prossimi 7 giorni, con la spunta
-  per chiuderle. Lo vedi solo tu: gli utenti di Home Assistant con accesso alla sola casa no.
-- **Sulla piantina**, sotto il nome della stanza: una persona dove c'è presenza o movimento, una
-  nota dove suona qualcosa, il robot dove pulisce, una lavatrice dove lavatrice o lavastoviglie
-  sono in funzione.
-- **Elettrodomestici**: lavatrice, lavastoviglie, asciugatrice, forno e bollitore con una presa
-  che misura la potenza (riconosciuti dal nome): "in funzione" e, per 3 ore, "finito … fa".
-- **Ultimi eventi**: le ultime variazioni delle ultime 24 ore di porte, finestre, serrature,
-  allarme e persone.
+- **Weer** in de HUD: toestand, temperatuur, min/max en regen; met een tik opent de verwachting voor de
+  komende dagen, met luchtvochtigheid en wind. Het gebruikt de entiteit `weather.*` van Home Assistant.
+- **Vandaag en de komende dagen**: jouw deadlines en die van de agents in de komende 7 dagen, met een
+  vinkje om ze af te sluiten. Alleen jij ziet dit: Home Assistant-gebruikers met alleen toegang tot het
+  huis niet.
+- **Op de plattegrond**, onder de naam van de kamer: een persoon waar aanwezigheid of beweging is, een
+  noot waar iets speelt, de robot waar hij schoonmaakt, een wasmachine waar de wasmachine of
+  vaatwasser draait.
+- **Huishoudelijke apparaten**: wasmachine, vaatwasser, droger, oven en waterkoker op een stopcontact
+  dat het vermogen meet (herkend aan de naam): "in bedrijf" en, 3 uur lang, "klaar … geleden".
+- **Recente gebeurtenissen**: de laatste wijzigingen in de afgelopen 24 uur van deuren, ramen, sloten,
+  alarm en personen.
 
-**Scorte (pellet e simili).** Un aiutante *Numero* o un *Contatore* di Home Assistant con
-"pellet", "sacchi" o "scorta" nel nome diventa una card **Scorta**; per gli altri scegli
-"Scorta" nel tipo, modificando la stanza. Mostra quanti ne restano, quanti se ne usano al giorno
-e da quando (dallo storico degli ultimi 30 giorni), i **giorni rimasti** e l'ultima consegna;
-**−1 caricato** quando ne usi uno, **+consegna** quando arriva il pellet. In **Imposta** scegli
-quanti ne arrivano in una consegna e sotto quanti avvisarti: allora la card diventa rossa e
-arriva la notifica **Scorte da riordinare** (regola nelle Notifiche della casa).
+**Voorraden (pellets en dergelijke).** Een *Getal*-helper of *Teller* van Home Assistant met "pellet",
+"zakken" of "voorraad" in de naam wordt een kaart **Voorraad**; voor andere kies je "Voorraad" als type bij
+het wijzigen van de kamer. Hij toont hoeveel er over zijn, hoeveel er per dag opgaan en de laatste
+levering (uit de laatste 30 dagen geschiedenis), de **resterende dagen**; **−1 geladen** als je er een
+gebruikt, **+levering** als de pellets binnenkomen. Kies bij **Instellingen** hoeveel er in een levering
+zitten en onder hoeveel je gewaarschuwd wilt worden: dan wordt de kaart rood en komt de melding
+**Voorraden om bij te bestellen** (een regel bij de meldingen van het huis).
 
-**Card libera.** Con **Modifica stanza → + Card libera** costruisci una card a blocchi su una
-griglia da 4 colonne (2 sul telefono). Blocchi: **valore grande**, **indicatore ad anello**,
-**interruttore**, **pulsante** (scena, script, pulsante), **cursore** (luminosità o numero),
-**grafico** delle ultime 24 ore, **barra**, **fascia oraria** (un orario di inizio e uno di fine),
-**selettore**, **stato** (com'è e da quanto) e **testo**. Per ogni blocco scegli l'entità (la
-ricerca propone solo quelle adatte), un'etichetta, la dimensione (da 1×1 a 4×2) e, per anello e
-barra, minimo e massimo; **Prima/Dopo** lo spostano. La card ha un nome, un colore e uno stile
-(**Pulito**, di partenza: i blocchi direttamente sulla card; **Riquadri**: ognuno nel suo); al centro
-dell'editor vedi l'anteprima con i valori veri. Si riapre con **Modifica**.
+**Vrije kaart.** Met **Kamer wijzigen → + Vrije kaart** bouw je een kaart uit blokken op een raster van
+4 kolommen (2 op een telefoon). Blokken: **grote waarde**, **ringmeter**, **schakelaar**, **knop**
+(scène, script, knop), **schuif** (helderheid of een getal), **grafiek** van de laatste 24 uur, **balk**,
+**tijdvak** (een begin- en eindtijd), **keuzelijst**, **status** (hoe het is en sinds wanneer) en
+**tekst**. Kies bij elk blok de entiteit (de zoekfunctie biedt alleen de geschikte aan), een label, de
+grootte (1×1 tot 4×2) en, bij ring en balk, minimum en maximum; **Voor/Na** verplaatsen het. De kaart
+heeft een naam, een kleur en een stijl (**Strak**, de standaard: de blokken direct op de kaart;
+**Vakken**: elk in een eigen vak); in het midden van de editor zie je het voorbeeld met de echte
+waarden. **Wijzig** opent hem opnieuw.
 
-Altri blocchi: **media** (copertina, titolo, comandi e volume), **telecamera** (dal vivo, un tocco
-la apre in grande) e **Domanda a Jarvis** (una domanda pronta: un tocco la manda in chat). Per
-ogni blocco puoi anche impostare:
+Meer blokken: **media** (hoes, titel, bediening en volume), **camera** (live; een tik opent hem groot)
+en **Vraag aan Jarvis** (een kant-en-klare vraag: een tik stuurt hem naar de chat). Bij elk blok kun je
+ook instellen:
 
-- **Colore secondo il valore**: fino a 4 regole, es. "sopra 23 → rosso", "sotto 19 → azzurro",
-  "uguale a open → arancio";
-- **Mostra solo se**: il blocco compare solo quando un'entità vale qualcosa (es. la TV "uguale a
-  playing"); nell'editor resta visibile, sbiadito;
-- **Al tocco**: accendi/spegni, avvia una scena o uno script, chiedi a Jarvis, apri un'altra stanza.
+- **Kleur volgens de waarde**: maximaal 4 regels, bijv. "boven 23 → rood", "onder 19 → blauw",
+  "gelijk aan open → oranje";
+- **Toon alleen als**: het blok verschijnt alleen zolang een entiteit een bepaalde waarde heeft (bijv.
+  de tv "gelijk aan playing"); in de editor blijft het zichtbaar, gedimd;
+- **Bij aantikken**: aan/uit zetten, een scène of script starten, Jarvis vragen, een andere kamer openen.
 
-I valori sono quelli di Home Assistant: `on`, `off`, `open`, `playing`… oppure un numero. Per
-partire veloce ci sono i **modelli** (Stufa, Ingresso, Lavanderia, Clima stanza, Energia, Musica),
-che prendono le entità adatte della stanza; i blocchi si spostano anche **trascinandoli**.
+De waarden zijn die van Home Assistant: `on`, `off`, `open`, `playing`… of een getal. Om snel te
+beginnen zijn er **sjablonen** (Kachel, Hal, Wasruimte, Kamerklimaat, Energie, Muziek), die de geschikte
+entiteiten van de kamer overnemen; blokken kun je ook **slepen**.
 
-La **linea in alto** di ogni card (libera o composta) si accende da sola: arancione quando qualcosa
-è acceso o un sensore rileva, rossa per un allarme (porta o finestra aperta, acqua, fumo, gas). In
-una card con un interruttore principale, come la stufa, decide lui; le regole di colore impostate
-a mano si aggiungono a queste.
+De **lijn bovenaan** elke kaart (vrij of samengesteld) licht vanzelf op: amber zolang iets aan staat of
+een sensor iets detecteert, rood bij een alarm (deur of raam open, water, rook, gas). Bij een kaart met
+een hoofdschakelaar, zoals de kachel, beslist die schakelaar; de kleurregels die je met de hand instelt
+komen daar bovenop.
 
-**Descrivila a Jarvis**: in cima all'editor scrivi cosa vuoi ("la stufa con temperatura,
-accensione, orari e pellet; rossa sopra 23 gradi") e tocca **Crea**: Jarvis compone la card con
-le entità vere della casa (quelle che non esistono vengono scartate) e la apre nell'editor, da
-controllare e salvare. È una richiesta a Claude, pochi centesimi.
+**Beschrijf het aan Jarvis**: schrijf bovenaan de editor wat je wilt ("de kachel met temperatuur,
+aan/uit, tijden en pellets; rood boven 23 graden") en tik op **Maak**: Jarvis stelt de kaart samen met de
+echte entiteiten van het huis (verzonnen entiteiten worden weggelaten) en opent hem in de editor, om te
+controleren en op te slaan. Het is één Claude-verzoek, een paar cent. Dit gebruikt het model van Jarvis;
+bij een ander model dan Claude moet dat gestructureerde uitvoer ondersteunen.
 
-**Esporta / Importa card**: **Esporta** copia la card come testo, da condividere; **Modifica
-stanza → Importa card** la incolla in un'altra casa, e i blocchi con entità che lì non ci sono
-restano da scegliere. Nelle condizioni e nelle regole, con "uguale a" e "diverso da", il valore
-si sceglie da un elenco (acceso/spento, aperta/chiusa, in riproduzione…).
+**Kaart exporteren / importeren**: **Exporteer** kopieert de kaart als tekst, om te delen; **Kamer
+wijzigen → Kaart importeren** plakt hem in een ander huis, en blokken waarvan de entiteiten er niet zijn
+blijven leeg om te kiezen. Bij voorwaarden en regels met "gelijk aan" en "ongelijk aan" kies je de
+waarde uit een lijst (on/off, open/closed, playing…).
 
-**Aggiungere entità.** Con **Modifica stanza → Aggiungi entità** puoi mettere in una stanza
-qualsiasi entità di Home Assistant, anche senza area o di un tipo che HubNEX non disegna
-(compare con il suo stato). Gli aiutanti nascono senza area: assegnala in Home Assistant oppure
-aggiungili da qui.
+**Entiteiten toevoegen.** Met **Kamer wijzigen → Entiteit toevoegen** kun je elke entiteit van Home
+Assistant in een kamer zetten, ook een zonder gebied of van een soort die HubNEX niet tekent (hij toont
+de status). Helpers ontstaan zonder gebied: stel dat in bij Home Assistant of voeg ze hier toe.
 
-- **Piantina**: **⚙ Piantina** apre l'editor.
-  1. **Carica planimetria**: una foto o un PDF della pianta (i margini bianchi vengono
-     tolti da soli). Resta solo nella cartella dell'add-on.
-  2. **Proponi le stanze**: Claude guarda la pianta e propone le stanze, già collegate alle
-     aree di Home Assistant quando il nome corrisponde (una richiesta, pochi centesimi).
-  3. Sistema a mano: trascina una stanza per spostarla, l'angolo in basso a destra per
-     ridimensionarla, trascina sul vuoto (o **+ Stanza**) per disegnarne una nuova. Nel
-     pannello scegli l'area, oppure "solo disegno" per un ambiente senza entità; **contorno**
-     per balconi e terrazzi. Spunta le aree **Fuori casa** (giardino, parcheggio…).
-  4. **Salva piantina**. Con **+ Piano** aggiungi altri piani.
+- **Plattegrond**: **⚙ Plattegrond** opent de editor.
+  1. **Plattegrond uploaden**: een foto of pdf van de plattegrond (witte randen worden automatisch
+     weggesneden). Hij blijft alleen in de map van de add-on.
+  2. **Kamers voorstellen**: Claude bekijkt de plattegrond en stelt de kamers voor, al gekoppeld aan
+     de gebieden van Home Assistant als de naam overeenkomt (één verzoek, een paar cent).
+  3. Corrigeer met de hand: sleep een kamer om hem te verplaatsen, de rechteronderhoek om hem te
+     schalen, sleep over lege ruimte (of **+ Kamer**) om een nieuwe te tekenen. Kies in het paneel het
+     gebied, of "alleen tekening" voor een ruimte zonder entiteiten; **omtrek** voor balkons en
+     terrassen. Vink de gebieden **Buitenshuis** aan (tuin, parkeerplaats…).
+  4. **Plattegrond opslaan**. Met **+ Verdieping** voeg je meer verdiepingen toe.
 
-  Chi preferisce può usare **Testo** e scrivere la disposizione in YAML (posizioni `x, y, w, h`
-  in percentuale del disegno); facoltativo `energy: { power: sensor.…, today: sensor.… }`.
-  Tutto finisce in `casa.yaml` nella cartella dell'add-on; senza piantina le aree compaiono
-  come riquadri.
+  Als je liever wilt, kun je met **Tekst** de indeling in YAML schrijven (posities `x, y, w, h` in
+  procenten van de tekening); optioneel `energy: { power: sensor.…, today: sensor.… }`. Alles komt in
+  `casa.yaml` in de map van de add-on; zonder plattegrond verschijnen de gebieden als tegels.
   ```yaml
   floors:
-    - name: Piano terra
-      aspect: 1.2          # larghezza / altezza del disegno
+    - name: Begane grond
+      aspect: 1.2          # breedte / hoogte van de tekening
       rooms:
-        - { area: Soggiorno, x: 0, y: 0, w: 50, h: 60 }
-        - { area: Cucina, x: 50, y: 0, w: 50, h: 60 }
-        - { area: Camera da letto, x: 0, y: 60, w: 100, h: 40 }
-  outside: [Giardino]
+        - { area: Woonkamer, x: 0, y: 0, w: 50, h: 60 }
+        - { area: Keuken, x: 50, y: 0, w: 50, h: 60 }
+        - { area: Slaapkamer, x: 0, y: 60, w: 100, h: 40 }
+  outside: [Tuin]
   ```
-- **Nomi**: se a un'entità hai dato degli **alias** in Home Assistant (impostazioni
-  dell'entità → Alias), HubNEX mostra il primo; altrimenti il nome di Home Assistant. Nella
-  ricerca per aggiungere entità valgono tutti i nomi.
-- **Energia**: tocca "Energia" nel cruscotto: si apre un popup (F1 arancione, F2 blu, F3 verde). Tre viste a scelta, anche insieme: **il reattore**
-  (il periodo diviso per fascia attorno alla potenza adesso, in % del contatore), **la
-  giornata** (la potenza di oggi sulle fasce, con i kWh per fascia) e **la bolletta** (spesa,
-  stima a fine periodo al ritmo attuale, fasce a confronto col periodo precedente e un
-  consiglio quando una fascia cresce). Con **Configura** scegli le viste e i tuoi sensori: la
-  fascia (calendario ARERA calcolato da HubNEX con i festivi, un tuo sensore, o tariffa unica),
-  i kWh per fascia (es. i contatori "utility meter" di Home Assistant: da loro arrivano inizio
-  del periodo e confronto), prezzi o spesa, la potenza e la taglia del contatore, altri valori
-  (tensione, fattore di potenza…). Nessun calcolo usa l'AI.
-- **Persone**: le persone di Home Assistant (Impostazioni → Persone, con l'app sul telefono o un
-  dispositivo di tracciamento) compaiono in alto nella Casa: *a casa*, *fuori* o il nome della
-  zona in cui si trovano.
-- **Orari e impostazioni**: gli helper di Home Assistant si usano dalla Casa. Un orario
-  (`input_datetime`, `time`) si cambia toccando l'ora o con −15 / +15; i numeri con il cursore,
-  le liste scegliendo l'opzione, i testi scrivendo. Il valore lo salva Home Assistant e le
-  automazioni lo usano come prima.
-- **Card su misura**: in *Modifica stanza* → **+ Nuova card** dai un nome, aggiungi le entità
-  (anche di altre stanze), le metti in ordine, scegli il **gruppo** (Clima, Luci…; di base
-  quello della prima entità) e piccola o larga. Esempio: una card
-  "Stufa" con l'ora di accensione e di spegnimento mostra anche la fascia sulla giornata e
-  "attiva fino alle 22:00"; se nella card c'è l'interruttore che attiva gli orari (es.
-  "automatica", si sceglie nell'editor), da spento la card dice "orari non attivi". I sensori numerici mostrano il grafico delle
-  ultime 24 ore: nell'editor lo spegni con l'interruttore "grafico", sulle card singole con
-  "Togli grafico" in modifica. Sempre in modifica ogni card si sposta dentro il suo gruppo
-  (trascinando ⋮⋮ o con ‹ ›), si rinomina solo in HubNEX, diventa larga o piccola, si toglie;
-  *Ordine automatico* rimette l'ordine di partenza. Tutto resta in HubNEX: in Home Assistant non cambia nulla.
-- **Stanza**: toccala per la scheda rapida, **Apri stanza** per tutte le entità divise per
-  tipo. Con più sensori di temperatura scegli quale usare ("temperatura da").
-- **Modifica stanza**: aggiungi **qualsiasi entità** di Home Assistant (anche quelle che Home
-  Assistant nasconde, come i lettori nascosti da Music Assistant), spostando l'area anche in Home
-  Assistant (consigliato) o solo nella plancia; **Togli** la nasconde solo dalla plancia; **Mostra come** cambia il
-  tipo (Luce, Presa / interruttore, Cancello / porta a impulso, Sirena, Solo stato). Per un relè
-  che accende una luce è ancora meglio "Mostra come → Luce" nelle impostazioni dell'entità in
-  Home Assistant: così anche Assist e l'assistente la trattano da luce.
-- **Media**: accendi e spegni, ▶ / ❚❚ e volume.
-- **Telecamere**: le miniature nelle stanze sono **dal vivo** (fino a 3 alla volta, le altre si
-  aggiornano ogni 5 secondi); toccandone una si apre grande, subito dal vivo, e dentro Home
-  Assistant passa al suo video in alta qualità. In una **card composta** con una telecamera e i
-  suoi sensori (un veicolo, una persona, il movimento), i sensori compaiono sopra l'immagine e si
-  accendono in rosso quando scattano. Il pulsante **Telecamere** in alto le mostra tutte.
-- **Allarme**: pulsante in alto con lo stato; In casa / Fuori / Notte e Disinserisci con
-  tastierino per il codice.
-- I comandi della vista Casa vanno diretti a Home Assistant e **non usano credito Claude**.
+- **Namen**: als je een entiteit in Home Assistant **aliassen** hebt gegeven (entiteitsinstellingen →
+  Aliassen), toont HubNEX de eerste; anders de naam van Home Assistant. Bij het zoeken naar entiteiten
+  om toe te voegen tellen alle namen mee.
+- **Energie**: tik op "Energie" in de HUD: er opent een venster. Drie weergaven, één of meer: **de
+  reactor** (de periode verdeeld per tarief rond het vermogen nu, in % van de meter), **de dag** (het
+  vermogen van vandaag, over de tarieven als die er zijn) en **de energierekening** (kosten, schatting
+  voor het einde van de periode in het huidige tempo, vergelijking met de vorige periode). Kies met
+  **Instellen** de weergaven en je sensoren: de tariefperiode (**één tarief**, je eigen sensor met
+  de status F1/F2/F3, of de Italiaanse ARERA-kalender die HubNEX berekent), de kWh van de periode
+  (bijv. de "utility meters" van Home Assistant: het begin van de periode en de vergelijking komen
+  daar vandaan), prijzen of kosten, het vermogen en de grootte van de meter, overige waarden
+  (spanning, arbeidsfactor…). Geen enkele berekening gebruikt AI. Voor Nederland is **één tarief**
+  de logische keuze, eventueel met een eigen sensor voor dal- en normaaltarief.
+- **Personen**: de personen van Home Assistant (Instellingen → Personen, met de telefoon-app of een
+  tracker) staan bovenaan de weergave Thuis: *thuis*, *weg* of de naam van de zone waarin ze zijn.
+- **Tijden en instellingen**: de helpers van Home Assistant kun je gebruiken in de weergave Thuis. Een
+  tijd (`input_datetime`, `time`) wijzig je door op de tijd te tikken of met −15 / +15; getallen met de
+  schuif, lijsten door de optie te kiezen, teksten door te schrijven. Home Assistant slaat de waarde
+  op en je automatiseringen gebruiken hem zoals eerder.
+- **Eigen kaarten**: geef in *Kamer wijzigen* → **+ Nieuwe kaart** een naam, voeg entiteiten toe (ook
+  uit andere kamers), orden ze, kies de **groep** (Klimaat, Lampen…; standaard die van de eerste
+  entiteit) en klein of breed. Voorbeeld: een kaart "Kachel" met zijn aan- en uit-tijden toont ook het
+  tarief over de dag en "aan tot 22:00"; staat de schakelaar die de tijden inschakelt in de kaart
+  (bijv. "automatisch", gekozen in de editor), dan zegt de kaart bij uit "tijden niet actief".
+  Numerieke sensoren tonen de grafiek van de laatste 24 uur: schakel die in de editor uit met de
+  schakelaar "grafiek", bij losse kaarten met "Verberg grafiek" tijdens het bewerken. Tijdens het
+  bewerken verplaatst elke kaart zich binnen zijn groep (slepen ⋮⋮ of met ‹ ›), kan hij alleen in
+  HubNEX worden hernoemd, breed of klein gemaakt, verwijderd; *Automatische volgorde* herstelt de
+  oorspronkelijke volgorde. Alles blijft in HubNEX: er verandert niets in Home Assistant.
+- **Kamer**: tik erop voor de snelle kaart, **Kamer openen** voor al zijn entiteiten gegroepeerd per
+  type. Bij meerdere temperatuursensoren kies je welke gebruikt wordt ("temperatuur van").
+- **Kamer wijzigen**: voeg **elke entiteit** van Home Assistant toe (ook die Home Assistant verbergt,
+  zoals spelers die Music Assistant verbergt), waarbij het gebied ook in Home Assistant wordt
+  verplaatst (aanbevolen) of alleen in het dashboard; **Verwijder** verbergt hem alleen van het
+  dashboard; **Toon als** verandert het type (Licht, Stopcontact / schakelaar, Poort / deur met een
+  impuls, Sirene, Alleen status). Voor een relais dat een lamp voedt is "Toon als → Licht" in de
+  instellingen van de entiteit in Home Assistant nog beter: Assist en de assistent behandelen het dan
+  ook als lamp.
+- **Media**: aan en uit, ▶ / ❚❚ en volume.
+- **Camera's**: de miniaturen in de kamers zijn **live** (maximaal 3 tegelijk, de andere verversen elke
+  5 seconden); tikken op een miniatuur opent hem groot, meteen live, en binnen Home Assistant schakelt
+  hij over op zijn video van hoge kwaliteit. In een **samengestelde kaart** met een camera en zijn
+  sensoren (een voertuig, een persoon, beweging) staan de sensoren over het beeld en lichten ze rood op
+  als ze afgaan. De knop **Camera's** bovenaan toont ze allemaal.
+- **Alarm**: een knop bovenaan met zijn status; Thuis / Weg / Nacht en Uitschakelen met een
+  toetsenbord voor de code.
+- De opdrachten van de weergave Thuis gaan rechtstreeks naar Home Assistant en **gebruiken geen
+  Claude-tegoed**.
 
-## Notifiche della casa
+## Meldingen van het huis
 
-HubNEX controlla la casa da solo e ti avvisa quando qualcosa non va. **Non usa Claude**: sono
-regole fisse sugli stati di Home Assistant, quindi gli avvisi sono immediati e gratis. Si
-configurano in ⚙ Preferenze → **Notifiche della casa**.
+HubNEX bewaakt het huis zelf en waarschuwt je als er iets niet klopt. **Het gebruikt Claude niet**: het
+zijn vaste regels op de toestanden van Home Assistant, dus de waarschuwingen komen direct en kosten
+niets. Stel ze in via ⚙ Voorkeuren → **Meldingen van het huis**.
 
-| Regola | Quando avvisa |
+| Regel | Wanneer hij waarschuwt |
 |---|---|
-| Perdite, fumo, gas | Un sensore di acqua, fumo, gas o monossido scatta: subito, anche nelle ore di silenzio |
-| Finestre aperte | Una finestra resta aperta con il riscaldamento o il condizionatore acceso, o mentre piove |
-| Casa vuota | Tutte le persone sono fuori e una porta, il cancello o una serratura sono aperti. Pulsante **Chiudi** |
-| Consumo alto | La potenza della casa (il sensore scelto in Energia) resta sopra la soglia |
-| Luci accese di notte | Luci ancora accese nella fascia notturna (23:30–06:00 di serie). Pulsante **Spegni** |
-| Batterie scariche | Sensori con la batteria sotto il 15% |
-| Dispositivi non raggiungibili | Dispositivi che non rispondono da più di un'ora |
+| Lekkages, rook, gas | Een water-, rook-, gas- of koolmonoxidesensor gaat af: direct, ook tijdens de stille uren |
+| Ramen open | Een raam blijft open terwijl de verwarming of de airco aan staat, of terwijl het regent |
+| Niemand thuis | Iedereen is weg en een deur, de poort of een slot staat open. Knop **Sluiten** |
+| Hoog verbruik | Het vermogen van het huis (de sensor die bij Energie is gekozen) blijft boven de drempel |
+| Lampen aan in de nacht | Lampen staan nog aan in de nachtelijke uren (standaard 23:30–06:00). Knop **Zet uit** |
+| Lege batterijen | Sensoren met een batterij onder 15% |
+| Apparaten niet bereikbaar | Apparaten die al meer dan een uur niet hebben gereageerd |
 
-**Dove arrivano**, regola per regola:
+**Waar ze aankomen**, per regel:
 
-- **App** di Home Assistant sul telefono: notifica push con i pulsanti. HubNEX trova da solo i
-  telefoni con l'app; puoi escluderne qualcuno. Gli avvisi urgenti arrivano con priorità alta.
-- **Telegram**, nel gruppo di Jarvis, con gli stessi pulsanti.
-- **Home Assistant**: le notifiche nella campanella.
-- **Altoparlanti** (Sonos, Google…): l'avviso viene letto ad alta voce con la sintesi vocale di Home
-  Assistant. È **spento di default**. Accendilo in ⚙ Preferenze → **Notifiche della casa** →
-  **Notifiche a voce**, scegli gli altoparlanti (compaiono tutte le entità `media_player` di Home
-  Assistant), se vuoi il motore vocale e un volume. Poi scegli regola per regola se parla anche
-  (pulsante **Altoparlante** accanto ad App, Telegram e Home Assistant): di default solo **Perdite,
-  fumo, gas**. L'interruttore in alto accende o spegne tutte le notifiche a voce insieme, e **Invia una
-  prova** te le fa ascoltare. Il volume viene impostato prima del messaggio e **non** viene ripristinato
-  dopo; lascialo a 0 per non toccare il volume dell'altoparlante. Le ore di silenzio valgono anche per
-  gli altoparlanti, tranne perdite, fumo e gas. Senza un motore vocale (l'opzione **Voce da Home
-  Assistant** o un'integrazione TTS come Piper o Home Assistant Cloud) non c'è nulla con cui leggere.
+- de Home Assistant-**app** op je telefoon: een pushmelding met de knoppen. HubNEX vindt de telefoons
+  met de app zelf; je kunt er een paar uitsluiten. Dringende waarschuwingen komen met hoge prioriteit.
+- **Telegram**, in de groep van Jarvis, met dezelfde knoppen.
+- **Home Assistant**: de meldingen onder het belletje.
+- **Speakers** (Sonos, Google…): de melding wordt hardop voorgelezen via de tekst-naar-spraak van Home
+  Assistant. Dit staat **standaard uit**. Zet het aan bij ⚙ Voorkeuren → **Meldingen van het huis** →
+  **Gesproken meldingen**, kies de speakers (alle `media_player`-entiteiten van Home Assistant worden
+  getoond), eventueel de spraakengine en een volume. Daarna kies je per regel of hij ook spreekt
+  (knop **Speaker** naast App, Telegram en Home Assistant): standaard alleen
+  **Lekkages, rook, gas**. De schakelaar bovenaan zet alle gesproken meldingen in één keer aan of uit,
+  en **Stuur een test** laat ze horen. Het volume wordt vóór het bericht ingesteld en daarna **niet**
+  teruggezet; laat het op 0 om het volume van de speaker ongemoeid te laten. De stille uren gelden ook
+  voor de speakers, behalve bij lekkages, rook en gas. Zonder spraakengine (optie **Stem van Home
+  Assistant** of een TTS-integratie zoals Piper of Home Assistant Cloud) is er niets om voor te lezen.
 
-Come si comportano:
+Hoe ze zich gedragen:
 
-- ogni regola aspetta che il problema duri qualche minuto (lo scegli tu), così una finestra
-  aperta per un attimo non disturba;
-- avvisa **una volta** per problema; se nel frattempo se ne aggiunge un altro (una seconda
-  finestra) aggiorna l'avviso;
-- quando il problema si risolve, la notifica sul telefono e nella campanella **sparisce da
-  sola**, e su Telegram spariscono i pulsanti;
-- nelle **ore di silenzio** gli avvisi aspettano la fine della fascia (tranne perdite, fumo e
+- elke regel wacht tot het probleem een paar minuten duurt (jij kiest hoeveel), zodat een raam dat
+  even open stond je niet lastigvalt;
+- hij waarschuwt **één keer** per probleem; komt er intussen een ander bij (een tweede raam), dan
+  werkt hij de waarschuwing bij;
+- als het probleem is opgelost, **verdwijnt** de melding op de telefoon en onder het belletje **vanzelf**
+  en verdwijnen op Telegram de knoppen;
+- in de **stille uren** wachten waarschuwingen tot het einde van het blok (behalve lekkages, rook en
   gas);
-- **agisce solo se premi un pulsante** della notifica. Senza il tuo tocco non cambia nulla.
+- **hij onderneemt alleen actie als je op een knop in de melding drukt**. Zonder jouw tik verandert er
+  niets.
 
-In ogni regola, «Controlla N di N» elenca le entità che guarda: togli la spunta a quelle da
-ignorare (per esempio un sensore di umidità del terreno visto come perdita d'acqua). **Invia una
-prova** manda una notifica su tutti i canali in uso.
+Bij elke regel somt «Bewaakt N van N» de entiteiten op waar hij naar kijkt: vink die uit om ze te
+negeren (bijvoorbeeld een bodemvochtsensor die als waterlek wordt gezien). **Stuur een test** stuurt
+een melding op elk gebruikt kanaal.
 
-## Mappa neurale
+## Neurale kaart
 
-Il pulsante **✺ Mappa** mostra la "mente" del team in 3D: l'assistente al centro, aziende,
-reparti e agenti, e intorno tutto ciò che il team sa (memorie, compiti, scadenze, bozze),
-collegato a chi l'ha prodotto e alle parole chiave in comune. Cerca un nome per evidenziare
-tutto quello che lo riguarda.
+De knop **✺ Kaart** toont de "geest" van het team in 3D: de assistent in het midden, bedrijven,
+afdelingen en agents, en eromheen alles wat het team weet (herinneringen, taken, deadlines, concepten),
+gekoppeld aan wie het heeft gemaakt en aan de trefwoorden die ze delen. Zoek een naam om alles
+erover te markeren.
 
-## Niente iniziative senza il tuo ordine
+## Geen initiatief zonder jouw opdracht
 
-- Le routine sono spente finché non scrivi `enabled: true`. Anche accese, **non possono
-  cambiare nulla in casa**, e lo stesso vale per gli eventi delle automazioni: guardano e ti
-  scrivono cosa propongono.
-- Gli agenti fanno solo il compito ricevuto; il resto lo propongono.
-- Le modifiche ai programmi collegati e le email partono solo dopo la tua conferma.
-- **Le tue regole**: quando dici all'assistente qualcosa che deve valere sempre ("non fare
-  mai…", "d'ora in poi…"), la salva come regola per **tutto** il team. `/regole` le elenca.
+- Routines staan uit totdat je `enabled: true` schrijft. Zelfs als ze aan staan, **kunnen ze niets in
+  huis veranderen**, en hetzelfde geldt voor gebeurtenissen van automatiseringen: ze kijken en
+  schrijven je wat ze voorstellen.
+- Agents doen alleen de taak die ze hebben gekregen; de rest stellen ze voor.
+- Wijzigingen in gekoppelde programma's en e-mails gaan pas uit na jouw bevestiging.
+- **Jouw regels**: als je de assistent iets zegt dat altijd moet gelden ("doe nooit…", "vanaf nu…"),
+  slaat hij het op als regel voor het **hele** team. `/regole` toont ze.
 
-## Usarla fuori da Home Assistant
+## Gebruik buiten Home Assistant
 
-**Con Nabu Casa** (consigliato): apri HubNEX dalla barra laterale, copia l'indirizzo e
-aggiungilo alla schermata Home del telefono.
+**Met Nabu Casa** (aanbevolen): open HubNEX in de zijbalk, kopieer het adres en voeg het toe aan het
+beginscherm van de telefoon.
 
-**Solo in rete locale**: imposta un **Token HQ**, scrivi `8765` nella porta (Configurazione →
-Rete), riavvia e apri `http://IP-DI-HOME-ASSISTANT:8765`. Puoi installarla come app dal menu del
-browser.
+**Alleen lokaal netwerk**: stel een **HQ-token** in, schrijf `8765` bij de poort (Configuratie →
+Netwerk), start opnieuw op en open `http://IP-VAN-HOME-ASSISTANT:8765`. Je kunt het als app
+installeren via het menu van de browser.
 
-**Aprire HubNEX all'avvio di Home Assistant**: dentro Home Assistant, in alto **⚙** →
-interruttore. Vale solo per il tuo account; gli altri utenti restano sulla loro plancia.
+**Open HubNEX zodra Home Assistant start**: binnen Home Assistant, bovenaan **⚙** → de schakelaar. Het
+geldt alleen voor jouw account; de andere gebruikers houden hun dashboard.
 
-**Lingua**: la dashboard è in italiano o in inglese, secondo la lingua di Home Assistant di chi
-la apre (non italiano = inglese). In alto **⚙ → Lingua** si sceglie a mano, solo per quel
-browser. Jarvis, gli agenti, Telegram e i messaggi dell'add-on seguono l'opzione **Lingua**
-nella configurazione (auto = quella di Home Assistant).
+**Taal**: het dashboard is in het Italiaans, Nederlands of Engels, volgens de Home Assistant-taal van
+wie het opent (andere talen = Engels). Bovenaan kiest **⚙ → Taal** hem met de hand, alleen voor die
+browser. Jarvis, de agents, Telegram en de berichten van de add-on volgen de optie **Taal** van de
+configuratie (auto = die van Home Assistant).
 
-**Solo la Casa, per chi vuole solo accendere una luce**: in alto **⚙** → spegni **Schede HQ e
-Mappa** (HubNEX apre direttamente la Casa) e/o **Assistente AI** (spariscono chat, voce e
-approvazioni: nessun credito Claude). Dentro Home Assistant la scelta è salvata con l'account
-di chi è collegato e vale su tutti i suoi dispositivi; fuori resta nel browser. È una comodità,
-non un blocco: chiunque può riaccenderle dallo stesso menu.
+**Alleen Thuis, voor wie alleen een lamp wil aandoen**: bovenaan **⚙** → zet **Tabbladen HQ en Kaart**
+uit (HubNEX opent direct op de weergave Thuis) en/of **AI-assistent** (chat, spraak en goedkeuringen
+verdwijnen: geen Claude-tegoed). Binnen Home Assistant wordt de keuze bewaard bij het account van wie
+is ingelogd en geldt hij op al zijn apparaten; daarbuiten blijft hij in de browser. Het is een gemak,
+geen slot: iedereen kan ze via hetzelfde menu weer aanzetten.
 
-**Utenti non amministratori**: HubNEX compare nella barra laterale di **tutti** gli utenti di
-Home Assistant. Chi non è amministratore ha solo la **Casa**: luci, clima, tapparelle, scene,
-telecamere e allarme (con codice), come in Home Assistant. Non vede l'assistente, la posta, gli
-agenti, l'attività e i costi, e non può modificare piantina e stanze. Il controllo lo fa l'add-on
-a ogni richiesta, non solo l'interfaccia. Per dare tutto anche a loro: opzione
-**Utenti non amministratori → completo**.
+**Gebruikers zonder beheerdersrechten**: HubNEX staat in de zijbalk van **alle** gebruikers van Home
+Assistant. Wie geen beheerder is, krijgt alleen de weergave **Thuis**: lampen, klimaat, rolluiken,
+scènes, camera's en alarm (met de code), zoals in Home Assistant. Zij zien de assistent, mail, agents,
+activiteit of kosten niet en kunnen de plattegrond of de kamers niet wijzigen. De add-on controleert dat
+bij elk verzoek, niet alleen in de interface. Om ze alles te geven: optie **Gebruikers zonder
+beheerdersrechten → completo** (volledig).
 
-## Eventi dalle automazioni
+## Gebeurtenissen van automatiseringen
 
-Le automazioni possono passare un evento all'assistente, che ti scrive cosa propone. Con un
-**Token HQ**, in `configuration.yaml`:
+Automatiseringen kunnen een gebeurtenis aan de assistent doorgeven, die je schrijft wat hij voorstelt.
+Met een **HQ-token**, in `configuration.yaml`:
 
 ```yaml
 rest_command:
   hubnex_event:
-    url: "http://<hostname dell'add-on>:8765/api/ha/event"
+    url: "http://<hostnaam van de add-on>:8765/api/ha/event"
     method: POST
     headers:
-      Authorization: "Bearer IL_TUO_TOKEN_HQ"
+      Authorization: "Bearer JOUW_HQ_TOKEN"
     content_type: "application/json"
     payload: '{"message": "{{ message }}"}'
 ```
 
-## Sicurezza
+## Beveiliging
 
-- Dalla barra laterale accedi solo tu, perché passi dal login di Home Assistant.
-- La porta 8765 è chiusa di default; se la apri serve il **Token HQ**.
-- I servizi in **Servizi HA bloccati** (serrature, disinserimento allarme) l'assistente non li
-  chiama mai da solo; dalla plancia puoi farlo tu, con conferma o codice.
-- Le chiavi stanno solo nella configurazione dell'add-on e in `agents.yaml`, sul tuo Home
-  Assistant.
+- Vanuit de zijbalk kom alleen jij binnen, via de login van Home Assistant.
+- Poort 8765 is standaard dicht; als je hem opent, is het **HQ-token** nodig.
+- De diensten bij **Geblokkeerde HA-diensten** (sloten, het alarm uitschakelen) roept de assistent
+  nooit zelf aan; vanuit het dashboard kun je dat wel doen, met een bevestiging of de code.
+- De sleutels staan alleen in de configuratie van de add-on en in `agents.yaml`, op je Home Assistant.
 
-## Altri fornitori AI: OpenAI e modelli locali
+**Goed om te weten (beperkingen):**
 
-Claude resta il consigliato, ma Jarvis e ogni agente possono usare anche **OpenAI** o un
-**modello locale** (Ollama, LM Studio), gratis e senza cloud. Il modello si sceglie per nome,
-con il prefisso del fornitore:
+- **De blokkade werkt op de exacte naam van de dienst** (`lock.unlock`, `lock.open`,
+  `alarm_control_panel.alarm_disarm`). Een script, scène of automatisering in Home Assistant die iets
+  ontgrendelt, valt er dus niet onder. De assistent mag scripts wel starten (`script.turn_on`).
+  Voeg gevoelige diensten toe aan **Geblokkeerde HA-diensten**, bijvoorbeeld `cover.open_cover` als je
+  een garagedeur of poort als `cover` hebt, en geef in de assistent geen scripts door die sloten
+  bedienen. Opdrachten over deuren, sloten en het alarm worden bovendien
+  herkend aan trefwoorden (Italiaans, Nederlands en Engels) en gaan niet via de snelle route maar via
+  Jarvis, die om bevestiging vraagt. Dat is een vangnet op woorden, geen garantie: een omschrijving
+  zonder die woorden kan erdoorheen glippen.
+- **Wat de assistent leest, zijn gegevens, geen opdrachten** (e-mails, websites, bijlagen), en dat
+  staat ook in zijn instructies. Een slimme afzender kan zo'n instructie toch proberen te verstoppen.
+  Daarom hebben de standaardagents de taken verdeeld: de mailagent heeft geen toegang tot Home
+  Assistant, en e-mails gaan alleen uit na jouw goedkeuring. Geef een agent die mail of het web leest
+  niet ook `ha_call_service`.
+- **Privacy:** je berichten, bijlagen en de toestand van de apparaten die de assistent nodig heeft
+  gaan naar de Anthropic API; spraakberichten naar ElevenLabs, en alle Telegram-berichten via
+  Telegram. Een volledig lokale opstelling is dit dus niet.
+- De add-on mag de hele configuratiemap van Home Assistant beschrijven (alleen om de Assist-integratie
+  in `custom_components/hubnex` te installeren). Zet **Assist-integratie** uit als je dat liever zelf
+  doet.
+- De back-up bevat `agents.yaml` en dus ook eventuele MCP-tokens: bewaar hem als een wachtwoord.
 
-| Scrivi | Fornitore | Opzioni da compilare |
+## Andere AI-aanbieders: OpenAI en lokale modellen
+
+Claude blijft de aanbevolen keuze, maar Jarvis en elke agent kunnen ook **OpenAI** of een **lokaal
+model** (Ollama, LM Studio) gebruiken, gratis en zonder cloud. Je kiest het model op naam, met het
+voorvoegsel van de aanbieder:
+
+| Schrijf | Aanbieder | In te vullen opties |
 |---|---|---|
-| `claude-sonnet-5-5` | Anthropic (come prima) | Chiave API Anthropic |
-| `openai:gpt-5-mini` | OpenAI | Chiave API OpenAI |
-| `ollama:qwen3:14b` | Ollama, sul tuo computer o server | Indirizzo di Ollama, es. `http://192.168.1.20:11434` |
-| `compat:nome-modello` | Qualsiasi servizio compatibile con OpenAI: LM Studio, OpenRouter, Gemini, Mistral, DeepSeek, Groq | Indirizzo (fino a `/v1`) e, se serve, chiave |
+| `claude-sonnet-5-5` | Anthropic (zoals eerder) | Anthropic API-sleutel |
+| `openai:gpt-5-mini` | OpenAI | OpenAI API-sleutel |
+| `ollama:qwen3:14b` | Ollama, op je computer of server | Ollama-adres, bijv. `http://192.168.1.20:11434` |
+| `compat:modelnaam` | Elke OpenAI-compatibele dienst: LM Studio, OpenRouter, Gemini, Mistral, DeepSeek, Groq | Adres (tot `/v1`) en, indien nodig, sleutel |
 
-Si scrive in **Modello di Jarvis**, **Modello di Jarvis Mail** e **Modello per i comandi
-rapidi**, oppure per un singolo agente in `agents.yaml` con `model: ollama:qwen3:14b`. Si
-possono mescolare: per esempio Jarvis su Claude e la posta su un modello locale gratuito. Se
-usi solo altri fornitori, la chiave Anthropic può restare vuota.
+Schrijf het bij **Model van Jarvis**, **Model van Jarvis Mail** en **Model voor snelle opdrachten**, of
+voor één agent in `agents.yaml` met `model: ollama:qwen3:14b`. Je kunt ze combineren: bijvoorbeeld
+Jarvis op Claude en de mail op een gratis lokaal model. Gebruik je alleen andere aanbieders, dan mag de
+Anthropic-sleutel leeg blijven.
 
-Esempi di indirizzi per `compat`:
+Adressen voor `compat`, bijvoorbeeld:
 
-- LM Studio: `http://IP-DEL-PC:1234/v1`
-- OpenRouter: `https://openrouter.ai/api/v1` (modelli come `compat:openai/gpt-5-mini`)
-- Gemini: `https://generativelanguage.googleapis.com/v1beta/openai` (modelli come `compat:gemini-2.5-flash`)
+- LM Studio: `http://PC-IP:1234/v1`
+- OpenRouter: `https://openrouter.ai/api/v1` (modellen zoals `compat:openai/gpt-5-mini`)
+- Gemini: `https://generativelanguage.googleapis.com/v1beta/openai` (modellen zoals `compat:gemini-2.5-flash`)
 
-**Cosa cambia rispetto a Claude**
+**Wat verandert ten opzichte van Claude**
 
-- La **ricerca web** c'è solo con Claude. La **lettura di una pagina** da un link (`web_fetch`)
-  la fa HubNEX stesso e funziona con tutti, solo su indirizzi pubblici.
-- Le **foto** arrivano ai modelli che le vedono; i **PDF** arrivano come testo.
-- I **pensieri** di Jarvis nella vista 3D compaiono solo con Claude.
-- **Spesa**: i modelli di Ollama costano zero. Per quelli `openai` e `compat` scrivi il prezzo
-  del listino in **Prezzo input/output altri modelli** ($ per milione di token), altrimenti non
-  vengono contati. Il **credito Anthropic** scala solo le chiamate a Claude.
-- **Qualità**: Jarvis usa molti strumenti (casa, memoria, team). I modelli locali piccoli li
-  usano peggio: per un uso vero servono modelli da almeno 14 miliardi di parametri che
-  supportano gli strumenti (qwen3, llama3.1, mistral-small). Con quelli più piccoli, meglio
-  affidargli solo agenti semplici, come la posta.
+- **Zoeken op het web** bestaat alleen met Claude. **Een pagina lezen** vanaf een link (`web_fetch`)
+  doet HubNEX zelf en werkt met alle modellen, alleen voor openbare adressen.
+- **Foto's** komen aan bij de modellen die ze kunnen zien; **pdf's** komen aan als tekst.
+- De **gedachten** van Jarvis in de 3D-weergave verschijnen alleen met Claude.
+- **Uitgaven**: Ollama-modellen kosten niets. Voor `openai`- en `compat`-modellen vul je de
+  catalogusprijs in bij **Invoer-/uitvoerprijs van andere modellen** ($ per miljoen tokens), anders
+  worden ze niet meegeteld. Het **Anthropic-tegoed** telt alleen de aanroepen van Claude af.
+- **Kwaliteit**: Jarvis gebruikt veel tools (huis, geheugen, team). Kleine lokale modellen gebruiken ze
+  slechter: voor echt gebruik heb je modellen van minstens 14 miljard parameters nodig die tools
+  ondersteunen (qwen3, llama3.1, mistral-small). Geef kleinere modellen alleen eenvoudige agents, zoals
+  de mail.
+- **Privacy en veiligheid**: de prompts, de toestand van je huis en bijlagen gaan naar de gekozen
+  aanbieder (bij Ollama op je eigen netwerk blijft het lokaal). Zwakkere modellen laten zich
+  gemakkelijker door tekst in mail of webpagina's sturen: geef een agent met een klein model dan nooit
+  `ha_call_service`.
 
-## Credito Anthropic
+## Anthropic-tegoed
 
-Il riquadro **Credito Claude** è una **stima**: in `anthropic_credit_usd` scrivi il saldo che
-vedi su console.anthropic.com → Billing e HubNEX scala il costo di ogni richiesta. Sotto 1 $
-ricevi un avviso. Con `0` vedi solo quanto hai speso.
+De tegel **Claude-tegoed** is een **schatting**: schrijf in `anthropic_credit_usd` het saldo dat je ziet
+op console.anthropic.com → Billing en HubNEX trekt de kosten van elk verzoek ervan af. Onder de $1
+krijg je een waarschuwing. Met `0` zie je alleen hoeveel je hebt uitgegeven.
 
-### Storico della spesa
+### Uitgavengeschiedenis
 
-Clic sul riquadro **Spesa/Credito Claude** in HQ (sul telefono: ⚙ Preferenze → **Spesa Claude**)
-per aprire lo storico:
+Klik in HQ op de tegel **Uitgaven/tegoed Claude** (op de telefoon: ⚙ Voorkeuren → **Uitgaven Claude**)
+om de geschiedenis te openen:
 
-- **oggi**, **questo mese** e la **stima a fine mese**, calcolata sul ritmo dei giorni passati;
-- una barra per giorno negli ultimi 7, 30 o 90 giorni (passaci sopra per cifra e chiamate);
-- la spesa **per agente** (Jarvis, Jarvis Mail, gli agenti del team, la proposta della
-  piantina) e **per modello** (Sonnet, Haiku…), con le chiamate e i token.
+- **vandaag**, **deze maand** en de **schatting voor het einde van de maand**, gebaseerd op het
+  tempo van de afgelopen dagen;
+- één balk per dag over de laatste 7, 30 of 90 dagen (wijs aan voor het bedrag en de aanroepen);
+- de uitgaven **per agent** (Jarvis, Jarvis Mail, de agents van het team, het plattegrondvoorstel) en
+  **per model** (Sonnet, Haiku…), met aanroepen en tokens.
 
-Con `monthly_budget_usd` imposti un budget mensile: all'80% e al 100% ricevi un avviso nel
-gruppo Telegram e nelle notifiche di Home Assistant, e nel popup compare la barra del budget.
-È solo un avviso: HubNEX non si ferma. Lo storico parte dall'installazione di questa versione
-ed è incluso nel backup.
+Met `monthly_budget_usd` stel je een maandbudget in: bij 80% en 100% krijg je een waarschuwing in de
+Telegram-groep en in de meldingen van Home Assistant, en toont het venster de budgetbalk. Het is
+alleen een waarschuwing: HubNEX stopt niet. De geschiedenis begint zodra je deze versie installeert en
+zit in de back-up.
 
-Le cifre sono la stima di HubNEX con i prezzi di listino di ogni chiamata: il conto esatto è su
-console.anthropic.com.
+De bedragen zijn de schatting van HubNEX tegen catalogusprijzen voor elke aanroep: de exacte rekening
+staat op console.anthropic.com.
 
-Per spendere poco: l'agente della posta usa il modello economico; con Assist i comandi semplici
-li fa Home Assistant; le routine e le ricerche web consumano, usale quando servono. In
-`agents.yaml`, per Jarvis e per ogni agente:
+Om weinig uit te geven: de mailagent gebruikt het goedkope model; bij Assist voert Home Assistant
+eenvoudige opdrachten uit; routines en zoekopdrachten op het web kosten tegoed, gebruik ze als het
+nodig is. Stel in `agents.yaml`, voor Jarvis en voor elke agent, in:
 
-- `effort: medium` invece di `high`: ragiona ancora, ma si dilunga meno;
-- `max_searches: 3`: al massimo 3 ricerche web per richiesta invece di 5. Ogni ricerca porta
-  dentro pagine di risultati, che poi vengono rilette a ogni passaggio;
-- quando cambi argomento in chat, chiudi la conversazione (×): le domande nuove non si
-  trascinano dietro gli ultimi scambi.
+- `effort: medium` in plaats van `high`: hij redeneert nog steeds, maar korter;
+- `max_searches: 3`: hooguit 3 zoekopdrachten op het web per verzoek in plaats van 5. Elke zoekopdracht
+  brengt resultaatpagina's binnen, die bij elke stap opnieuw worden gelezen;
+- sluit het gesprek (×) als je in de chat van onderwerp verandert: nieuwe vragen slepen dan de laatste
+  uitwisselingen niet mee.
 
-## Dati e backup
+## Gegevens en back-up
 
-Memoria, scadenze, bozze, regole e cronologia sono in `/data/hubnex.db`; `agents.yaml` e
-`casa.yaml` nella cartella di configurazione dell'add-on. Finiscono tutti nei backup di Home
-Assistant.
+Geheugen, deadlines, concepten, regels en geschiedenis staan in `/data/hubnex.db`; `agents.yaml` en
+`casa.yaml` in de configuratiemap van de add-on. Ze zitten allemaal in de back-ups van Home Assistant.
 
-### Backup di HubNEX e trasferimento su un'altra installazione
+### HubNEX-back-up en verhuizen naar een andere installatie
 
-Da **⚙ Preferenze → Backup → Scarica** ottieni un unico file `.zip` con tutto ciò che HubNEX
-sa: memoria e mappa neurale, scadenze, chat, impostazioni della Casa (card, nomi, ordine,
-energia), piantina con le sue immagini e `agents.yaml`. Le opzioni dell'add-on (chiave Anthropic,
-Telegram, posta) **non** sono incluse; `agents.yaml` sì, con gli eventuali token dei connettori
-MCP: custodisci il file come una password. Solo per gli amministratori.
+**⚙ Voorkeuren → Back-up → Download** geeft je één `.zip`-bestand met alles wat HubNEX weet:
+geheugen en neurale kaart, deadlines, chat, instellingen van de weergave Thuis (kaarten, namen,
+volgorde, energie), de plattegrond met zijn afbeeldingen en `agents.yaml`. De opties van de add-on
+(Anthropic-sleutel, Telegram, mail) zitten er **niet** in; `agents.yaml` wel, met eventuele tokens van
+MCP-connectors: bewaar het bestand als een wachtwoord. Alleen voor beheerders.
 
-**Ripristina → Carica…** su un'altra installazione mette tutto al suo posto e riavvia HubNEX.
-I file che sostituisce restano accanto con il suffisso `.prima-del-ripristino`.
+**Herstel → Uploaden…** op een andere installatie zet alles op zijn plaats en start HubNEX opnieuw op.
+De bestanden die het vervangt, blijven ernaast staan met het achtervoegsel `.prima-del-ripristino`.
 
-Per passare da una copia locale (`/addons/local`) all'add-on del repository:
+Verhuizen van een lokale kopie (`/addons/local`) naar de add-on uit de repository:
 
-1. Nella copia locale: **Preferenze → Backup → Scarica**.
-2. Nella pagina dell'add-on locale: **Configurazione → ⋮ → Modifica in YAML**, copia tutto
-   (sono le tue opzioni e chiavi) e **arresta** l'add-on locale.
-3. Installa HubNEX dal repository, apri **Configurazione → ⋮ → Modifica in YAML**, incolla,
-   salva e avvia.
-4. Apri HubNEX: **Preferenze → Ripristina → Carica…** e scegli il backup. HubNEX si riavvia
-   con i tuoi dati.
-5. Assist: in **Dispositivi e servizi** elimina la vecchia integrazione HubNEX, poi
-   **riavvia l'add-on HubNEX**: compare "HubNEX rilevato", premi *Configura* (nessun token da
-   inserire).
-6. Quando tutto funziona, disinstalla l'add-on locale.
+1. In de lokale kopie: **Voorkeuren → Back-up → Download**.
+2. Op de pagina van de lokale add-on: **Configuratie → ⋮ → Bewerken in YAML**, kopieer alles (je
+   opties en sleutels) en **stop** de lokale add-on.
+3. Installeer HubNEX uit de repository, open **Configuratie → ⋮ → Bewerken in YAML**, plak, sla op
+   en start.
+4. Open HubNEX: **Voorkeuren → Herstel → Uploaden…** en kies de back-up. HubNEX start opnieuw op met
+   je gegevens.
+5. Assist: verwijder in **Apparaten & diensten** de oude HubNEX-integratie en **start daarna de
+   HubNEX-add-on opnieuw op**: "HubNEX ontdekt" verschijnt, druk op *Instellen* (geen token invullen).
+6. Als alles werkt, verwijder je de lokale add-on.

@@ -67,7 +67,7 @@ configuration:
     name: Mailcontrole (minuten)
   notify_min_priority:
     name: Melden vanaf prioriteit
-    description: bassa = laag, media = gemiddeld, alta = hoog.
+    description: "laag, gemiddeld of hoog: vanaf welke prioriteit nieuwe e-mails in Telegram worden gemeld."
   mail_ignore:
     name: Afzenders die niet gemeld worden
     description: Gescheiden door komma's. Een adres (aanbiedingen@winkel.nl), een domein (@nieuwsbrief.nl) of een woord uit het adres (noreply). Hun e-mails blijven in de mailbox, maar er komt geen Telegram-bericht.
@@ -88,10 +88,10 @@ configuration:
     description: De naam van de stem die bij de engine hierboven hoort (bijv. Colette of Fenna). Leeg = de standaardstem. De taal is die van Home Assistant.
   language:
     name: Taal
-    description: auto = die van Home Assistant; it = Italiaans; en = Engels; nl = Nederlands. Gebruikt door de assistent, de agents, Telegram en de berichten van de add-on; het dashboard volgt de taal van wie het opent.
+    description: "nl = Nederlands (standaard); auto = die van Home Assistant; en = Engels; it = Italiaans. Gebruikt door de assistent, de agents, Telegram en de berichten van de add-on; het dashboard volgt de taal van wie het opent. Je kunt dit ook in het dashboard kiezen onder Voorkeuren → Instellingen."
   voice_answers:
     name: Gesproken antwoorden
-    description: completa = de stem leest het hele antwoord voor; riassunto = bij lange antwoorden zegt de stem alleen de kern in een of twee zinnen, de geschreven tekst blijft compleet.
+    description: "volledig = de stem leest het hele antwoord voor; samenvatting = bij lange antwoorden zegt de stem alleen de kern in een of twee zinnen, de geschreven tekst blijft compleet."
   ha_blocked_services:
     name: Geblokkeerde HA-diensten
     description: Gescheiden door komma's. Diensten die Jarvis nooit zelf mag aanroepen, bijvoorbeeld sloten ontgrendelen of het alarm uitschakelen. Scripts en automatiseringen vallen hier niet onder, bedenk dat dus bij wat je blootstelt.
@@ -103,6 +103,6 @@ configuration:
     description: Installeer en werk de integratie bij waarmee Jarvis een gespreksagent van Assist wordt.
   non_admin_access:
     name: Gebruikers zonder beheerdersrechten
-    description: "casa: Home Assistant-gebruikers die geen beheerder zijn, krijgen alleen de weergave van het huis (geen assistent, e-mail, agents of wijzigingen aan de plattegrond). completo: ze krijgen alles, net als een beheerder."
+    description: "huis: Home Assistant-gebruikers die geen beheerder zijn, krijgen alleen de weergave van het huis (geen assistent, e-mail, agents of wijzigingen aan de plattegrond). volledig: ze krijgen alles, net als een beheerder."
 network:
   8765/tcp: Dashboard en API (optioneel, vereist het HQ-token)

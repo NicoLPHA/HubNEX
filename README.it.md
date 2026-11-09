@@ -37,7 +37,7 @@ suo ruolo: posta, amministrazione, ricerche tecniche, casa, sicurezza… Gli par
    attiva **Mostra nella barra laterale**.
 
 La guida completa (team, connettori, voce, Telegram, posta, vista Casa) è in
-[`hubnex/DOCS.md`](hubnex/DOCS.md), visibile anche nella scheda **Documentazione** dell'add-on.
+[`hubnex/DOCS.it.md`](hubnex/DOCS.it.md) (la scheda **Documentazione** dell'add-on mostra la versione olandese, [`hubnex/DOCS.md`](hubnex/DOCS.md)).
 
 Serve un account Anthropic con credito: HubNEX usa Claude Sonnet per l'assistente e gli agenti e
 Claude Haiku per la posta. I comandi della vista Casa e, con Assist, i comandi semplici di Home

@@ -75,7 +75,7 @@ configuration:
     name: Controllo posta (minuti)
   notify_min_priority:
     name: Avvisami da priorità
-    description: bassa, media (consigliato) o alta.
+    description: "laag = bassa, gemiddeld = media, hoog = alta: da quale priorità le nuove email vengono annunciate su Telegram."
   mail_ignore:
     name: Mittenti da non segnalare
     description: Separati da virgola. Un indirizzo (offerte@negozio.it), un dominio (@newsletter.it) o una parola dell'indirizzo (noreply). Le loro email restano nella casella, ma niente messaggio su Telegram.
@@ -98,10 +98,10 @@ configuration:
     description: Il nome della voce da usare con il motore qui sopra, per esempio Rinaldo o Diego per Home Assistant Cloud. Vuoto = la voce predefinita. La lingua è quella di Home Assistant.
   language:
     name: Lingua
-    description: auto = quella di Home Assistant; it = italiano; en = inglese. Vale per l'assistente, gli agenti, Telegram e i messaggi dell'add-on; la dashboard segue la lingua di chi la apre.
+    description: "nl = olandese (predefinito); auto = quella di Home Assistant; en = inglese; it = italiano. Usata dall'assistente, dagli agenti, da Telegram e dai messaggi dell'add-on; la plancia segue la lingua di chi la apre. Puoi sceglierla anche nella plancia in Preferenze → Impostazioni."
   voice_answers:
     name: Risposte a voce
-    description: completa = la voce legge tutta la risposta; riassunto = per le risposte lunghe la voce dice solo il succo in una o due frasi, il testo scritto resta completo (dashboard e vocali Telegram).
+    description: "volledig = completa: la voce legge tutta la risposta; samenvatting = riassunto: per le risposte lunghe la voce dice solo il succo in una o due frasi, il testo scritto resta completo."
   ha_blocked_services:
     name: Servizi HA bloccati
     description: Servizi che Jarvis non può mai chiamare da solo, separati da virgola.
@@ -113,6 +113,6 @@ configuration:
     description: Installa e aggiorna l'integrazione che rende Jarvis l'agente di conversazione di Assist (voce da app di HA e speaker).
   non_admin_access:
     name: Utenti non amministratori
-    description: "casa: gli utenti di Home Assistant che non sono amministratori vedono solo la Casa (niente assistente, posta, agenti, modifiche alla piantina). completo: vedono tutto come un amministratore."
+    description: "huis = casa: gli utenti di Home Assistant che non sono amministratori ottengono solo la vista della casa (niente assistente, posta, agenti o modifiche alla piantina). volledig = completo: ottengono tutto, come un amministratore."
 network:
   8765/tcp: Dashboard e API (facoltativa, richiede il token HQ)

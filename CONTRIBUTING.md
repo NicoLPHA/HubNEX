@@ -56,7 +56,7 @@ solo con tutto verde.
 
 1. Apri prima una segnalazione o un'idea, così ne parliamo.
 2. Fai un fork, un ramo con un nome chiaro, la modifica con i suoi test.
-3. Aggiorna `hubnex/CHANGELOG.md` e, se cambia il comportamento, `hubnex/DOCS.md`.
+3. Aggiorna `hubnex/CHANGELOG.md` e, se cambia il comportamento, `hubnex/DOCS.md` (Nederlands, getoond in de add-on) en `DOCS.it.md` / `DOCS.en.md`.
 4. Apri la pull request: descrivi cosa cambia per chi usa HubNEX.
 
 La versione in `hubnex/config.yaml` la aggiorna chi pubblica: ogni nuova versione costruisce le

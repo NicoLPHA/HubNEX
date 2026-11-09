@@ -68,6 +68,7 @@ configuration:
     name: Mail check (minutes)
   notify_min_priority:
     name: Notify from priority
+    description: "laag = low, gemiddeld = medium, hoog = high: from which priority new emails are announced on Telegram."
   mail_ignore:
     name: Senders not to announce
     description: Comma separated. An address (offers@shop.com), a domain (@newsletter.com) or a word of the address (noreply). Their emails stay in the mailbox, but no Telegram message.
@@ -88,10 +89,10 @@ configuration:
     description: The name of the voice to use with the engine above (e.g. Rinaldo or Diego for Home Assistant Cloud). Empty = its default voice. The language is Home Assistant's.
   language:
     name: Language
-    description: auto = Home Assistant's; it = Italian; en = English. Used by the assistant, the agents, Telegram and the add-on's messages; the dashboard follows the language of whoever opens it.
+    description: "nl = Dutch (default); auto = Home Assistant's; en = English; it = Italian. Used by the assistant, the agents, Telegram and the add-on's messages; the dashboard follows the language of whoever opens it. You can also choose it in the dashboard under Preferences → Settings."
   voice_answers:
     name: Spoken answers
-    description: completa = the voice reads the whole answer; riassunto = for long answers the voice says only the gist in one or two sentences, the written text stays complete.
+    description: "volledig = the voice reads the whole answer; samenvatting = for long answers the voice says only the gist in one or two sentences, the written text stays complete."
   ha_blocked_services:
     name: Blocked HA services
   calendar_entities:
@@ -102,6 +103,6 @@ configuration:
     description: Install and update the integration that makes Jarvis an Assist conversation agent.
   non_admin_access:
     name: Non-admin users
-    description: "casa: Home Assistant users who are not administrators only get the house view (no assistant, mail, agents or floor plan changes). completo: they get everything, like an administrator."
+    description: "huis = home: Home Assistant users who are not administrators only get the house view (no assistant, mail, agents or floor plan changes). volledig = full: they get everything, like an administrator."
 network:
   8765/tcp: Dashboard and API (optional, requires the HQ token)

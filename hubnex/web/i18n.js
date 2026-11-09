@@ -9,14 +9,14 @@ const DICTS = { en: EN, nl: NL };
 const LOCALES = { it: "it-IT", en: "en-GB", nl: "nl-NL" };
 
 // Chosen once, before anything is drawn: the viewer's preference, else the language of their
-// Home Assistant (the page runs inside it), else the browser's. Italian and Dutch have their own
-// texts; any other language means English.
+// Home Assistant (the page runs inside it), else Dutch. Italian and Dutch have their own texts;
+// any other Home Assistant language means English.
 function pick() {
   let lang = "";
   try { lang = localStorage.getItem("hq_lang") || ""; } catch {}
   if (!LANGS[lang]) {
     try { lang = window.parent.document.querySelector("home-assistant")?.hass?.language || ""; } catch {}
-    lang = lang || navigator.language || "it";
+    lang = lang || "nl";
   }
   const code = String(lang).toLowerCase();
   return code.startsWith("it") ? "it" : code.startsWith("nl") ? "nl" : "en";
