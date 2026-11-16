@@ -454,6 +454,34 @@ test("telecamere dentro Home Assistant: miniature col suo video, vista grande su
   await page.close();
 });
 
+test("tema: chiaro per la Casa al sole, HQ resta scuro, la scelta resta sul dispositivo", { timeout: 30000 }, async () => {
+  const page = await open({ width: 390, height: 844 });
+  const light = async () => { await page.waitForTimeout(150); return page.evaluate(() => document.documentElement.classList.contains("light")); };
+  await page.emulateMedia({ colorScheme: "dark" });
+  await casa(page);
+  assert.equal(await light(), false); // automatic: the phone is dark
+  await page.emulateMedia({ colorScheme: "light" });
+  assert.equal(await light(), true); // ...and follows it when it turns light
+  assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(238, 242, 246)");
+  await page.click("#view-hq");
+  assert.equal(await light(), false); // HQ and Mappa stay night scenes
+  await page.click("#ha-prefs");
+  await page.selectOption("#pref-theme", "dark");
+  await page.click("#prefs-close");
+  await casa(page);
+  assert.equal(await light(), false);
+  await page.click("#ha-prefs");
+  await page.selectOption("#pref-theme", "light");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.reload();
+  await page.waitForSelector("#view-casa");
+  await casa(page);
+  assert.equal(await light(), true); // chosen here: stays light whatever the phone says
+  assert.equal(await page.inputValue("#pref-theme"), "light");
+  assert.equal(await page.getAttribute('meta[name="theme-color"]', "content"), "#eef2f6");
+  await done(page);
+});
+
 test("preferenze: il backup si scarica", { timeout: 30000 }, async () => {
   const page = await open();
   await page.click("#ha-prefs");

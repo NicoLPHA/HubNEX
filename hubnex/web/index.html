@@ -10,6 +10,37 @@
   <!-- Installable as an app icon (phone home screen / desktop) -->
   <link rel="manifest" href="static/manifest.webmanifest">
   <meta name="theme-color" content="#03060d">
+  <script>
+    // Theme (Preferenze, this device only): "" = the device's, "dark" or "light". The light theme
+    // dresses the Casa; HQ and Mappa are night scenes and stay dark. Set before the first paint.
+    (function () {
+      var choice = "", early = false;
+      try {
+        choice = localStorage.getItem("hq_theme") || "";
+        early = localStorage.getItem("hq_view") === "casa" || /"hq":false/.test(localStorage.getItem("hq_ui") || "");
+      } catch (e) { /* private mode */ }
+      var sys = window.matchMedia ? matchMedia("(prefers-color-scheme: light)") : null;
+      function apply() {
+        var body = document.body;
+        var light = (choice === "light" || (!choice && !!sys && sys.matches)) && (body ? body.classList.contains("casa") : early);
+        document.documentElement.classList.toggle("light", light);
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = light ? "#eef2f6" : "#03060d";
+      }
+      apply();
+      if (sys && sys.addEventListener) sys.addEventListener("change", function () { if (!choice) apply(); });
+      document.addEventListener("DOMContentLoaded", function () {
+        apply();
+        new MutationObserver(apply).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+      });
+      window.hqTheme = function (v) {
+        if (v === undefined) return choice;
+        choice = v || "";
+        try { choice ? localStorage.setItem("hq_theme", choice) : localStorage.removeItem("hq_theme"); } catch (e) { /* private mode */ }
+        apply();
+      };
+    })();
+  </script>
   <link rel="icon" href="static/icons/icon-192.png">
   <link rel="apple-touch-icon" href="static/icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -92,6 +123,10 @@
     <label class="pref-row">
       <span data-i18n>Lingua<small data-i18n>Automatica: quella del tuo Home Assistant</small></span>
       <select data-i18n-attr="aria-label" id="pref-lang" aria-label="Lingua"><option value="" data-i18n>Automatica</option><option value="it">Italiano</option><option value="en">English</option><option value="nl">Nederlands</option></select>
+    </label>
+    <label class="pref-row">
+      <span data-i18n>Tema<small data-i18n>Chiaro si legge meglio al sole (solo la Casa). Vale per questo dispositivo</small></span>
+      <select data-i18n-attr="aria-label" id="pref-theme" aria-label="Tema"><option value="" data-i18n>Automatico</option><option value="dark" data-i18n>Scuro</option><option value="light" data-i18n>Chiaro</option></select>
     </label>
     <p data-i18n class="pref-note" id="pref-start-note">Vale solo per il tuo account, su tutti i tuoi dispositivi. Gli altri utenti non cambiano.</p>
     <div class="pref-row pref-costs" id="pref-settings-row">

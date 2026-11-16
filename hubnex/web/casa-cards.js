@@ -179,7 +179,7 @@ export const Cards = {
       parts.push(`<button class="hud-item" data-act="energy"><span><span class="hud-big">${isNaN(watts) ? "—" : num(watts / 1000, 2)}<small>kW</small></span><span class="hud-sub">${esc(sub)}</span></span></button>`);
     }
     if (cams) {
-      parts.push(`<button class="hud-item" data-act="cams">${icon("cam")}<span><span class="hud-val">${cams} ${cams === 1 ? t("telecamera") : t("telecamere")}</span><span class="hud-sub">${t("tocca per vederle")}</span></span></button>`);
+      parts.push(`<button class="hud-item" data-act="cams">${icon("cam")}<span><span class="hud-val">${cams} ${cams === 1 ? t("telecamera") : t("telecamere")}</span><span class="hud-sub">${cams === 1 ? t("tocca per vederla") : t("tocca per vederle")}</span></span></button>`);
     }
     const scenes = d.scenes.map((e) => `<button class="hc-scene" data-act="scene" data-e="${e}">${esc(this.st(e)?.n || e)}</button>`).join("");
     return `<div class="hud-row">${parts.join("")}</div>

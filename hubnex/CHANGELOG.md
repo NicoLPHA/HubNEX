@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.21.1
+- Licht thema: het kader bovenaan Thuis wordt één witte kaart met dunne scheidingslijnen (eerder een dambordpatroon).
+- Met maar één camera: «tik om te bekijken».
+
+## 1.21.0
+- **Licht thema** voor Thuis, met hoog contrast en ook in de zon te lezen: lichte achtergrond, witte kaarten,
+  donkere tekst, vollere amber- en roodtinten. Via **⚙ → Thema**: Automatisch (volgt de telefoon), Donker of Licht;
+  de keuze blijft op het apparaat bewaard. HQ en Kaart blijven donker.
+
 ## 1.20.5
 - **Geleerde antwoorden:** een vraag over het huis die vaak terugkomt en die Claude steeds op dezelfde manier
   oploste (zelfde vraag, zelfde tools, drie keer), wordt daarna lokaal beantwoord: zonder AI en in een fractie van

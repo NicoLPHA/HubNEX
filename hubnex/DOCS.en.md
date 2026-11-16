@@ -516,6 +516,11 @@ whoever opens it (not Italian = English). At the top **⚙ → Language** choose
 that browser only. Jarvis, the agents, Telegram and the add-on's messages follow the
 **Language** option of the configuration (auto = Home Assistant's).
 
+**Light theme, for reading in sunlight**: at the top **⚙ → Theme**. **Automatic** follows the
+phone (light when the phone is light), **Light** and **Dark** fix it. It applies to the House:
+HQ and Map stay dark. The choice stays on that device, so the phone can be light and the wall
+tablet dark.
+
 **Home only, for whoever just wants to turn on a light**: at the top **⚙** → turn off **HQ and
 Map tabs** (HubNEX opens straight on the Home view) and/or **AI assistant** (chat, voice and
 approvals disappear: no Claude credit). Inside Home Assistant the choice is saved with the

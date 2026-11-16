@@ -535,6 +535,10 @@ wie het opent (andere talen = Engels). Bovenaan kiest **⚙ → Taal** hem met d
 browser. Jarvis, de agents, Telegram en de berichten van de add-on volgen de optie **Taal** van de
 configuratie (auto = die van Home Assistant).
 
+**Licht thema, om in de zon te lezen**: bovenaan **⚙ → Thema**. **Automatisch** volgt de telefoon (licht overdag
+als de telefoon op licht staat), **Licht** en **Donker** leggen het vast. Het geldt voor Thuis: HQ en Kaart blijven
+donker. De keuze blijft op dat apparaat bewaard, zodat de telefoon licht kan zijn en de tablet aan de muur donker.
+
 **Alleen Thuis, voor wie alleen een lamp wil aandoen**: bovenaan **⚙** → zet **Tabbladen HQ en Kaart**
 uit (HubNEX opent direct op de weergave Thuis) en/of **AI-assistent** (chat, spraak en goedkeuringen
 verdwijnen: geen Claude-tegoed). Binnen Home Assistant wordt de keuze bewaard bij het account van wie

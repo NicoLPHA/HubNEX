@@ -611,6 +611,9 @@ $("ha-prefs").classList.remove("hidden");
 // Language: automatic (Home Assistant's) or chosen here; applied by reloading the page.
 try { $("pref-lang").value = localStorage.getItem("hq_lang") || ""; } catch { /* private mode */ }
 $("pref-lang").addEventListener("change", (e) => { setLang(e.target.value); location.reload(); });
+// Theme: automatic (the device's), dark or light; applied at once, remembered on this device.
+$("pref-theme").value = window.hqTheme?.() || "";
+$("pref-theme").addEventListener("change", (e) => window.hqTheme?.(e.target.value));
 if (inHA) loadStartPref().catch(() => {});
 
 function renderMapPanel() {
