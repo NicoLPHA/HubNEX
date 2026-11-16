@@ -156,7 +156,7 @@ def test_dutch_example_team(tmp_path, monkeypatch):
     from hubnex.config import load_org
     org = load_org(str(config.DEFAULT_AGENTS_NL))
     assert org.boss_name == "Jarvis" and [c.id for c in org.companies] == ["home"], "the example is for the house only"
-    assert {a.id for a in org.agents} == {"butler", "sentinel"}
+    assert {a.id for a in org.agents} == {"butler", "energy", "sentinel"}
     # first start of the add-on in a Dutch Home Assistant: the Dutch example team
     opts, cfg = tmp_path / "options.json", tmp_path / "cfg"
     opts.write_text("{}")
