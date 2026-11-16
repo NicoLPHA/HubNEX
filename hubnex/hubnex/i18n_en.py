@@ -220,4 +220,10 @@ EN: dict[str, str] = {
     "Scene salvate: {names}.": "Saved scenes: {names}.",
     "Nessuna scena salvata.": "No scenes saved.",
     "indica quale scorciatoia o tutte": "say which shortcut, or all",
+    "Fermato.": "Stopped.",
+    "Nuova conversazione: ricomincio da capo.": "New conversation: starting fresh.",
+    "conversazione non trovata": "conversation not found",
+    "non autorizzato": "not authorized",
+    "{a} non supporta l'olandese": "{a} does not support Dutch",
+    "{a} non supporta l'inglese": "{a} does not support English",
 }

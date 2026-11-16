@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.22.0
+Overgenomen uit de fork emile-bodin/HubNEX (1.21.2 t/m 1.24.1), zonder het Claude Code-abonnement.
+- **Home Assistant-tools uit brAIn** (BRUH Automation, MIT; licentie in `hubnex/mcp_server/LICENSE-brain`): ongeveer
+  40 tools voor toestanden, gebieden, apparaten, typed besturing, automatiseringen en traces, camerabeelden,
+  dashboards en meer, als ingebouwde connector "casa". Met beschermde entiteiten, een blokkadelijst voor spraak,
+  bevestiging door de eigenaar bij wijzigingen en een actielogboek. Groepen (read, control, automation, camera,
+  dashboards, exposure, system) schakel je aan op de add-onpagina; standaard staan read, control, automation en camera aan.
+- **Tools per agent:** `ha_mcp:` in `agents.yaml` kiest de groepen van een agent (`[read, camera]`, `none`).
+  Jarvis Wacht kan kijken maar niet schakelen; Jarvis Butler leest, bedient en beheert automatiseringen.
+- **MCP-connectors:** instructies van de servers, afbeeldingen, tools per connector toelaten of uitsluiten,
+  optioneel zoeken in tools, connectors op de add-onpagina.
+- **HubNEX als MCP-server** op `/mcp`: standaard uit, standaard alleen lezen en alleen met een eigen `mcp_token`
+  (niet het dashboardtoken).
+- **Geschiedenis:** alleen-lezen history, logboek, statistieken en weekdagpatronen (`ha_get_history`,
+  `ha_get_logbook`, `ha_get_statistics`, `ha_summarize_history`).
+- **Gesprekken:** meerdere per kanaal met elk eigen geheugen; lijst, nieuw, hernoemen, verwijderen met ongedaan
+  maken, tools en antwoord live te zien, antwoord stoppen; Telegram `/new`.
+- **Plattegrond:** kamers met meerdere hoeken (L-vormen, schuine muren) en zwevende kamerlabels in 3D.
+
 ## 1.21.1
 - Licht thema: het kader bovenaan Thuis wordt één witte kaart met dunne scheidingslijnen (eerder een dambordpatroon).
 - Met maar één camera: «tik om te bekijken».

@@ -373,10 +373,6 @@ def create_app(settings: Settings | None = None, hq: HQ | None = None, start_wor
             w.cancel()
         if start_workers and hq.team_enabled:
             await hq.team.stop()
-        login = claude_login["process"]
-        if login and login.returncode is None:
-            login.terminate()
-            await login.wait()
         await hq.close()
 
     app = FastAPI(title="HubNEX", lifespan=lifespan)

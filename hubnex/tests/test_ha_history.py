@@ -265,7 +265,7 @@ def _tool_names(req):
 async def test_every_agent_and_jarvis_get_the_history_tools_with_home_assistant(make_hq):
     hq = make_hq([response([text_block("ok")], "end_turn"), response([text_block("ok")], "end_turn")])
     hq.ha = NS(enabled=True)
-    await hq.run_agent("accountant", "check the deadlines")
+    await hq.run_agent("contabile", "check the deadlines")
     req = hq.client.requests[-1]
     assert set(H_TOOLS) <= _tool_names(req) and "ha_get_history" in req["system"]
     await hq.converse("t", "when did the door open?")
@@ -274,7 +274,7 @@ async def test_every_agent_and_jarvis_get_the_history_tools_with_home_assistant(
 
 async def test_without_home_assistant_nobody_gets_them(make_hq):
     hq = make_hq([response([text_block("ok")], "end_turn"), response([text_block("ok")], "end_turn")])
-    await hq.run_agent("accountant", "check the deadlines")
+    await hq.run_agent("contabile", "check the deadlines")
     assert not set(H_TOOLS) & _tool_names(hq.client.requests[-1])
     assert "ha_get_history" not in hq.client.requests[-1]["system"]
     await hq.converse("t", "hello")

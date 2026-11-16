@@ -220,4 +220,10 @@ NL: dict[str, str] = {
     "Scene salvate: {names}.": "Opgeslagen scènes: {names}.",
     "Nessuna scena salvata.": "Geen scènes opgeslagen.",
     "indica quale scorciatoia o tutte": "geef aan welke snelweg, of alle",
+    "Fermato.": "Gestopt.",
+    "Nuova conversazione: ricomincio da capo.": "Nieuw gesprek: ik begin opnieuw.",
+    "conversazione non trovata": "gesprek niet gevonden",
+    "non autorizzato": "niet geautoriseerd",
+    "{a} non supporta l'olandese": "{a} ondersteunt geen Nederlands",
+    "{a} non supporta l'inglese": "{a} ondersteunt geen Engels",
 }

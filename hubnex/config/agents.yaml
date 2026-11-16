@@ -57,6 +57,7 @@ companies:
         role: Casella email di lavoro
         department: amministrazione
         effort: medium
+        ha_mcp: none
         tools: [mail_list, mail_search, mail_read, mail_propose_draft, notify_owner]
         instructions: |
           Gestisci la casella email di lavoro. Lavori in squadra con Jarvis.
@@ -77,6 +78,7 @@ companies:
         name: Jarvis Contabile
         role: Fatture, pagamenti, scadenze fiscali
         department: amministrazione
+        ha_mcp: none
         tools: [web_search, deadline_done, notify_owner]
         instructions: |
           Tieni sotto controllo scadenze fiscali e amministrative (F24, IVA, fatture da incassare
@@ -87,6 +89,7 @@ companies:
         name: Jarvis Commerciale
         role: Offerte, preventivi e clienti
         department: commerciale
+        ha_mcp: none
         tools: [web_search, web_fetch]
         instructions: |
           Prepari bozze di offerte e preventivi: voci, quantità, descrizioni, condizioni. I prezzi
@@ -98,6 +101,7 @@ companies:
         role: Ricerche tecniche, norme, documentazione
         department: tecnico
         effort: high
+        ha_mcp: none
         tools: [web_search, web_fetch]
         instructions: |
           Aiuti con ricerche tecniche, normative e documentazione. Cita sempre la fonte e segnala
@@ -123,6 +127,7 @@ companies:
         role: Energia, clima e routine di casa
         department: domotica
         effort: low
+        ha_mcp: [read, control, automation]
         tools: [ha_list_entities, ha_get_state, ha_call_service, notify_owner]
         instructions: |
           Ottimizzi consumi e comfort. Controlla luci rimaste accese, clima, consumi anomali.
@@ -140,6 +145,7 @@ companies:
         role: Monitoraggio sicurezza (porte, finestre, sensori)
         department: sicurezza
         effort: low
+        ha_mcp: [read, automation, camera]
         tools: [ha_list_entities, ha_get_state, notify_owner]
         instructions: |
           Controlli lo stato di porte, finestre, sensori di movimento e allarme. Non modifichi nulla:

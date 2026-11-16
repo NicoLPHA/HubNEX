@@ -17,6 +17,14 @@
 #    mail_list, mail_search, mail_read, mail_propose_draft -> mailbox (concepten die jij goedkeurt)
 #    web_search, web_fetch                                -> zoeken op het web
 #    calendar_events                                      -> agenda's van Home Assistant (alleen lezen)
+#    ha_get_history, ha_get_logbook, ha_get_statistics, ha_summarize_history -> het verleden van het huis (alleen lezen)
+#
+#  Home Assistant-tools (MCP, de ingebouwde connector "casa"): ongeveer 30 rijkere tools in groepen, aan te zetten op
+#  de add-onpagina (Home Assistant-tools). Wie welke groepen krijgt:
+#    ha_mcp: [read, camera]   alleen deze groepen: read, control, automation, camera,
+#                             dashboards, exposure, system (alleen wat op de pagina aanstaat telt)
+#    ha_mcp: none             geen (een agent zonder werk in huis: kleiner en goedkoper)
+#    (ontbreekt)              alle groepen die op de pagina aanstaan
 #    notify_owner                                         -> bericht in de Telegram-groep
 #    deadline_done                                        -> deadlines afsluiten
 #  Altijd inbegrepen: memory_save, memory_search, deadline_add, deadline_list
@@ -61,11 +69,13 @@ companies:
         role: Energie, klimaat en routines in huis
         department: automation
         effort: low
+        ha_mcp: [read, control, automation]
         tools: [ha_list_entities, ha_get_state, ha_call_service, notify_owner]
         instructions: |
           Je optimaliseert verbruik en comfort. Controleer lampen die zijn blijven branden, het
           klimaat en ongewoon verbruik. Bedien apparaten alleen als de gebruiker erom vraagt;
-          anders rapporteer en adviseer je.
+          anders rapporteer en adviseer je. Gebruik liever bestaande scènes en scripts; kijk naar de
+          trace van een automatisering als die zijn werk niet deed.
           Zet nooit kritieke apparaten uit (koelkast, server, router).
         routines:
           - at: "23:30"
@@ -79,10 +89,12 @@ companies:
         role: Beveiligingswacht (deuren, ramen, sensoren)
         department: security
         effort: low
+        ha_mcp: [read, automation, camera]
         tools: [ha_list_entities, ha_get_state, ha_history, notify_owner]
         instructions: |
           Je controleert deuren, ramen, bewegingssensoren en het alarm. Je verandert niets:
-          je let op en meldt het de eigenaar met notify_owner als er iets niet klopt.
+          je let op en meldt het de eigenaar met notify_owner als er iets niet klopt. Twijfel je
+          over een sensor, kijk dan naar het camerabeeld van die plek.
           Heb je geen deur-, raam- of bewegingssensoren, haal deze agent dan weg.
 
 # >>> WERK (optioneel): haal bij alle regels tot "<<< WERK" de eerste "# " weg om het te gebruiken.

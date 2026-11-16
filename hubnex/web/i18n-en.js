@@ -1,6 +1,19 @@
 // English texts of the dashboard: the Italian text (as written in the code) -> English.
 // Kept complete by tests/ui/i18n.test.cjs; list what is missing with: python dev/i18n_keys.py --missing
 export const EN = {
+  "Angolo": "Corner",
+  "Aggiungi angolo": "Add corner",
+  "Chiudi forma": "Close shape",
+  "Elimina angolo": "Remove corner",
+  "Modifica angoli": "Edit corners",
+  "Tocca gli angoli in ordine; chiudi sul primo punto o premi Completa forma.": "Tap the corners in order; tap the first point or press Finish shape.",
+  "Rettangolo": "Rectangle",
+  "Disegna angoli": "Draw corners",
+  "Completa forma": "Finish shape",
+  "Servono almeno tre angoli": "At least three corners are needed",
+  "Forma non valida": "Invalid shape",
+  "Forme non valide ignorate: {n}.": "Invalid suggested shapes skipped: {n}.",
+  "Completa o annulla prima la forma": "Finish or cancel the shape first",
   "+ altre {n}": "+ {n} more",
   "24 ore": "24 hours",
   "A": "To",
@@ -205,6 +218,7 @@ export const EN = {
   "Larga": "Wide",
   "Leggo la posta…": "Reading the mail…",
   "Lingua": "Language",
+  "Lingua dell'interfaccia: vale per questo dispositivo": "Interface language: applies to this device",
   "Luce": "Light",
   "Luce (relè)": "Light (relay)",
   "Luci": "Lights",
@@ -806,5 +820,14 @@ export const EN = {
   "Impara dalle domande ripetute": "Learn from repeated questions",
   "Dopo {n} volte uguali": "After {n} identical times",
   "Ancora nessuna risposta appresa.": "No learned answers yet.",
-  "{n} domande in apprendimento": "{n} questions still being learned"
+  "{n} domande in apprendimento": "{n} questions still being learned",
+  "Ancora nessuna conversazione.": "No conversations yet.",
+  "Conversazione eliminata.": "Conversation deleted.",
+  "Conversazioni": "Conversations",
+  "Elimina": "Delete",
+  "Ferma la risposta": "Stop the answer",
+  "Nome della conversazione": "Name of the conversation",
+  "Nuova": "New",
+  "Nuova conversazione": "New conversation",
+  "{n} messaggi": "{n} messages"
 };

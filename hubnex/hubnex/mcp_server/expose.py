@@ -54,7 +54,7 @@ TEAM_TOOLS = [
 
 
 def authorized(hq: "HQ", header: str | None) -> bool:
-    token = hq.settings.mcp_token or hq.settings.hq_token
+    token = hq.settings.mcp_token  # its own token: never the dashboard's
     if not token or not header or not header.lower().startswith("bearer "):
         return False
     return hmac.compare_digest(header[7:].strip().encode(), token.encode())
