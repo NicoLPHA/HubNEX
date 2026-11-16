@@ -15,7 +15,7 @@ import time
 from typing import Any, Awaitable, Callable
 
 import websockets
-from hubnex.i18n import tr
+from hubnex.i18n import lang, tr
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +46,7 @@ class HAWatcher:
         self._connect = connect or (lambda url: websockets.connect(url, max_size=None, ping_interval=30))
         self.areas: dict[str, dict] = {}
         self.language: str | None = None
+        self.time_zone: str | None = None  # Home Assistant's own, e.g. "Europe/Rome"
         self.on_language = None  # called with Home Assistant's language once it is known
         self.floors: dict[str, dict] = {}
         self.devices: dict[str, dict] = {}
@@ -144,7 +145,9 @@ class HAWatcher:
         self.states = {s["entity_id"]: s for s in states}
         await self._load_aliases()
         try:  # Home Assistant's language: the add-on speaks it unless told otherwise
-            self.language = ((await self._command({"type": "get_config"})) or {}).get("language")
+            ha_config = (await self._command({"type": "get_config"})) or {}
+            self.language = ha_config.get("language")
+            self.time_zone = ha_config.get("time_zone") or self.time_zone
         except HAWatcherError:
             self.language = None
         if self.language and self.on_language:
@@ -216,6 +219,16 @@ class HAWatcher:
                 out.append({"service": name, "name": (dev or {}).get("name_by_user") or (dev or {}).get("name") or name[11:].replace("_", " ")})
         return out
 
+    async def statistics(
+        self, statistic_ids: list[str], start: str, end: str, period: str = "hour",
+        types: tuple[str, ...] = ("mean", "min", "max", "sum", "change"),
+    ) -> dict[str, list[dict]]:
+        """Long-term statistics from the recorder (read-only): {statistic_id: [rows]}."""
+        return await self._command({
+            "type": "recorder/statistics_during_period", "start_time": start, "end_time": end,
+            "statistic_ids": statistic_ids, "period": period, "types": list(types),
+        }) or {}
+
     def area_of(self, entity_id: str) -> str | None:
         """The entity's own area, or else its device's (that is what Home Assistant shows)."""
         reg = self.entities.get(entity_id)
@@ -227,20 +240,18 @@ class HAWatcher:
         return dev.get("area_id") if dev else None
 
     async def tts_voice(self, engine: str, wanted: str = "") -> tuple[str | None, str | None]:
-        """The language (Home Assistant's own, as the engine spells it) and the voice id for
+        """The engine's variant of the add-on's language and the voice id for
         a TTS engine; `wanted` is the voice's name as people see it ("Rinaldo") or its id.
         Unknown voice: an error listing the ones there are."""
-        config = await self._command({"type": "get_config"}) or {}
-        lang = (config.get("language") or "").lower()
         info = await self._command({"type": "tts/engine/get", "engine_id": engine}) or {}
         langs = (info.get("provider") or {}).get("supported_languages") or []
-        language = next((x for x in langs if x.lower() == lang), None) or next(
-            (x for x in langs if x.lower().replace("_", "-").split("-")[0] == lang.split("-")[0]), None
-        )
+        want = lang()
+        language = next((x for x in langs if x.lower().replace("_", "-").split("-")[0] == want), None)
         if not wanted:
             return language, None
         if not language:
-            raise HAWatcherError(tr("{a} non parla la lingua di Home Assistant ({b})", a=engine, b=lang or '?'))
+            raise HAWatcherError(tr("{a} non supporta l'olandese", a=engine) if want == "nl"
+                                 else tr("{a} non supporta l'inglese", a=engine))
         res = await self._command({"type": "tts/engine/voices", "engine_id": engine, "language": language}) or {}
         voices = res.get("voices") or []
         w = wanted.casefold()
